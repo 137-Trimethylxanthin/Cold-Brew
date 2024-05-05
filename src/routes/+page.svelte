@@ -3,14 +3,33 @@
 
     console.log('Hello from the server!');
 
-    let songs;
+    let songsPromise = invoke('display_song_list').then((res) => {
+        console.log(res);
+        return res;
+    }).catch((err) => {
+        console.log(err);
+        return err;
+    })
 
-    async function loadSongs() {
-        songs = await invoke('display_song_list');
-        console.log(songs);
+    /**
+	 * @param {any} song
+	 */
+    async function addSong(song) {
+        console.log(song);
+        let res = await invoke('add_song', {song: song, id: "test"});
+        console.log(res);
     }
-    loadSongs();
 </script>
 
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://kit.svelte.dev">kit.svelte.dev</a> to read the documentation</p>
+{#await songsPromise}
+    <p>Loading...</p>
+{:then songs}
+    <ul>
+        {#each songs as song}
+            <button on:click={() => addSong(song)}>{song.Name}</button> <br>
+        {/each}
+    </ul>
+{:catch error}
+    <p>{error.message}</p>
+{/await}
+

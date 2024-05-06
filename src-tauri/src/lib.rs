@@ -1,7 +1,8 @@
 mod jellyfin;
+mod musicPlayer;
 use serde_json::Value;
 use std::collections::{HashMap, VecDeque};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use serde::Serialize;
 #[macro_use]
 extern crate lazy_static;
@@ -34,6 +35,10 @@ impl Queue {
         }
     }
 
+    fn has_current_song(&self) -> bool {
+        self.current_song.id != ""
+    }
+
     fn add_song(&mut self, song: Song) {
         self.upcoming.push_back(song);
     }
@@ -44,7 +49,9 @@ impl Queue {
 
 
     fn next_song(&mut self) {
-        self.old.push_front(self.current_song.clone());
+        if self.has_current_song() {
+            self.old.push_back(self.current_song.clone());
+        }
         self.current_song = self.upcoming.pop_front().unwrap();
     }
 
@@ -53,6 +60,9 @@ impl Queue {
     }
 
     fn previous_song(&mut self) {
+        if self.old.is_empty() {
+            return;
+        }
         self.upcoming.push_front(self.current_song.clone());
         self.current_song = self.old.pop_front().unwrap();
     }
@@ -78,9 +88,9 @@ impl QueueManager {
         self.queues.insert(id.to_string(), Queue::new(id.to_string()));
     }
 
-    fn get_queue(&self, id: &str) -> Option<&Queue> {
+    fn get_queue(&mut self, id: &str) -> Option<&mut Queue> {
         if self.queue_exists(id) {
-            Some(self.queues.get(id).unwrap())
+            Some(self.queues.get_mut(id).unwrap())
         } else {
             None
         }
@@ -111,12 +121,13 @@ struct Song {
 
 
 lazy_static! {
-    static ref QUEUE_MANAGER: Mutex<QueueManager> = Mutex::new(QueueManager::new());
+    static ref QUEUE_MANAGER: Arc<Mutex<QueueManager>> = Arc::new(Mutex::new(QueueManager::new()));
 }
 
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    musicPlayer::run("test".to_string());
   tauri::Builder::default()
     .invoke_handler(tauri::generate_handler![display_song_list, add_song, remove_song, get_current_song, old_queue, upcoming_queue])
     .run(tauri::generate_context!(  ))
@@ -161,7 +172,10 @@ fn remove_song(song: Value, id:&str) {
 
 #[tauri::command(rename_all = "snake_case")]
 fn get_current_song(id:&str) -> Value {
-    let queue_manager = QUEUE_MANAGER.lock().unwrap();
+    let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
+    if !queue_manager.queue_exists(id) {
+        queue_manager.create_queue(id);
+    }
     let queue = queue_manager.get_queue(id).unwrap();
     let song = queue.get_current_song();
     serde_json::json!(song)
@@ -169,7 +183,7 @@ fn get_current_song(id:&str) -> Value {
 
 #[tauri::command(rename_all = "snake_case")]
 fn old_queue(id:&str) -> Value {
-    let queue_manager = QUEUE_MANAGER.lock().unwrap();
+    let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
     let queue = queue_manager.get_queue(id).unwrap();
     let old = queue.old.clone();
     serde_json::json!(old)

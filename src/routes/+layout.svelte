@@ -1,11 +1,12 @@
-<script>
+<script lang="ts">
 	import { goto } from '$app/navigation';
     import { invoke } from "@tauri-apps/api/core";
+    import type { Song } from "$lib/types";
 
 
-    let currentSong = "---";
-    let oldSongs = [];
-    let upcomingSongs = [];
+    let currentSong: Song = {title: "loading", artist: "loading", album: "loading", duration: 0, id: "loading"};
+    let oldSongs: Song[] = [];
+    let upcomingSongs: Song[] = [];
 
     console.log('Hello from the Layout!');
 

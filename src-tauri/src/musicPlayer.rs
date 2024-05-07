@@ -6,9 +6,10 @@ use ezsockets::CloseFrame;
 use ezsockets::Error;
 use ezsockets::Server;
 use std::net::SocketAddr;
-use serde_json::Value;
+use serde_json::{json, Value};
 
 const INTERVAL: Duration = Duration::from_secs(1);
+
 
 struct Queue {
     id: String,
@@ -145,7 +146,6 @@ impl ezsockets::ServerExt for MusicServer {
                     let session = handle.clone();
                     async move {
                         loop {
-                            let _ = session.call(Message::Next).unwrap();
                             tokio::time::sleep(INTERVAL).await;
                         }
                     }
@@ -178,12 +178,7 @@ impl ezsockets::ServerExt for MusicServer {
 
 #[derive(Debug)]
 enum Message {
-    Play,
-    Pause,
-    Next,
-    Previous,
-    Add(String),
-    Remove,
+    getQueue,
 }
 
 
@@ -203,9 +198,42 @@ impl ezsockets::SessionExt for MusicSession {
         &self.id
     }
 
-    async fn on_text(&mut self, _text: String) -> Result<(), Error> {
-        //best way to handle rquest like play, pause would be with a if and then a match
-        self.handle.text("Invalid command").unwrap();
+    async fn on_text(&mut self, text: String) -> Result<(), Error> {
+        //parse the json 
+        let jason: Value = serde_json::from_str(&text).unwrap();
+        println!("Received text: {}", jason);
+        //best way to handle rquest like play, pause would be with a if and then a match statement
+        if !jason["command"].is_null() && !jason["song"].is_null() {
+            let command = jason["command"].as_str().unwrap();
+            println!("Command: {}", command);
+            if command == "/add" {
+                let song = value_to_song(jason["song"].clone());
+                let _ = self.handle.text(format!("{} added to queue", song.title)).unwrap();
+                self.queue_manager.add_song_to_queue("test", song);
+            } else if command == "/remove" {
+                let song = value_to_song(jason["song"].clone());
+                self.queue_manager.remove_song_from_queue("test", song);
+            } else if command == "/next" {
+                let queue = self.queue_manager.get_queue("test").unwrap();
+                queue.next_song();
+            } else if command == "/previous" {
+                let queue = self.queue_manager.get_queue("test").unwrap();
+                queue.previous_song();
+            } else if command == "/get_queue" {
+                let queue = self.queue_manager.get_queue("test").unwrap();
+                let current_song = queue.get_current_song();
+                let _ = self.handle.text(json!({
+                    "current_song": current_song,
+                    "upcoming": queue.upcoming,
+                    "old": queue.old
+                }).to_string()).unwrap();
+            } else {
+                let _ = self.handle.text("Invalid command").unwrap();
+            }
+
+        } else {
+            let _ = self.handle.text("Invalid command").unwrap();
+        }
         Ok(())
     }
 
@@ -214,27 +242,7 @@ impl ezsockets::SessionExt for MusicSession {
     }
 
     async fn on_call(&mut self, call: Self::Call) -> Result<(), Error> {
-         match call {
-            Message::Add(string) => {
-                println!("Adding song to queue");
-                println!("{}", string);
-                let res: Value = serde_json::from_str(string.as_str()).unwrap();
-                let song = Song {
-                    id: res["id"].as_str().unwrap().to_string(),
-                    title: res["title"].as_str().unwrap().to_string(),
-                    artist: res["artist"].as_str().unwrap().to_string(),
-                    album: res["album"].as_str().unwrap().to_string(),
-                    duration: res["duration"].as_u64().unwrap() as usize,
-                };
-                self.queue_manager.add_song_to_queue("default", song);
-            }
-            Message::Next => {
-                println!("Next song");
-                let queue = self.queue_manager.get_queue("default").unwrap();
-                if !queue.has_current_song() {
-                    queue.next_song();
-                }
-            }
+        match call {
             _ => {
                 let _ = self.handle.text("Invalid command").unwrap();
             }
@@ -255,3 +263,24 @@ pub async fn run(){
     
 
 }
+
+fn value_to_song(value: Value) -> Song {
+    let id = value["id"].as_str().unwrap();
+    let title = value["title"].as_str().unwrap();
+    let artist = value["artist"].as_str().unwrap();
+    let album = value["album"].as_str().unwrap();
+    let duration = value["duration"].as_u64().unwrap() as usize;
+    Song {
+        id: id.to_string(),
+        title: title.to_string(),
+        artist: artist.to_string(),
+        album: album.to_string(),
+        duration,
+    }
+}
+
+fn json_contains_key(json: &Value, key: &str) -> bool {
+    json[key].is_null()
+}
+
+//3, 2, 4, 6, 2, 1 >=< 18, 9==4,

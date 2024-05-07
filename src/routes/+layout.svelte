@@ -8,6 +8,39 @@
     let oldSongs: Song[] = [];
     let upcomingSongs: Song[] = [];
 
+       // Connect to my WebSocket
+    const ws = new WebSocket('ws://localhost:6969');
+
+
+    // Listen for messages
+    ws.addEventListener('message', event => {
+        //check what type of message it is
+        console.log("data: ");
+        let json = JSON.parse(event.data);
+        console.log(json);
+    });
+
+
+    ws.addEventListener('open', () => {
+        let song = {
+            id: "1",
+            title: "Song Title",
+            artist: "Artist Name",
+            album: "Album Name",
+            duration: 300
+            };
+        let message = {
+            "command": "/add",
+            "song": song,
+        };
+        console.log("Sending message");
+        console.log(JSON.stringify(message));
+        ws.send(JSON.stringify(message));
+        console.log("Message sent");
+
+        ws.send(JSON.stringify({"command": "/get_queue", "song": "none"}));
+    });
+
     console.log('Hello from the Layout!');
 
 
@@ -55,4 +88,5 @@
         padding: 20px;
         overflow: auto;
     }
+
 </style>

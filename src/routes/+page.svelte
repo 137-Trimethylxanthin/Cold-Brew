@@ -11,14 +11,30 @@
         return err;
     })
 
-    /**
-	 * @param {any} song
-	 */
-    async function addSong(song) {
-        console.log(song);
-        let res = await invoke('add_song', {song: song, id: "test"});
-        console.log(res);
-    }
+
+    // Connect to my WebSocket
+    const ws = new WebSocket('ws://localhost:6969');
+
+
+    // Listen for messages
+    ws.addEventListener('message', event => {
+        //check what type of message it is
+        const data = JSON.parse(event.data);
+        console.log("data: "+data);
+    });
+
+
+    ws.addEventListener('open', () => {
+        ws.send(JSON.stringify(
+            {
+                type: "message",
+                payload: "Hello from the client!"
+            }
+        ));
+    });
+
+
+
 </script>
 
 {#await songsPromise}
@@ -26,7 +42,7 @@
 {:then songs}
     <ul>
         {#each songs as song}
-            <button on:click={() => addSong(song)}>{song.Name}</button> <br>
+            <button>{song.Name}</button> <br>
         {/each}
     </ul>
 {:catch error}

@@ -30,6 +30,7 @@ impl Queue {
             },
             old: VecDeque::new(),
             upcoming: VecDeque::new(),
+            //shuffeld queues are new queues in the queue manager with the shuffle prefix.
         }
     }
 
@@ -137,7 +138,7 @@ impl ezsockets::ServerExt for MusicServer {
         address: SocketAddr,
     ) -> Result<Session, Option<CloseFrame>> {
         let id = address.port();
-        let session = Session::create(|handle| EchoSession { 
+        let session = Session::create(|handle| MusicSession {
             id,
             handle,
             queue_manager: QueueManager::new(),
@@ -194,10 +195,13 @@ impl ezsockets::SessionExt for MusicSession {
 
 
 //WS end :)
-pub async fn run(queue_id: String){
+pub async fn run(){
+    //start a new async thread that does not block the main thread
     tracing_subscriber::fmt::init();
     let (server, _) = Server::create(|_server| MusicServer {});
-    ezsockets::tungstenite::run(server, "127.0.0.1:8080")
+    ezsockets::tungstenite::run(server, "127.0.0.1:6969")
         .await
         .unwrap();
+    
+
 }

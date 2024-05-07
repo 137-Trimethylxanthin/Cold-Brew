@@ -10,21 +10,6 @@
 
     console.log('Hello from the Layout!');
 
-    async function getQueue() {
-        currentSong = await invoke("get_current_song", {id:"test"});
-        oldSongs = await invoke("old_queue", {id:"test"});
-        upcomingSongs = await invoke("upcoming_queue", {id:"test"});
-        console.log("currentSong");
-        console.log(currentSong);
-        console.log("oldSongs");
-        console.log(oldSongs);
-        console.log("upcomingSongs");
-        console.log(upcomingSongs);
-
-
-    }
-
-    getQueue();
 
 
 </script>
@@ -34,7 +19,7 @@
 <div class="sidenav">
     <button on:click={() => goto("/")}>Home</button>
     <button on:click={() => goto("player")}>Player</button>
-    <button on:click={getQueue}>reload Queue</button>
+    <button>reload Queue</button>
 </div>
 
 <slot/>

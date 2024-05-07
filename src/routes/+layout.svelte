@@ -18,6 +18,25 @@
         console.log("data: ");
         let json = JSON.parse(event.data);
         console.log(json);
+
+        if (json.current_song != null) {
+            currentSong = {
+                title: json.current_song.title,
+                artist: json.current_song.artist,
+                album: json.current_song.album,
+                duration: json.current_song.duration,
+                id: json.current_song.id
+            };
+            console.log("current song: ");
+            console.log(currentSong);
+        }
+
+        if (json.old_songs != null) {
+            oldSongs = json.old_songs;
+        }
+        if (json.upcoming_songs != null) {
+            upcomingSongs = json.upcoming_songs;
+        }
     });
 
 
@@ -37,6 +56,8 @@
         console.log(JSON.stringify(message));
         ws.send(JSON.stringify(message));
         console.log("Message sent");
+
+        ws.send(JSON.stringify({"command": "/next", "song": "none"}));
 
         ws.send(JSON.stringify({"command": "/get_queue", "song": "none"}));
     });
@@ -88,5 +109,4 @@
         padding: 20px;
         overflow: auto;
     }
-
 </style>

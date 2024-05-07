@@ -1,4 +1,5 @@
 use std::collections::{HashMap, VecDeque};
+use std::sync::Mutex;
 use std::time::Duration;
 use serde::Serialize;
 use async_trait::async_trait;
@@ -10,6 +11,10 @@ use serde_json::{json, Value};
 
 const INTERVAL: Duration = Duration::from_secs(1);
 
+
+lazy_static! {
+    static ref QUEUE_MANAGER: Mutex<QueueManager> = Mutex::new(QueueManager::new());
+}
 
 struct Queue {
     id: String,
@@ -153,7 +158,6 @@ impl ezsockets::ServerExt for MusicServer {
                 MusicSession {
                     id,
                     handle,
-                    queue_manager: QueueManager::new(),
                 }
             },
             id,
@@ -186,7 +190,6 @@ enum Message {
 struct MusicSession {
     handle: Session,
     id: SessionID,
-    queue_manager: QueueManager,
 }
 
 #[async_trait]
@@ -209,24 +212,33 @@ impl ezsockets::SessionExt for MusicSession {
             if command == "/add" {
                 let song = value_to_song(jason["song"].clone());
                 let _ = self.handle.text(format!("{} added to queue", song.title)).unwrap();
-                self.queue_manager.add_song_to_queue("test", song);
+                let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
+                queue_manager.add_song_to_queue("test", song);
+                drop(queue_manager);
             } else if command == "/remove" {
                 let song = value_to_song(jason["song"].clone());
-                self.queue_manager.remove_song_from_queue("test", song);
+                let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
+                queue_manager.remove_song_from_queue("test", song);
+                drop(queue_manager);
             } else if command == "/next" {
-                let queue = self.queue_manager.get_queue("test").unwrap();
+                let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
+                let queue = queue_manager.get_queue("test").unwrap();
                 queue.next_song();
             } else if command == "/previous" {
-                let queue = self.queue_manager.get_queue("test").unwrap();
+                let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
+                let queue = queue_manager.get_queue("test").unwrap();
                 queue.previous_song();
+                drop(queue_manager);
             } else if command == "/get_queue" {
-                let queue = self.queue_manager.get_queue("test").unwrap();
+                let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
+                let queue = queue_manager.get_queue("test").unwrap();
                 let current_song = queue.get_current_song();
                 let _ = self.handle.text(json!({
                     "current_song": current_song,
                     "upcoming": queue.upcoming,
                     "old": queue.old
                 }).to_string()).unwrap();
+                drop(queue_manager);
             } else {
                 let _ = self.handle.text("Invalid command").unwrap();
             }

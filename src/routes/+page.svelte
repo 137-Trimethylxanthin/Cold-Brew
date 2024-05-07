@@ -19,18 +19,25 @@
     // Listen for messages
     ws.addEventListener('message', event => {
         //check what type of message it is
-        const data = JSON.parse(event.data);
-        console.log("data: "+data);
+        console.log("data: ");
     });
 
 
     ws.addEventListener('open', () => {
-        ws.send(JSON.stringify(
-            {
-                type: "message",
-                payload: "Hello from the client!"
-            }
-        ));
+        let song = {
+            id: "1",
+            title: "Song Title",
+            artist: "Artist Name",
+            album: "Album Name",
+            duration: 300
+            };
+        let message = {
+            call: "Next",
+            data: song
+        };
+        console.log("Sending message");
+        ws.send(JSON.stringify(message));
+        console.log("Message sent");
     });
 
 

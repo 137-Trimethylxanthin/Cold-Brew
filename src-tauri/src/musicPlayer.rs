@@ -145,7 +145,7 @@ impl ezsockets::ServerExt for MusicServer {
                     let session = handle.clone();
                     async move {
                         loop {
-                            
+                            let _ = session.call(Message::Next).unwrap();
                             tokio::time::sleep(INTERVAL).await;
                         }
                     }
@@ -216,6 +216,8 @@ impl ezsockets::SessionExt for MusicSession {
     async fn on_call(&mut self, call: Self::Call) -> Result<(), Error> {
          match call {
             Message::Add(string) => {
+                println!("Adding song to queue");
+                println!("{}", string);
                 let res: Value = serde_json::from_str(string.as_str()).unwrap();
                 let song = Song {
                     id: res["id"].as_str().unwrap().to_string(),
@@ -227,6 +229,7 @@ impl ezsockets::SessionExt for MusicSession {
                 self.queue_manager.add_song_to_queue("default", song);
             }
             Message::Next => {
+                println!("Next song");
                 let queue = self.queue_manager.get_queue("default").unwrap();
                 if !queue.has_current_song() {
                     queue.next_song();

@@ -1,13 +1,14 @@
 use std::collections::{HashMap, VecDeque};
+use std::time::Duration;
 use serde::Serialize;
 use async_trait::async_trait;
 use ezsockets::CloseFrame;
 use ezsockets::Error;
-use ezsockets::Request;
 use ezsockets::Server;
-use ezsockets::Socket;
 use std::net::SocketAddr;
+use serde_json::Value;
 
+const INTERVAL: Duration = Duration::from_secs(1);
 
 struct Queue {
     id: String,
@@ -121,7 +122,7 @@ struct Song {
 
 // Web socket start
 type SessionID = u16;
-type Session = ezsockets::Session<SessionID, ()>;
+type Session = ezsockets::Session<SessionID, Message>;
 
 
 //server
@@ -133,16 +134,31 @@ impl ezsockets::ServerExt for MusicServer {
 
     async fn on_connect(
         &mut self,
-        socket: Socket,
-        _request: Request,
+        socket: ezsockets::Socket,
+        _request: ezsockets::Request,
         address: SocketAddr,
     ) -> Result<Session, Option<CloseFrame>> {
         let id = address.port();
-        let session = Session::create(|handle| MusicSession {
+        let session = Session::create(
+            |handle| {
+                let counting_task = tokio::spawn({
+                    let session = handle.clone();
+                    async move {
+                        loop {
+                            
+                            tokio::time::sleep(INTERVAL).await;
+                        }
+                    }
+                });
+                MusicSession {
+                    id,
+                    handle,
+                    queue_manager: QueueManager::new(),
+                }
+            },
             id,
-            handle,
-            queue_manager: QueueManager::new(),
-            }, id, socket);
+            socket,
+        );
         Ok(session)
     }
 
@@ -160,6 +176,16 @@ impl ezsockets::ServerExt for MusicServer {
     }
 }
 
+#[derive(Debug)]
+enum Message {
+    Play,
+    Pause,
+    Next,
+    Previous,
+    Add(String),
+    Remove,
+}
+
 
 //Session
 struct MusicSession {
@@ -171,15 +197,15 @@ struct MusicSession {
 #[async_trait]
 impl ezsockets::SessionExt for MusicSession {
     type ID = SessionID;
-    type Call = ();
+    type Call = Message;
 
     fn id(&self) -> &Self::ID {
         &self.id
     }
 
-    async fn on_text(&mut self, text: String) -> Result<(), Error> {
+    async fn on_text(&mut self, _text: String) -> Result<(), Error> {
         //best way to handle rquest like play, pause would be with a if and then a match
-        self.handle.text(text).unwrap();
+        self.handle.text("Invalid command").unwrap();
         Ok(())
     }
 
@@ -188,7 +214,28 @@ impl ezsockets::SessionExt for MusicSession {
     }
 
     async fn on_call(&mut self, call: Self::Call) -> Result<(), Error> {
-        let () = call;
+         match call {
+            Message::Add(string) => {
+                let res: Value = serde_json::from_str(string.as_str()).unwrap();
+                let song = Song {
+                    id: res["id"].as_str().unwrap().to_string(),
+                    title: res["title"].as_str().unwrap().to_string(),
+                    artist: res["artist"].as_str().unwrap().to_string(),
+                    album: res["album"].as_str().unwrap().to_string(),
+                    duration: res["duration"].as_u64().unwrap() as usize,
+                };
+                self.queue_manager.add_song_to_queue("default", song);
+            }
+            Message::Next => {
+                let queue = self.queue_manager.get_queue("default").unwrap();
+                if !queue.has_current_song() {
+                    queue.next_song();
+                }
+            }
+            _ => {
+                let _ = self.handle.text("Invalid command").unwrap();
+            }
+        };
         Ok(())
     }
 }

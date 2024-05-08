@@ -96,7 +96,7 @@
         <h2>{currentSong.artist}</h2>
         <h3>{currentSong.album}</h3>
     </div>
-    <span>{currentSong.duration}</span>
+    <span>{currentSong.duration / 10000000}</span>
     <div class="durationBar" ></div>
     <div>
         <button on:click={() => ws.send(JSON.stringify({"command": "/next", "song": "none"}))}>Next</button>

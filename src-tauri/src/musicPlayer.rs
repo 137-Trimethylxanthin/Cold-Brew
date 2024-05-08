@@ -55,6 +55,9 @@ impl Queue {
 
 
     fn next_song(&mut self) {
+        if self.upcoming.is_empty() {
+            return;
+        }
         if self.has_current_song() {
             self.old.push_back(self.current_song.clone());
         }
@@ -291,17 +294,17 @@ pub async fn run(){
 }
 
 fn value_to_song(value: Value) -> Song {
-    let id = value["id"].as_str().unwrap();
-    let title = value["title"].as_str().unwrap();
-    let artist = value["artist"].as_str().unwrap();
-    let album = value["album"].as_str().unwrap();
-    let duration = value["duration"].as_u64().unwrap() as usize;
+    let id = value["id"].as_str().unwrap_or("None");
+    let title = value["title"].as_str().unwrap_or("NoTitle");
+    let artist = value["artist"].as_str().unwrap_or("NoArtist");
+    let album = value["album"].as_str().unwrap_or("NoAlbum");
+    let duration = value["duration"].as_u64().unwrap_or(0)as usize;
     Song {
         id: id.to_string(),
         title: title.to_string(),
         artist: artist.to_string(),
         album: album.to_string(),
-        duration,
+        duration ,
     }
 }
 

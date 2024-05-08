@@ -18,7 +18,7 @@
                         title: element.Name,
                         artist: element.Artists ? element.Artists.join(", ") : element.Artist,
                         album: element.Album,
-                        duration: element.RunTimeTicks / 10000000,
+                        duration: element.RunTimeTicks,
                         id: element.Id
                     });
                 });

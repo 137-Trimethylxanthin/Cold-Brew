@@ -1,5 +1,5 @@
 use std::collections::{HashMap, VecDeque};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use std::time::Duration;
 use serde::Serialize;
 use async_trait::async_trait;
@@ -94,12 +94,11 @@ impl QueueManager {
         self.queues.insert(id.to_string(), Queue::new(id.to_string()));
     }
 
-    fn get_queue(&mut self, id: &str) -> Option<&mut Queue> {
-        if self.queue_exists(id) {
-            Some(self.queues.get_mut(id).unwrap())
-        } else {
-            None
+    fn get_queue(&mut self, id: &str) -> &mut Queue {
+        if !self.queue_exists(id) {
+            self.create_queue(id);
         }
+        self.queues.get_mut(id).unwrap()
     }
 
     fn add_song_to_queue(&mut self, id: &str, song: Song) {
@@ -214,24 +213,29 @@ impl ezsockets::SessionExt for MusicSession {
                 let _ = self.handle.text(format!("{} added to queue", song.title)).unwrap();
                 let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
                 queue_manager.add_song_to_queue("test", song);
+                let _ = self.handle.text(get_queue(&mut queue_manager)).unwrap();
                 drop(queue_manager);
             } else if command == "/remove" {
                 let song = value_to_song(jason["song"].clone());
                 let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
                 queue_manager.remove_song_from_queue("test", song);
+                let _ = self.handle.text(get_queue(&mut queue_manager)).unwrap();
                 drop(queue_manager);
             } else if command == "/next" {
                 let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
-                let queue = queue_manager.get_queue("test").unwrap();
+                let queue = queue_manager.get_queue("test");
                 queue.next_song();
+                let _ = self.handle.text(get_queue(&mut queue_manager)).unwrap();
+                drop(queue_manager);
             } else if command == "/previous" {
                 let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
-                let queue = queue_manager.get_queue("test").unwrap();
+                let queue = queue_manager.get_queue("test");
                 queue.previous_song();
+                let _ = self.handle.text(get_queue(&mut queue_manager)).unwrap();
                 drop(queue_manager);
             } else if command == "/get_queue" {
                 let mut queue_manager = QUEUE_MANAGER.lock().unwrap();
-                let queue = queue_manager.get_queue("test").unwrap();
+                let queue = queue_manager.get_queue("test");
                 let current_song = queue.get_current_song();
                 let _ = self.handle.text(json!({
                     "current_song": current_song,
@@ -263,6 +267,16 @@ impl ezsockets::SessionExt for MusicSession {
     }
 }
 
+fn get_queue(queue_manager: &mut MutexGuard<QueueManager>) -> String{
+    let queue = queue_manager.get_queue("test");
+                let current_song = queue.get_current_song();
+                return json!({
+                    "current_song": current_song,
+                    "upcoming": queue.upcoming,
+                    "old": queue.old
+                }).to_string();
+}
+
 
 //WS end :)
 pub async fn run(){
@@ -291,8 +305,6 @@ fn value_to_song(value: Value) -> Song {
     }
 }
 
-fn json_contains_key(json: &Value, key: &str) -> bool {
-    json[key].is_null()
-}
+
 
 //3, 2, 4, 6, 2, 1 >=< 18, 9==4,

@@ -1,0 +1,16 @@
+on:
+  pull_request:
+    types:
+      - opened
+      
+jobs:
+  creatDCThread:
+    runs-on: ubuntu-latest
+    steps:
+    - name: creatDCThread
+      env:
+        WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }} 
+      run: | 
+        curl -X POST $WEBHOOK_URL -H "Content-Type: application/json" -d '{"content": "${{ github.event.pull_request.user.login }} | ${{ github.event.pull_request.body }}","embeds": null,"username": "Flug Vorbei Haken","attachments": [],"thread_name": "${{ github.event.pull_request.title }}"}'D
+      
+      

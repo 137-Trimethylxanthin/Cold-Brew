@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@source "../../src/**/*.svelte";
+@source "../../src/**/*.html";
 
 @theme {
 	--color-bg: oklch(15% 0.02 60);

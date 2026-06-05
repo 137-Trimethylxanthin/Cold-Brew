@@ -676,20 +676,4 @@
 	</Tabs.Root>
 </section>
 
-<style>
-	.settings-page { display: grid; gap: 16px; max-width: 1280px; }
 
-	.settings-tab-content { display: grid; gap: 16px; margin-top: 4px; }
-
-	.settings-panel {
-		display: grid; gap: 14px; padding: 18px;
-		background: oklch(22% 0.026 58 / 0.9);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-lg);
-	}
-
-	@media (max-width: 880px) {
-		.settings-page { gap: 12px; }
-		.settings-panel { padding: 14px; }
-	}
-</style>

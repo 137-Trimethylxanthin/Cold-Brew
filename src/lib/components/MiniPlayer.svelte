@@ -84,7 +84,7 @@
 	</div>
 	<span class="text-muted font-mono tabular-nums whitespace-nowrap">{playbackTimeLabel()}</span>
 	<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
-	<div class="flex gap-2">
+	<div class="flex justify-center items-center gap-2">
 		<button onclick={onPlayPrevious} disabled={!canPrev} class="rounded-full w-10 h-10" aria-label="Previous track"><SkipBack class="size-5" /></button>
 		<button onclick={onResume} disabled={!canPlay || isPlaying} class="rounded-full w-10 h-10" aria-label="Play"><Play class="size-5" /></button>
 		<button onclick={onPause} disabled={!isPauseEnabled} class="rounded-full w-10 h-10" aria-label="Pause"><Pause class="size-5" /></button>

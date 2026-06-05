@@ -2,6 +2,8 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
 	import * as Sheet from '$lib/components/ui/sheet';
+	import * as Table from '$lib/components/ui/table';
+	import { Button } from '$lib/components/ui/button';
 	import type {
 		LibraryTrack,
 		ListeningHistoryEntry,
@@ -475,7 +477,7 @@
 		<p class="text-muted text-sm">{localTracks.length} local tracks indexed — scan new paths in Settings</p>
 	</div>
 	<div class="flex gap-2 relative z-[1]">
-		<button onclick={loadLocalLibrary} disabled={loadingLibrary}>Refresh</button>
+		<Button variant="secondary" size="sm" onclick={loadLocalLibrary} disabled={loadingLibrary}>Refresh</Button>
 	</div>
 	<div class="hero-blob absolute right-[clamp(18px,5vw,64px)] bottom-[clamp(18px,5vw,54px)] w-[min(28vw,250px)] aspect-square rounded-3xl opacity-[0.22] pointer-events-none"></div>
 </section>
@@ -486,77 +488,76 @@
 <section class="mt-6 border border-border rounded-3xl p-[18px] bg-surface/90">
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Local Files</h2>
-		<div class="flex flex-wrap justify-end gap-x-3 gap-y-2" aria-label="Visible local columns">
+		<div class="flex justify-center items-center gap-1.5 mb-3">
 			{#each localColumnOptions as column}
-				<label class="flex items-center gap-[5px] text-muted text-[0.82rem]">
-					<input type="checkbox" checked={visibleColumns[column.id]} onchange={() => toggleColumn(column.id)} class="w-auto min-w-0 p-0" />
+				<Button variant={visibleColumns[column.id] ? 'default' : 'outline'} size="sm" onclick={() => toggleColumn(column.id)}>
 					{column.label}
-				</label>
+				</Button>
 			{/each}
 		</div>
 	</div>
-	<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
-		<thead>
-			<tr>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
-					<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('title')}>
+	<Table.Root class="w-full rounded-[20px] overflow-hidden border border-border">
+		<Table.Header>
+			<Table.Row>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+					<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('title')}>
 						Title {sortIndicator('title')}
-					</button>
-				</th>
+					</Button>
+				</Table.Head>
 				{#if visibleColumns.artist}
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
-						<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('artist')}>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('artist')}>
 							Artist {sortIndicator('artist')}
-						</button>
-					</th>
+						</Button>
+					</Table.Head>
 				{/if}
 				{#if visibleColumns.album}
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
-						<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('album')}>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('album')}>
 							Album {sortIndicator('album')}
-						</button>
-					</th>
+						</Button>
+					</Table.Head>
 				{/if}
 				{#if visibleColumns.quality}
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
-						<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('quality')}>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('quality')}>
 							Quality {sortIndicator('quality')}
-						</button>
-					</th>
+						</Button>
+					</Table.Head>
 				{/if}
 				{#if visibleColumns.duration}
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
-						<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('duration')}>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('duration')}>
 							Time {sortIndicator('duration')}
-						</button>
-					</th>
+						</Button>
+					</Table.Head>
 				{/if}
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase"></th>
-			</tr>
-		</thead>
-		<tbody>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider"></Table.Head>
+			</Table.Row>
+		</Table.Header>
+		<Table.Body>
 			{#each sortedLocalTracks() as track}
-				<tr>
-					<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
+				<Table.Row class="border-b border-border/60 hover:bg-surface/50 transition-colors">
+					<Table.Cell class="px-3 py-2.5 align-middle">
 						<strong>{track.title}</strong>
-						<span class="text-muted text-sm">{track.extension.toUpperCase()}{track.has_artwork ? ' / Art' : ''}</span>
-					</td>
-					{#if visibleColumns.artist}<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.artist ?? ''}</td>{/if}
-					{#if visibleColumns.album}<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.album ?? ''}</td>{/if}
-					{#if visibleColumns.quality}<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatQuality(track)}</td>{/if}
-					{#if visibleColumns.duration}<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(track.duration_ms)}</td>{/if}
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
+						<span class="text-muted text-sm block">{track.extension.toUpperCase()}{track.has_artwork ? ' / Art' : ''}</span>
+					</Table.Cell>
+					{#if visibleColumns.artist}<Table.Cell class="px-3 py-2.5 align-middle">{track.artist ?? ''}</Table.Cell>{/if}
+					{#if visibleColumns.album}<Table.Cell class="px-3 py-2.5 align-middle">{track.album ?? ''}</Table.Cell>{/if}
+					{#if visibleColumns.quality}<Table.Cell class="px-3 py-2.5 align-middle">{formatQuality(track)}</Table.Cell>{/if}
+					{#if visibleColumns.duration}<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(track.duration_ms)}</Table.Cell>{/if}
+					<Table.Cell class="px-3 py-2 align-middle">
 						<div class="flex flex-wrap gap-1.5 whitespace-nowrap">
-							<button onclick={() => playLocal(track)}>Play</button>
-							<button onclick={() => queueLocal(track)}>Queue</button>
-							<button onclick={() => addLocalToPlaylist(track)}>Add</button>
-							<button onclick={() => inspectTrack(track)}>Info</button>
+							<Button size="sm" class="h-7 px-2.5 text-xs" onclick={() => playLocal(track)}>Play</Button>
+							<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueLocal(track)}>Queue</Button>
+							<Button variant="secondary" size="sm" class="h-7 px-2.5 text-xs" onclick={() => addLocalToPlaylist(track)}>Add</Button>
+							<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => inspectTrack(track)}>Info</Button>
 						</div>
-					</td>
-				</tr>
+					</Table.Cell>
+				</Table.Row>
 			{/each}
-		</tbody>
-	</table>
+		</Table.Body>
+	</Table.Root>
 </section>
 
 <Sheet.Sheet bind:open={trackInspectorOpen}>
@@ -571,10 +572,10 @@
 		{#if selectedTrack}
 			<div class="mt-2.5">
 				<div class="flex flex-wrap gap-1.5 whitespace-nowrap">
-					<button onclick={playSelectedTrack}>Play</button>
-					<button onclick={queueSelectedTrack}>Queue</button>
-					<button onclick={addSelectedTrackToPlaylist}>Add</button>
-					<button onclick={lookupSelectedTrackMetadata} disabled={loadingMetadata}>Metadata</button>
+					<Button size="sm" class="h-7 px-2.5 text-xs" onclick={playSelectedTrack}>Play</Button>
+					<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={queueSelectedTrack}>Queue</Button>
+					<Button variant="secondary" size="sm" class="h-7 px-2.5 text-xs" onclick={addSelectedTrackToPlaylist}>Add</Button>
+					<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={lookupSelectedTrackMetadata} disabled={loadingMetadata}>Metadata</Button>
 				</div>
 
 				<dl class="track-inspector-dl">
@@ -605,31 +606,31 @@
 					{#if loadingMetadata}
 						<p>Searching MusicBrainz</p>
 					{:else if metadataSuggestions.length > 0}
-						<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
-							<thead>
-								<tr>
-									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Title</th>
-									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Artist</th>
-									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Album</th>
-									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Date</th>
-									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Score</th>
-								</tr>
-							</thead>
-							<tbody>
+						<Table.Root class="w-full rounded-[20px] overflow-hidden border border-border mt-2.5">
+							<Table.Header>
+								<Table.Row>
+									<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Title</Table.Head>
+									<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Artist</Table.Head>
+									<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Album</Table.Head>
+									<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Date</Table.Head>
+									<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Score</Table.Head>
+								</Table.Row>
+							</Table.Header>
+							<Table.Body>
 								{#each metadataSuggestions as suggestion}
-									<tr>
-										<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
+									<Table.Row class="border-b border-border/60 hover:bg-surface/50 transition-colors">
+										<Table.Cell class="px-3 py-2.5 align-middle">
 											<strong>{suggestion.title}</strong>
-											<span class="text-muted text-sm">{suggestion.recording_mbid}</span>
-										</td>
-										<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{suggestion.artist}</td>
-										<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{suggestion.album ?? ''}</td>
-										<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{suggestion.first_release_date ?? ''}</td>
-										<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{suggestion.score ?? ''}</td>
-									</tr>
+											<span class="text-muted text-sm block">{suggestion.recording_mbid}</span>
+										</Table.Cell>
+										<Table.Cell class="px-3 py-2.5 align-middle">{suggestion.artist}</Table.Cell>
+										<Table.Cell class="px-3 py-2.5 align-middle">{suggestion.album ?? ''}</Table.Cell>
+										<Table.Cell class="px-3 py-2.5 align-middle">{suggestion.first_release_date ?? ''}</Table.Cell>
+										<Table.Cell class="px-3 py-2.5 align-middle">{suggestion.score ?? ''}</Table.Cell>
+									</Table.Row>
 								{/each}
-							</tbody>
-						</table>
+							</Table.Body>
+						</Table.Root>
 					{:else}
 						<p>No suggestions loaded</p>
 					{/if}
@@ -645,18 +646,20 @@
 		<div class="grid content-start gap-1.5 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
 				<input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
-				<button onclick={createPlaylist}>Create</button>
+				<Button variant="default" size="sm" onclick={createPlaylist}>Create</Button>
 			</div>
 			{#if playlists.length === 0}
 				<p>No playlists yet</p>
 			{:else}
 				{#each playlists as playlist}
-				<button
-				class="flex justify-between gap-2 text-left {playlist.id === selectedPlaylistId ? 'bg-success/15 border-success/50' : ''}"
+				<Button
+				variant={playlist.id === selectedPlaylistId ? 'default' : 'outline'}
+				size="sm"
+				class="flex justify-between gap-2 text-left w-full"
 				onclick={() => selectPlaylist(playlist.id)}>
-						<span>{playlist.name}</span>
-						<small class="text-muted whitespace-nowrap">{playlist.track_count} tracks</small>
-					</button>
+				 <span>{playlist.name}</span>
+					<small class="text-muted whitespace-nowrap">{playlist.track_count} tracks</small>
+				</Button>
 				{/each}
 			{/if}
 		</div>
@@ -664,11 +667,11 @@
 		<div class="grid gap-2.5 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
 				<input bind:value={playlistImportPath} placeholder="/path/list.m3u" aria-label="M3U import path" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
-				<button onclick={importPlaylist}>Import</button>
+				<Button variant="default" size="sm" onclick={importPlaylist}>Import</Button>
 			</div>
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
 				<input bind:value={playlistExportPath} placeholder="/path/export.m3u8" aria-label="M3U export path" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
-				<button onclick={exportPlaylist} disabled={selectedPlaylistId === null}>Export</button>
+				<Button variant="default" size="sm" onclick={exportPlaylist} disabled={selectedPlaylistId === null}>Export</Button>
 			</div>
 
 			{#if selectedPlaylist}
@@ -676,7 +679,7 @@
 					{#each selectedPlaylist.tracks as song}
 						<li class="flex items-center justify-between gap-2 py-[5px]">
 							<span>{song.title}</span>
-							<button onclick={() => queueSong(song)}>Queue</button>
+							<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueSong(song)}>Queue</Button>
 						</li>
 					{/each}
 				</ol>
@@ -691,67 +694,67 @@
 	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Recent Listening</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<span class="text-muted text-sm">{listeningHistory.length} entries</span>
-		<button onclick={loadListeningHistory}>Refresh</button>
+		<Button variant="secondary" size="sm" onclick={loadListeningHistory}>Refresh</Button>
 	</div>
 	{#if listeningHistory.length === 0 && listeningSummaries.length === 0}
 		<p>No listening history yet</p>
 	{:else}
 		{#if listeningSummaries.length > 0}
-			<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
-				<thead>
-					<tr>
-						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Track</th>
-						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Plays</th>
-						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Completed</th>
-						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Skipped</th>
-						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Listened</th>
-						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Last played</th>
-					</tr>
-				</thead>
-				<tbody>
+			<Table.Root class="w-full rounded-[20px] overflow-hidden border border-border mt-3">
+				<Table.Header>
+					<Table.Row>
+						<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Track</Table.Head>
+						<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Plays</Table.Head>
+						<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Completed</Table.Head>
+						<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Skipped</Table.Head>
+						<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Listened</Table.Head>
+						<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Last played</Table.Head>
+					</Table.Row>
+				</Table.Header>
+				<Table.Body>
 					{#each listeningSummaries as summary}
-						<tr>
-							<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
+						<Table.Row class="border-b border-border/60 hover:bg-surface/50 transition-colors">
+							<Table.Cell class="px-3 py-2.5 align-middle">
 								<strong>{summary.title ?? summary.path}</strong>
-								<span class="text-muted text-sm">{summary.source}</span>
-							</td>
-							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{summary.play_count}</td>
-							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{summary.completion_count}</td>
-							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{summary.skip_count}</td>
-							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(summary.total_listened_ms)}</td>
-							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{summary.last_played_at}</td>
-						</tr>
+								<span class="text-muted text-sm block">{summary.source}</span>
+							</Table.Cell>
+							<Table.Cell class="px-3 py-2.5 align-middle">{summary.play_count}</Table.Cell>
+							<Table.Cell class="px-3 py-2.5 align-middle">{summary.completion_count}</Table.Cell>
+							<Table.Cell class="px-3 py-2.5 align-middle">{summary.skip_count}</Table.Cell>
+							<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(summary.total_listened_ms)}</Table.Cell>
+							<Table.Cell class="px-3 py-2.5 align-middle">{summary.last_played_at}</Table.Cell>
+						</Table.Row>
 					{/each}
-				</tbody>
-			</table>
+				</Table.Body>
+			</Table.Root>
 		{/if}
-		<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
-			<thead>
-				<tr>
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Track</th>
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Event</th>
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Class</th>
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Position</th>
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Listened</th>
-					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Time</th>
-				</tr>
-			</thead>
-			<tbody>
+		<Table.Root class="w-full rounded-[20px] overflow-hidden border border-border mt-3">
+			<Table.Header>
+				<Table.Row>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Track</Table.Head>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Event</Table.Head>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Class</Table.Head>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Position</Table.Head>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Listened</Table.Head>
+					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Time</Table.Head>
+				</Table.Row>
+			</Table.Header>
+			<Table.Body>
 				{#each listeningHistory as entry}
-					<tr>
-						<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
+					<Table.Row class="border-b border-border/60 hover:bg-surface/50 transition-colors">
+						<Table.Cell class="px-3 py-2.5 align-middle">
 							<strong>{entry.title ?? entry.path}</strong>
-							<span class="text-muted text-sm">{entry.source}</span>
-						</td>
-						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatHistoryLabel(entry.event)}</td>
-						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatHistoryLabel(entry.classification)}</td>
-						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(entry.position_ms)}</td>
-						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(entry.listened_ms)}</td>
-						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{entry.created_at}</td>
-					</tr>
+							<span class="text-muted text-sm block">{entry.source}</span>
+						</Table.Cell>
+						<Table.Cell class="px-3 py-2.5 align-middle">{formatHistoryLabel(entry.event)}</Table.Cell>
+						<Table.Cell class="px-3 py-2.5 align-middle">{formatHistoryLabel(entry.classification)}</Table.Cell>
+						<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(entry.position_ms)}</Table.Cell>
+						<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(entry.listened_ms)}</Table.Cell>
+						<Table.Cell class="px-3 py-2.5 align-middle">{entry.created_at}</Table.Cell>
+					</Table.Row>
 				{/each}
-			</tbody>
-		</table>
+			</Table.Body>
+		</Table.Root>
 	{/if}
 </section>
 
@@ -770,78 +773,80 @@
 		{#if selectedRemoteProvider === 'tidal'}
 			<input bind:value={remoteCountryCode} placeholder="US" aria-label="TIDAL country code" class="flex-[0_0_72px] min-w-[72px] uppercase border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
 		{/if}
-		<button onclick={searchRemote} disabled={loadingRemote}>Search</button>
-		<button onclick={loadRemotePlaylists} disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}>Playlists</button>
+		<Button variant="default" size="sm" onclick={searchRemote} disabled={loadingRemote}>Search</Button>
+		<Button variant="outline" size="sm" onclick={loadRemotePlaylists} disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}>Playlists</Button>
 	</div>
 	{#if remotePlaylists.length > 0}
 		<div class="flex flex-wrap gap-2 mb-2">
 			{#each remotePlaylists as playlist}
-				<button
-					class="grid gap-0.5 min-w-[150px] text-left {playlist.id === selectedRemotePlaylistId ? 'bg-success/15 border-success/50' : ''}"
+				<Button
+					variant={playlist.id === selectedRemotePlaylistId ? 'default' : 'outline'}
+					size="sm"
+					class="grid gap-0.5 min-w-[150px] text-left h-auto py-2"
 					onclick={() => loadRemotePlaylistTracks(playlist)}>
 					<span>{playlist.name}</span>
 					<small class="text-muted">{remotePlaylistCountLabel(playlist)}</small>
-				</button>
+				</Button>
 			{/each}
 		</div>
 	{/if}
-	<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
-		<thead>
-			<tr>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Source</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Title</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Artist</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Album</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Quality</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Time</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase"></th>
-			</tr>
-		</thead>
-		<tbody>
+	<Table.Root class="w-full rounded-[20px] overflow-hidden border border-border mt-3">
+		<Table.Header>
+			<Table.Row>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Source</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Title</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Artist</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Album</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Quality</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Time</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider"></Table.Head>
+			</Table.Row>
+		</Table.Header>
+		<Table.Body>
 			{#each remoteResults as track}
-				<tr>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.source.toUpperCase()}</td>
-					<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
+				<Table.Row class="border-b border-border/60 hover:bg-surface/50 transition-colors">
+					<Table.Cell class="px-3 py-2.5 align-middle">{track.source.toUpperCase()}</Table.Cell>
+					<Table.Cell class="px-3 py-2.5 align-middle">
 						<strong>{track.title}</strong>
-						<span class="text-muted text-sm">{track.external_url ?? track.uri}</span>
-					</td>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.artist}</td>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.album ?? ''}</td>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.quality ?? (track.playable ? 'Remote playable' : 'Metadata only')}</td>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(track.duration_ms)}</td>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle"><button onclick={() => queueRemote(track)}>Queue</button></td>
-				</tr>
+						<span class="text-muted text-sm block">{track.external_url ?? track.uri}</span>
+					</Table.Cell>
+					<Table.Cell class="px-3 py-2.5 align-middle">{track.artist}</Table.Cell>
+					<Table.Cell class="px-3 py-2.5 align-middle">{track.album ?? ''}</Table.Cell>
+					<Table.Cell class="px-3 py-2.5 align-middle">{track.quality ?? (track.playable ? 'Remote playable' : 'Metadata only')}</Table.Cell>
+					<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(track.duration_ms)}</Table.Cell>
+					<Table.Cell class="px-3 py-2 align-middle"><Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueRemote(track)}>Queue</Button></Table.Cell>
+				</Table.Row>
 			{/each}
-		</tbody>
-	</table>
+		</Table.Body>
+	</Table.Root>
 </section>
 
 <section class="mt-6 border border-border rounded-3xl p-[18px] bg-surface/90">
 	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Jellyfin</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<span class="text-muted text-sm">Remote media server</span>
-		<button onclick={loadJellyfin} disabled={loadingJellyfin}>Load songs</button>
+		<Button variant="default" size="sm" onclick={loadJellyfin} disabled={loadingJellyfin}>Load songs</Button>
 	</div>
-	<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
-		<thead>
-			<tr>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Title</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Artist</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Album</th>
-				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase"></th>
-			</tr>
-		</thead>
-		<tbody>
+	<Table.Root class="w-full rounded-[20px] overflow-hidden border border-border mt-3">
+		<Table.Header>
+			<Table.Row>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Title</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Artist</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">Album</Table.Head>
+				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider"></Table.Head>
+			</Table.Row>
+		</Table.Header>
+		<Table.Body>
 			{#each jellyfinSongs as song}
-				<tr>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle"><strong>{song.title}</strong></td>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{song.artist}</td>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{song.album}</td>
-					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle"><button onclick={() => queueSong(song)}>Queue</button></td>
-				</tr>
+				<Table.Row class="border-b border-border/60 hover:bg-surface/50 transition-colors">
+					<Table.Cell class="px-3 py-2.5 align-middle"><strong>{song.title}</strong></Table.Cell>
+					<Table.Cell class="px-3 py-2.5 align-middle">{song.artist}</Table.Cell>
+					<Table.Cell class="px-3 py-2.5 align-middle">{song.album}</Table.Cell>
+					<Table.Cell class="px-3 py-2 align-middle"><Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueSong(song)}>Queue</Button></Table.Cell>
+				</Table.Row>
 			{/each}
-		</tbody>
-	</table>
+		</Table.Body>
+	</Table.Root>
 </section>
 
 

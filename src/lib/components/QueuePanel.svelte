@@ -2,6 +2,7 @@
 	import { playbackStatus, currentSong } from '$lib/stores';
 	import { formatSource, playbackQualityLabel, formatSampleRate, formatDb } from '$lib/playback';
 	import type { Song } from '$lib/types';
+	import { invoke } from '@tauri-apps/api/core';
 
 	let {
 		upcomingSongs = [],
@@ -120,7 +121,13 @@
 
 <aside class="queue">
 	<section class="desktop-player">
-		<div class="cover-art" aria-hidden="true"></div>
+		<div class="cover-art" aria-hidden="true">
+			{#if $currentSong.cover_art}
+				<img src={$currentSong.cover_art} alt={`${$currentSong.title} album art`} />
+			{:else}
+				<div class="cover-gradient"></div>
+			{/if}
+		</div>
 		<div class="track-title">
 			<h2>{$currentSong.title}</h2>
 			<p>{nowPlayingDetail()}</p>
@@ -233,6 +240,17 @@
 		aspect-ratio: 1;
 		border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
 		border-radius: var(--radius-lg);
+	}
+
+	.cover-art img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.cover-gradient {
+		width: 100%;
+		height: 100%;
 		background:
 			radial-gradient(
 				circle at 50% 50%,
@@ -243,7 +261,7 @@
 		box-shadow: 0 22px 50px color-mix(in oklch, black 20%, transparent);
 	}
 
-	.cover-art::before {
+	.cover-gradient::before {
 		content: '';
 		position: absolute;
 		inset: 8%;

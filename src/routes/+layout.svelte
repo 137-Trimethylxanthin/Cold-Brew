@@ -97,6 +97,7 @@
 
 		if (!nativePlaybackActive && queue.current_song) {
 			$currentSong = queue.current_song;
+			fetchCoverArt($currentSong);
 		} else if (!nativePlaybackActive && !queue.current_song && !spotifyPlaybackActive) {
 			$currentSong = emptySong();
 		}
@@ -159,6 +160,7 @@
 				quality: playbackQualityLabel(status),
 				playable: true
 			};
+			fetchCoverArt($currentSong);
 		} else if (nativePlaybackActive) {
 			nativePlaybackActive = false;
 			if (!spotifyPlaybackActive) $currentSong = emptySong();
@@ -501,6 +503,23 @@
 
 	function spotifyIsPlaying() {
 		return spotifyPlaybackActive && !spotifyPaused;
+	}
+
+	async function fetchCoverArt(song: Song) {
+		if (song.source === 'local' && !song.cover_art) {
+			try {
+				const art = await invoke<{ mime_type: string; data: string }>('get_track_cover_art', {
+					path: song.id
+				});
+				song.cover_art = `data:${art.mime_type};base64,${art.data}`;
+			} catch {
+				song.cover_art = null;
+			}
+		}
+	}
+
+	async function playTrackNow(song: Song) {
+		await syncQueuePlaybackResult(await invoke<QueuePlaybackResult>('play_track_now', { song }));
 	}
 
 	function canStartPlayback() {

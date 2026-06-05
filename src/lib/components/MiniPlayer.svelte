@@ -70,7 +70,13 @@
 
 <div class="miniPlayer">
 	<div class="now-playing">
-		<div class="cover" aria-hidden="true"></div>
+		<div class="cover" aria-hidden="true">
+			{#if $currentSong.cover_art}
+				<img src={$currentSong.cover_art} alt={`${$currentSong.title} album art`} />
+			{:else}
+				<div class="cover-gradient"></div>
+			{/if}
+		</div>
 		<div>
 			<strong>{$currentSong.title}</strong>
 			<span>{nowPlayingDetail()}</span>
@@ -161,6 +167,17 @@
 		border-radius: 14px;
 		position: relative;
 		overflow: hidden;
+	}
+
+	.cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.cover-gradient {
+		width: 100%;
+		height: 100%;
 		background:
 			radial-gradient(
 				circle at 50% 50%,
@@ -170,7 +187,7 @@
 			conic-gradient(from 235deg, var(--fg), var(--accent), var(--accent-2), var(--surface-2), var(--fg));
 	}
 
-	.cover::before {
+	.cover-gradient::before {
 		content: '';
 		position: absolute;
 		inset: 8%;

@@ -3,6 +3,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
+use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::prelude::Accessor;
 use rusqlite::{params, Connection};
@@ -335,6 +337,45 @@ fn upsert_track(connection: &Connection, track: &LibraryTrack) -> Result<(), Str
 
 fn database_error(error: rusqlite::Error) -> String {
     format!("Library database error: {error}")
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct CoverArt {
+    pub mime_type: String,
+    pub data: String,
+}
+
+pub fn get_track_cover_art(path: String) -> Result<CoverArt, String> {
+    let file_path = Path::new(&path);
+    if !file_path.is_file() {
+        return Err(format!("File not found: {}", file_path.display()));
+    }
+
+    let tagged_file =
+        lofty::read_from_path(file_path).map_err(|error| format!("Could not read audio file: {error}"))?;
+
+    let tag = tagged_file
+        .primary_tag()
+        .or_else(|| tagged_file.first_tag());
+
+    let tag = tag.ok_or_else(|| "No metadata tags found in the audio file".to_string())?;
+
+    let pictures = tag.pictures();
+    let picture = pictures
+        .first()
+        .ok_or_else(|| "No embedded artwork found in the audio file".to_string())?;
+
+    let mime_type = picture
+        .mime_type()
+        .map(|mt| mt.as_str().to_string())
+        .unwrap_or_else(|| "image/jpeg".to_string());
+
+    let b64 = BASE64.encode(picture.data());
+
+    Ok(CoverArt {
+        mime_type,
+        data: b64,
+    })
 }
 
 #[cfg(test)]

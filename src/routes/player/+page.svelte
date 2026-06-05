@@ -2,17 +2,15 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
 	import type { PlaybackStatus, QueueSnapshot, Song } from '$lib/types';
+	import { playbackStatus, currentSong, queueSnapshot, volume } from '$lib/stores';
+	import { formatSource, formatSampleRate, emptySong } from '$lib/playback';
+	import NowPlaying from '$lib/components/NowPlaying.svelte';
+	import { SkipBack, Play, Pause, Square, SkipForward } from '@lucide/svelte';
 
-	let currentSong: Song = emptySong();
-	let upcomingSongs: Song[] = [];
-	let oldSongs: Song[] = [];
-	let playbackStatus: PlaybackStatus | null = null;
-	let routeError = '';
-
-	const spectrumBars = [
-		70, 38, 90, 62, 28, 82, 45, 74, 56, 92, 33, 68, 50, 78, 42, 88, 36, 61, 86, 54,
-		72, 44, 96, 59, 78, 48, 84, 52
-	] as const;
+	let upcomingSongs: Song[] = $state([]);
+	let oldSongs: Song[] = $state([]);
+	let routeError = $state('');
+	let spotifyIsActive = $state(false);
 
 	onMount(() => {
 		void refreshPlayerRoute();
@@ -29,35 +27,23 @@
 	async function refreshQueue() {
 		try {
 			const queue = await invoke<QueueSnapshot>('get_queue_snapshot');
+			$queueSnapshot = queue;
 			upcomingSongs = queue.upcoming;
 			oldSongs = queue.old;
-			if (queue.current_song) currentSong = queue.current_song;
 			routeError = '';
 		} catch {
-			// Browser-only review does not have Tauri commands available.
+			// Tauri commands not available during browser-only dev
 		}
 	}
 
 	async function refreshPlaybackStatus() {
 		try {
 			const status = await invoke<PlaybackStatus>('get_playback_status');
-			playbackStatus = status;
-			if (status.current_path && currentSong.id === '') {
-				currentSong = {
-					id: status.current_path,
-					title: status.current_title ?? titleFromPath(status.current_path),
-					artist: playbackQualityLabel(status),
-					album: 'Local file',
-					duration: Math.round((status.duration_ms ?? 0) * 10000),
-					source: 'local',
-					uri: status.current_path,
-					quality: playbackQualityLabel(status),
-					playable: true
-				};
-			}
+			$playbackStatus = status;
+			spotifyIsActive = false;
 			routeError = '';
 		} catch {
-			// Browser-only review does not have Tauri commands available.
+			// Tauri commands not available during browser-only dev
 		}
 	}
 
@@ -73,7 +59,7 @@
 
 	async function playRouteSelection() {
 		try {
-			if (playbackStatus?.current_path) {
+			if ($playbackStatus?.current_path) {
 				await invoke<PlaybackStatus>('playback_resume');
 			} else {
 				await invoke('play_current_queue_song');
@@ -85,33 +71,26 @@
 		}
 	}
 
-	function emptySong(): Song {
-		return {
-			title: 'Nothing playing',
-			artist: '',
-			album: '',
-			duration: 0,
-			id: ''
-		};
+	async function handleVolumeChange(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		const val = Number(input.value);
+		$volume = val;
+		try {
+			await invoke<PlaybackStatus>('set_playback_volume', { volume: val });
+		} catch {
+			// Browser-only dev
+		}
 	}
 
 	function nowPlayingDetail() {
-		const parts = [currentSong.artist, currentSong.album].filter(Boolean);
+		const song = $currentSong;
+		const parts = [song.artist, song.album].filter(Boolean);
 		if (parts.length > 0) return parts.join(' - ');
-		return playbackStatus?.state ?? 'Idle';
+		return $playbackStatus?.state ?? 'Idle';
 	}
 
 	function queuedSongDetail(song: Song) {
 		return [song.artist, formatSource(song.source ?? '')].filter(Boolean).join(' - ');
-	}
-
-	function formatSource(source: string) {
-		if (!source) return '';
-		return source
-			.split(/[_\s-]+/)
-			.filter(Boolean)
-			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-			.join(' ');
 	}
 
 	function formatDuration(durationMs: number | null) {
@@ -127,41 +106,21 @@
 	}
 
 	function playbackProgress() {
-		const durationMs = playbackStatus?.duration_ms ?? songDurationMs(currentSong);
+		const durationMs = $playbackStatus?.duration_ms ?? songDurationMs($currentSong);
 		if (!durationMs || durationMs <= 0) return 0;
-		const positionMs = playbackStatus?.position_ms ?? 0;
+		const positionMs = $playbackStatus?.position_ms ?? 0;
 		return Math.min(100, Math.max(0, (positionMs / durationMs) * 100));
 	}
 
 	function playbackTimeLabel() {
-		const position = formatDuration(playbackStatus?.position_ms ?? 0);
-		const duration = formatDuration(playbackStatus?.duration_ms ?? songDurationMs(currentSong));
+		const position = formatDuration($playbackStatus?.position_ms ?? 0);
+		const duration = formatDuration($playbackStatus?.duration_ms ?? songDurationMs($currentSong));
 		return `${position} / ${duration}`;
 	}
 
-	function playbackQualityLabel(status: PlaybackStatus) {
-		const parts: string[] = [];
-		if (status.source_format) parts.push(status.source_format.toUpperCase());
-		if (status.source_sample_rate) parts.push(formatSampleRate(status.source_sample_rate));
-		if (status.source_is_lossless) parts.push('Lossless');
-		return parts.join(' / ');
-	}
-
 	function qualityDisplay() {
-		if (currentSong.quality) return currentSong.quality;
-		if (playbackStatus) {
-			const statusQuality = playbackQualityLabel(playbackStatus);
-			if (statusQuality) return statusQuality;
-		}
+		if ($currentSong.quality) return $currentSong.quality;
 		return 'Pending';
-	}
-
-	function formatSampleRate(rate: number) {
-		return `${Math.round(rate / 1000)} kHz`;
-	}
-
-	function titleFromPath(path: string) {
-		return path.split(/[\\/]/).pop()?.replace(/\.[^.]+$/, '') ?? path;
 	}
 
 	function toErrorMessage(error: unknown) {
@@ -173,49 +132,58 @@
 
 <section class="player-route">
 	<section class="player-hero">
-		<div class="cover-art" aria-hidden="true"></div>
+		<NowPlaying song={$currentSong} status={$playbackStatus} />
+
 		<div class="player-copy">
-			<p class="eyebrow">Now playing</p>
-			<h1>{currentSong.title}</h1>
-			<p>{nowPlayingDetail()}</p>
+			{#if spotifyIsActive}
+				<p class="eyebrow accent-warn">Spotify is playing</p>
+			{/if}
 			<div class="quality-row">
-				<span class="quality-pill">{formatSource(currentSong.source ?? 'local') || 'Local'}</span>
-				{#if currentSong.quality}
-					<span class="quality-pill hires">{currentSong.quality}</span>
+				<span class="quality-pill">{formatSource($currentSong.source ?? 'local') || 'Local'}</span>
+				{#if $currentSong.quality}
+					<span class="quality-pill hires">{$currentSong.quality}</span>
 				{/if}
-				<span class="quality-pill">{playbackStatus?.state ?? 'Idle'}</span>
+				<span class="quality-pill">{$playbackStatus?.state ?? 'Idle'}</span>
 			</div>
+
 			<div class="spectrum" aria-hidden="true">
-				{#each spectrumBars as height}
+				{#each Array.from({ length: 28 }, () => Math.floor(Math.random() * 70) + 28) as height}
 					<span style={`--bar-height: ${height}%`}></span>
 				{/each}
 			</div>
+
 			<div class="progress-block">
 				<div class="duration-bar" style={`--progress: ${playbackProgress()}%`} aria-hidden="true"></div>
 				<div class="progress-labels">
 					<span>{playbackTimeLabel()}</span>
-					<span>{playbackStatus?.output_sample_rate ? formatSampleRate(playbackStatus.output_sample_rate) : 'Ready'}</span>
+					<span>{$playbackStatus?.output_sample_rate ? formatSampleRate($playbackStatus.output_sample_rate) : 'Ready'}</span>
 				</div>
 			</div>
+
 			<div class="transport" aria-label="Playback controls">
-				<button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0}
-					>Prev</button
-				>
-				<button
-					class="main"
-					onclick={playRouteSelection}
-					disabled={currentSong.id === '' && upcomingSongs.length === 0}>Play</button
-				>
-				<button onclick={() => runPlayerCommand('playback_pause')} disabled={!playbackStatus?.playing}
-					>Pause</button
-				>
-				<button onclick={() => runPlayerCommand('playback_stop')} disabled={!playbackStatus?.current_path}
-					>Stop</button
-				>
-				<button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0}
-					>Next</button
-				>
+				<button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0}>
+					<SkipBack class="size-4" /> Prev
+				</button>
+				<button class="main" onclick={playRouteSelection}
+					disabled={$currentSong.id === '' && upcomingSongs.length === 0}>
+					<Play class="size-4" /> Play
+				</button>
+				<button onclick={() => runPlayerCommand('playback_pause')} disabled={!$playbackStatus?.playing}>
+					<Pause class="size-4" /> Pause
+				</button>
+				<button onclick={() => runPlayerCommand('playback_stop')} disabled={!$playbackStatus?.current_path}>
+					<Square class="size-4" /> Stop
+				</button>
+				<button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0}>
+					<SkipForward class="size-4" /> Next
+				</button>
 			</div>
+
+			<label class="volume-label">
+				<span>Volume</span>
+				<input type="range" min="0" max="1" step="0.01" value={$volume}
+					oninput={handleVolumeChange} aria-label="Playback volume" />
+			</label>
 		</div>
 	</section>
 
@@ -251,14 +219,14 @@
 			<div class="section-title">
 				<div>
 					<p class="eyebrow">Output</p>
-					<h2>{playbackStatus?.output_device_name ?? 'Default device'}</h2>
+					<h2>{$playbackStatus?.output_device_name ?? 'Default device'}</h2>
 				</div>
-				<span class="state-pill">{playbackStatus?.playing ? 'Playing' : 'Idle'}</span>
+				<span class="state-pill">{$playbackStatus?.playing ? 'Playing' : 'Idle'}</span>
 			</div>
 			<div class="stat-grid">
 				<div>
 					<span>Source</span>
-					<strong>{currentSong.source ? formatSource(currentSong.source) : 'Local'}</strong>
+					<strong>{$currentSong.source ? formatSource($currentSong.source) : 'Local'}</strong>
 				</div>
 				<div>
 					<span>Quality</span>
@@ -266,7 +234,7 @@
 				</div>
 				<div>
 					<span>ReplayGain</span>
-					<strong>{playbackStatus?.replay_gain_mode ?? 'off'}</strong>
+					<strong>{$playbackStatus?.replay_gain_mode ?? 'off'}</strong>
 				</div>
 			</div>
 		</section>
@@ -302,16 +270,9 @@
 		gap: 16px;
 	}
 
-	h1,
 	h2,
 	p {
 		margin: 0;
-	}
-
-	h1 {
-		font-family: var(--font-display);
-		font-size: clamp(56px, 7vw, 96px);
-		line-height: 0.92;
 	}
 
 	h2 {
@@ -331,7 +292,7 @@
 		display: grid;
 		grid-template-columns: minmax(260px, 0.42fr) minmax(0, 1fr);
 		gap: 24px;
-		align-items: center;
+		align-items: start;
 		min-height: 440px;
 		background:
 			linear-gradient(
@@ -341,35 +302,6 @@
 			);
 		box-shadow: var(--shadow);
 		padding: clamp(18px, 3vw, 28px);
-	}
-
-	.cover-art {
-		position: relative;
-		overflow: hidden;
-		aspect-ratio: 1;
-		border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
-		border-radius: clamp(22px, 5vw, 42px);
-		background:
-			radial-gradient(
-				circle at 42% 38%,
-				color-mix(in oklch, var(--accent-2) 82%, transparent) 0 10%,
-				transparent 11%
-			),
-			radial-gradient(
-				circle at 55% 52%,
-				color-mix(in oklch, var(--fg) 58%, transparent) 0 5%,
-				transparent 6%
-			),
-			conic-gradient(from 225deg, var(--surface-3), var(--accent), var(--accent-2), var(--fg), var(--surface-3));
-		box-shadow: 0 26px 60px color-mix(in oklch, black 24%, transparent);
-	}
-
-	.cover-art::after {
-		content: '';
-		position: absolute;
-		inset: 12%;
-		border: 1px solid color-mix(in oklch, var(--surface) 42%, transparent);
-		border-radius: inherit;
 	}
 
 	.player-copy {
@@ -393,6 +325,10 @@
 		font-size: 0.68rem;
 		letter-spacing: 0.08em;
 		text-transform: uppercase;
+	}
+
+	.accent-warn {
+		color: var(--danger);
 	}
 
 	.quality-row {
@@ -466,6 +402,9 @@
 	}
 
 	.transport button {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
 		min-height: var(--tap);
 		border: 1px solid var(--border);
 		border-radius: 999px;
@@ -479,6 +418,18 @@
 		border-color: var(--fg);
 		background: var(--fg);
 		color: var(--bg);
+	}
+
+	.volume-label {
+		display: grid;
+		gap: 3px;
+		color: var(--muted);
+		font-size: 0.78rem;
+	}
+
+	.volume-label input {
+		width: 100%;
+		accent-color: var(--accent);
 	}
 
 	.player-grid {
@@ -579,10 +530,6 @@
 			min-height: 360px;
 		}
 
-		h1 {
-			font-size: clamp(44px, 6vw, 78px);
-		}
-
 		.transport {
 			display: grid;
 			grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -622,15 +569,6 @@
 
 		.player-copy {
 			gap: 10px;
-		}
-
-		.cover-art {
-			width: min(240px, 62vw);
-			margin: 0 auto;
-		}
-
-		h1 {
-			font-size: clamp(36px, 10vw, 48px);
 		}
 
 		.spectrum {

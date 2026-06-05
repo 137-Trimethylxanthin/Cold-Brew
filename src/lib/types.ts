@@ -9,6 +9,7 @@ export type Song = {
 	external_url?: string | null;
 	quality?: string | null;
 	playable?: boolean | null;
+	cover_art?: string | null;
 };
 
 export type QueueSnapshot = {

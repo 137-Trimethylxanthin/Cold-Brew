@@ -243,6 +243,21 @@ pub fn advance_to_song_id(song_id: &str) -> Result<QueueSnapshot, String> {
     Ok(queue.snapshot())
 }
 
+pub fn play_track_now(song: Song) -> Result<QueueSnapshot, String> {
+    let mut queue_manager = lock_queue_manager()?;
+    let queue = queue_manager.get_queue(DEFAULT_QUEUE_ID);
+
+    if queue.has_current_song() && queue.current_song.id != song.id {
+        let current = queue.current_song.clone();
+        queue.old.push_back(current);
+    }
+
+    queue.upcoming.retain(|s| s.id != song.id);
+    queue.current_song = song;
+
+    Ok(queue.snapshot())
+}
+
 fn lock_queue_manager() -> Result<MutexGuard<'static, QueueManager>, String> {
     QUEUE_MANAGER
         .lock()

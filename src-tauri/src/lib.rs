@@ -84,6 +84,7 @@ pub fn run() {
             move_queued_song,
             get_queue_snapshot,
             advance_queue_to_song_id,
+            play_track_now,
             play_current_queue_song,
             play_next_queue_song,
             play_previous_queue_song,
@@ -93,6 +94,7 @@ pub fn run() {
             add_song_to_playlist,
             import_m3u_playlist,
             export_m3u_playlist,
+            get_track_cover_art,
             get_local_lyrics,
             get_track_lyrics,
             search_metadata_suggestions,
@@ -391,6 +393,11 @@ fn list_library_tracks(app: AppHandle) -> Result<Vec<library::LibraryTrack>, Str
 }
 
 #[tauri::command(rename_all = "snake_case")]
+fn get_track_cover_art(path: String) -> Result<library::CoverArt, String> {
+    library::get_track_cover_art(path)
+}
+
+#[tauri::command(rename_all = "snake_case")]
 fn get_local_lyrics(path: String) -> Result<Option<lyrics::LyricsResult>, String> {
     lyrics::get_local_lyrics(path)
 }
@@ -541,6 +548,12 @@ fn get_queue_snapshot() -> Result<music_player::QueueSnapshot, String> {
 #[tauri::command(rename_all = "snake_case")]
 fn advance_queue_to_song_id(song_id: String) -> Result<music_player::QueueSnapshot, String> {
     music_player::advance_to_song_id(&song_id)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn play_track_now(app: AppHandle, song: music_player::Song) -> Result<QueuePlaybackResult, String> {
+    let queue = music_player::play_track_now(song)?;
+    play_queue_snapshot(&app, queue)
 }
 
 #[tauri::command(rename_all = "snake_case")]

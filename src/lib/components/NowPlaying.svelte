@@ -14,7 +14,13 @@
 </script>
 
 <div class="now-playing-hero">
-	<div class="hero-cover" aria-hidden="true"></div>
+	<div class="hero-cover" aria-hidden="true">
+		{#if song.cover_art}
+			<img src={song.cover_art} alt={`${song.title} album art`} />
+		{:else}
+			<div class="hero-cover-gradient"></div>
+		{/if}
+	</div>
 	<div class="hero-info">
 		<h1>{song.title}</h1>
 		<p>{detail()}</p>
@@ -40,6 +46,17 @@
 		border-radius: var(--radius-lg);
 		position: relative;
 		overflow: hidden;
+	}
+
+	.hero-cover img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+	}
+
+	.hero-cover-gradient {
+		width: 100%;
+		height: 100%;
 		background:
 			radial-gradient(
 				circle at 50% 50%,
@@ -50,7 +67,7 @@
 		box-shadow: var(--shadow);
 	}
 
-	.hero-cover::before {
+	.hero-cover-gradient::before {
 		content: '';
 		position: absolute;
 		inset: 8%;

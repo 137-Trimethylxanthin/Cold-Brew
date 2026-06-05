@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
+	import * as Sheet from '$lib/components/ui/sheet';
 	import type {
 		LibraryTrack,
 		ListeningHistoryEntry,
@@ -56,6 +57,7 @@
 	let loadingMetadata = false;
 	let selectedPlaylist: PlaylistDetail | null = null;
 	let selectedPlaylistId: number | null = null;
+	let trackInspectorOpen = $state(false);
 	let sortKey: SortKey = 'title';
 	let sortDirection: SortDirection = 'asc';
 	let visibleColumns: Record<LocalColumn, boolean> = {
@@ -340,6 +342,7 @@
 
 	async function inspectTrack(track: LibraryTrack) {
 		selectedTrack = track;
+		trackInspectorOpen = true;
 		selectedLyrics = null;
 		metadataSuggestions = [];
 		loadingLyrics = true;
@@ -395,12 +398,9 @@
 	async function playLocal(track: LibraryTrack) {
 		error = '';
 		try {
-			const status = await invoke<PlaybackStatus>('play_local_track', {
-				path: track.path,
-				title: track.title
-			});
+			await invoke('play_track_now', { song: localTrackToSong(track) });
 			await loadListeningHistory();
-			message = `Playing ${status.current_title ?? track.title}.`;
+			message = `Playing ${track.title}.`;
 		} catch (err) {
 			error = toErrorMessage(err);
 		}
@@ -672,107 +672,109 @@
 	</table>
 </section>
 
-{#if selectedTrack}
-	<section class="content-section">
-		<h2>Track Info</h2>
-		<div class="track-inspector">
-			<div class="section-title">
-				<div>
-					<h3>{selectedTrack.title}</h3>
-					<span>{selectedTrack.artist ?? 'Unknown artist'}</span>
-				</div>
+<Sheet.Sheet bind:open={trackInspectorOpen}>
+	<Sheet.SheetContent side="right" class="w-[480px] sm:max-w-[480px]">
+		<Sheet.SheetHeader>
+			<Sheet.SheetTitle>{selectedTrack?.title ?? 'Track Info'}</Sheet.SheetTitle>
+			{#if selectedTrack}
+				<Sheet.SheetDescription>{selectedTrack.artist ?? 'Unknown artist'}</Sheet.SheetDescription>
+			{/if}
+		</Sheet.SheetHeader>
+
+		{#if selectedTrack}
+			<div class="track-inspector">
 				<div class="actions">
 					<button onclick={playSelectedTrack}>Play</button>
 					<button onclick={queueSelectedTrack}>Queue</button>
 					<button onclick={addSelectedTrackToPlaylist}>Add</button>
 					<button onclick={lookupSelectedTrackMetadata} disabled={loadingMetadata}>Metadata</button>
 				</div>
-			</div>
 
-			<dl>
-				<div>
-					<dt>Album</dt>
-					<dd>{selectedTrack.album ?? ''}</dd>
-				</div>
-				<div>
-					<dt>Genre</dt>
-					<dd>{selectedTrack.genre ?? ''}</dd>
-				</div>
-				<div>
-					<dt>Track</dt>
-					<dd>{selectedTrack.track_number ?? ''}</dd>
-				</div>
-				<div>
-					<dt>Quality</dt>
-					<dd>{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd>
-				</div>
-				<div>
-					<dt>Duration</dt>
-					<dd>{formatDuration(selectedTrack.duration_ms)}</dd>
-				</div>
-				<div>
-					<dt>File size</dt>
-					<dd>{formatFileSize(selectedTrack.file_size)}</dd>
-				</div>
-				<div>
-					<dt>Modified</dt>
-					<dd>{formatDate(selectedTrack.modified_secs)}</dd>
-				</div>
-				<div class="wide">
-					<dt>Path</dt>
-					<dd>{selectedTrack.path}</dd>
-				</div>
-			</dl>
+				<dl>
+					<div>
+						<dt>Album</dt>
+						<dd>{selectedTrack.album ?? ''}</dd>
+					</div>
+					<div>
+						<dt>Genre</dt>
+						<dd>{selectedTrack.genre ?? ''}</dd>
+					</div>
+					<div>
+						<dt>Track</dt>
+						<dd>{selectedTrack.track_number ?? ''}</dd>
+					</div>
+					<div>
+						<dt>Quality</dt>
+						<dd>{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd>
+					</div>
+					<div>
+						<dt>Duration</dt>
+						<dd>{formatDuration(selectedTrack.duration_ms)}</dd>
+					</div>
+					<div>
+						<dt>File size</dt>
+						<dd>{formatFileSize(selectedTrack.file_size)}</dd>
+					</div>
+					<div>
+						<dt>Modified</dt>
+						<dd>{formatDate(selectedTrack.modified_secs)}</dd>
+					</div>
+					<div class="wide">
+						<dt>Path</dt>
+						<dd>{selectedTrack.path}</dd>
+					</div>
+				</dl>
 
-			<div class="lyrics-panel">
-				<h3>Lyrics</h3>
-				{#if loadingLyrics}
-					<p>Loading lyrics</p>
-				{:else if selectedLyrics}
-					<p>{selectedLyrics.synced ? 'Synced' : 'Plain'} from {selectedLyrics.source}</p>
-					<pre>{selectedLyrics.content}</pre>
-				{:else}
-					<p>No local lyrics found</p>
-				{/if}
-			</div>
+				<div class="lyrics-panel">
+					<h3>Lyrics</h3>
+					{#if loadingLyrics}
+						<p>Loading lyrics</p>
+					{:else if selectedLyrics}
+						<p>{selectedLyrics.synced ? 'Synced' : 'Plain'} from {selectedLyrics.source}</p>
+						<pre>{selectedLyrics.content}</pre>
+					{:else}
+						<p>No local lyrics found</p>
+					{/if}
+				</div>
 
-			<div class="metadata-panel">
-				<h3>Metadata Suggestions</h3>
-				{#if loadingMetadata}
-					<p>Searching MusicBrainz</p>
-				{:else if metadataSuggestions.length > 0}
-					<table>
-						<thead>
-							<tr>
-								<th>Title</th>
-								<th>Artist</th>
-								<th>Album</th>
-								<th>Date</th>
-								<th>Score</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each metadataSuggestions as suggestion}
+				<div class="metadata-panel">
+					<h3>Metadata Suggestions</h3>
+					{#if loadingMetadata}
+						<p>Searching MusicBrainz</p>
+					{:else if metadataSuggestions.length > 0}
+						<table>
+							<thead>
 								<tr>
-									<td>
-										<strong>{suggestion.title}</strong>
-										<span>{suggestion.recording_mbid}</span>
-									</td>
-									<td>{suggestion.artist}</td>
-									<td>{suggestion.album ?? ''}</td>
-									<td>{suggestion.first_release_date ?? ''}</td>
-									<td>{suggestion.score ?? ''}</td>
+									<th>Title</th>
+									<th>Artist</th>
+									<th>Album</th>
+									<th>Date</th>
+									<th>Score</th>
 								</tr>
-							{/each}
-						</tbody>
-					</table>
-				{:else}
-					<p>No suggestions loaded</p>
-				{/if}
+							</thead>
+							<tbody>
+								{#each metadataSuggestions as suggestion}
+									<tr>
+										<td>
+											<strong>{suggestion.title}</strong>
+											<span>{suggestion.recording_mbid}</span>
+										</td>
+										<td>{suggestion.artist}</td>
+										<td>{suggestion.album ?? ''}</td>
+										<td>{suggestion.first_release_date ?? ''}</td>
+										<td>{suggestion.score ?? ''}</td>
+									</tr>
+								{/each}
+							</tbody>
+						</table>
+					{:else}
+						<p>No suggestions loaded</p>
+					{/if}
+				</div>
 			</div>
-		</div>
-	</section>
-{/if}
+		{/if}
+	</Sheet.SheetContent>
+</Sheet.Sheet>
 
 <section class="content-section">
 	<h2>Playlists</h2>

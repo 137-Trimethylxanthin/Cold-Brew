@@ -4,9 +4,6 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
 	plugins: [sveltekit(), tailwindcss()],
-	css: {
-		transformer: 'lightningcss'
-	},
 	test: {
 		include: ['src/**/*.{test,spec}.{js,ts}']
 	}

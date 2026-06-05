@@ -36,42 +36,42 @@
 		{ id: 'lastfm', label: 'Last.fm' }
 	];
 
-	let playlistName = '';
-	let playlistImportPath = '';
-	let playlistExportPath = '';
-	let localTracks: LibraryTrack[] = [];
-	let jellyfinSongs: Song[] = [];
-	let selectedRemoteProvider: RemoteProvider = 'spotify';
-	let remoteQuery = '';
-	let remoteCountryCode = 'US';
-	let remoteResults: RemoteTrack[] = [];
-	let remotePlaylists: RemotePlaylist[] = [];
-	let selectedRemotePlaylistId: string | null = null;
-	let playlists: PlaylistSummary[] = [];
-	let listeningHistory: ListeningHistoryEntry[] = [];
-	let listeningSummaries: ListeningHistorySummary[] = [];
-	let selectedTrack: LibraryTrack | null = null;
-	let selectedLyrics: LyricsResult | null = null;
-	let metadataSuggestions: MetadataSuggestion[] = [];
-	let loadingLyrics = false;
-	let loadingMetadata = false;
-	let selectedPlaylist: PlaylistDetail | null = null;
-	let selectedPlaylistId: number | null = null;
+	let playlistName = $state('');
+	let playlistImportPath = $state('');
+	let playlistExportPath = $state('');
+	let localTracks: LibraryTrack[] = $state([]);
+	let jellyfinSongs: Song[] = $state([]);
+	let selectedRemoteProvider: RemoteProvider = $state('spotify');
+	let remoteQuery = $state('');
+	let remoteCountryCode = $state('US');
+	let remoteResults: RemoteTrack[] = $state([]);
+	let remotePlaylists: RemotePlaylist[] = $state([]);
+	let selectedRemotePlaylistId: string | null = $state(null);
+	let playlists: PlaylistSummary[] = $state([]);
+	let listeningHistory: ListeningHistoryEntry[] = $state([]);
+	let listeningSummaries: ListeningHistorySummary[] = $state([]);
+	let selectedTrack: LibraryTrack | null = $state(null);
+	let selectedLyrics: LyricsResult | null = $state(null);
+	let metadataSuggestions: MetadataSuggestion[] = $state([]);
+	let loadingLyrics = $state(false);
+	let loadingMetadata = $state(false);
+	let selectedPlaylist: PlaylistDetail | null = $state(null);
+	let selectedPlaylistId: number | null = $state(null);
 	let trackInspectorOpen = $state(false);
-	let sortKey: SortKey = 'title';
-	let sortDirection: SortDirection = 'asc';
-	let visibleColumns: Record<LocalColumn, boolean> = {
+	let sortKey: SortKey = $state('title');
+	let sortDirection: SortDirection = $state('asc');
+	let visibleColumns: Record<LocalColumn, boolean> = $state({
 		artist: true,
 		album: true,
 		quality: true,
 		duration: true
-	};
-	let loadingLibrary = false;
-	let loadingJellyfin = false;
-	let loadingRemote = false;
-	let loadingRemotePlaylists = false;
-	let message = '';
-	let error = '';
+	});
+	let loadingLibrary = $state(false);
+	let loadingJellyfin = $state(false);
+	let loadingRemote = $state(false);
+	let loadingRemotePlaylists = $state(false);
+	let message = $state('');
+	let error = $state('');
 
 	onMount(() => {
 		void loadLocalLibrary();
@@ -844,41 +844,3 @@
 	</table>
 </section>
 
-<style>
-	.library-playlist-grid {
-		display: grid;
-		grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
-		gap: 14px;
-		margin-top: 10px;
-	}
-
-	.library-scan-row {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 8px;
-		margin-bottom: 8px;
-	}
-
-	.track-inspector-dl {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 12px 16px;
-		margin: 14px 0 0;
-	}
-
-	@media (max-width: 1180px) and (min-width: 761px) {
-		.library-playlist-grid { grid-template-columns: minmax(210px, 0.42fr) minmax(0, 1fr); }
-		.track-inspector-dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-	}
-
-	@media (max-width: 760px) {
-		.library-playlist-grid { grid-template-columns: 1fr; }
-		.track-inspector-dl { grid-template-columns: 1fr 1fr; }
-		.library-scan-row { flex-wrap: wrap; }
-	}
-
-	@media (max-width: 520px) {
-		.track-inspector-dl { grid-template-columns: 1fr; }
-	}
-</style>

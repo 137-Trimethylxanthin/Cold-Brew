@@ -13,7 +13,6 @@
 		QueueSnapshot,
 		RemotePlaylist,
 		RemoteTrack,
-		ScanSummary,
 		Song
 	} from '$lib/types';
 
@@ -36,7 +35,6 @@
 		{ id: 'lastfm', label: 'Last.fm' }
 	];
 
-	let libraryPath = '';
 	let playlistName = '';
 	let playlistImportPath = '';
 	let playlistExportPath = '';
@@ -84,26 +82,6 @@
 		error = '';
 		try {
 			localTracks = await invoke<LibraryTrack[]>('list_library_tracks');
-		} catch (err) {
-			error = toErrorMessage(err);
-		} finally {
-			loadingLibrary = false;
-		}
-	}
-
-	async function scanLibrary() {
-		if (!libraryPath.trim()) {
-			error = 'Enter a local music folder path.';
-			return;
-		}
-
-		loadingLibrary = true;
-		error = '';
-		message = '';
-		try {
-			const summary = await invoke<ScanSummary>('scan_library_path', { path: libraryPath });
-			localTracks = summary.tracks;
-			message = `Indexed ${summary.indexed_tracks} of ${summary.scanned_files} audio files from ${summary.root}.`;
 		} catch (err) {
 			error = toErrorMessage(err);
 		} finally {
@@ -589,14 +567,12 @@
 	}
 </script>
 
-<section class="toolbar">
+<section class="heading">
 	<div>
 		<h1>Library</h1>
-		<p>{localTracks.length} local tracks indexed</p>
+		<p>{localTracks.length} local tracks indexed — scan new paths in Settings</p>
 	</div>
-	<div class="scan">
-		<input bind:value={libraryPath} placeholder="/path/to/music" aria-label="Music folder path" />
-		<button onclick={scanLibrary} disabled={loadingLibrary}>Scan</button>
+	<div class="heading-actions">
 		<button onclick={loadLocalLibrary} disabled={loadingLibrary}>Refresh</button>
 	</div>
 </section>
@@ -608,12 +584,9 @@
 	<p class="message">{message}</p>
 {/if}
 
-<section class="table-section">
+<section class="content-section">
 	<div class="section-title">
-		<div>
-			<h2>Local Files</h2>
-			<span>{loadingLibrary ? 'Scanning...' : 'Ready'}</span>
-		</div>
+		<h2>Local Files</h2>
 		<div class="column-controls" aria-label="Visible local columns">
 			{#each localColumnOptions as column}
 				<label>
@@ -700,118 +673,115 @@
 </section>
 
 {#if selectedTrack}
-	<section class="track-inspector">
-		<div class="section-title">
-			<div>
-				<h2>{selectedTrack.title}</h2>
-				<span>{selectedTrack.artist ?? 'Unknown artist'}</span>
+	<section class="content-section">
+		<h2>Track Info</h2>
+		<div class="track-inspector">
+			<div class="section-title">
+				<div>
+					<h3>{selectedTrack.title}</h3>
+					<span>{selectedTrack.artist ?? 'Unknown artist'}</span>
+				</div>
+				<div class="actions">
+					<button onclick={playSelectedTrack}>Play</button>
+					<button onclick={queueSelectedTrack}>Queue</button>
+					<button onclick={addSelectedTrackToPlaylist}>Add</button>
+					<button onclick={lookupSelectedTrackMetadata} disabled={loadingMetadata}>Metadata</button>
+				</div>
 			</div>
-			<div class="actions">
-				<button onclick={playSelectedTrack}>Play</button>
-				<button onclick={queueSelectedTrack}>Queue</button>
-				<button onclick={addSelectedTrackToPlaylist}>Add</button>
-				<button onclick={lookupSelectedTrackMetadata} disabled={loadingMetadata}>Metadata</button>
-			</div>
-		</div>
 
-		<dl>
-			<div>
-				<dt>Album</dt>
-				<dd>{selectedTrack.album ?? ''}</dd>
-			</div>
-			<div>
-				<dt>Genre</dt>
-				<dd>{selectedTrack.genre ?? ''}</dd>
-			</div>
-			<div>
-				<dt>Track</dt>
-				<dd>{selectedTrack.track_number ?? ''}</dd>
-			</div>
-			<div>
-				<dt>Quality</dt>
-				<dd>{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd>
-			</div>
-			<div>
-				<dt>Duration</dt>
-				<dd>{formatDuration(selectedTrack.duration_ms)}</dd>
-			</div>
-			<div>
-				<dt>File size</dt>
-				<dd>{formatFileSize(selectedTrack.file_size)}</dd>
-			</div>
-			<div>
-				<dt>Modified</dt>
-				<dd>{formatDate(selectedTrack.modified_secs)}</dd>
-			</div>
-			<div class="wide">
-				<dt>Path</dt>
-				<dd>{selectedTrack.path}</dd>
-			</div>
-		</dl>
+			<dl>
+				<div>
+					<dt>Album</dt>
+					<dd>{selectedTrack.album ?? ''}</dd>
+				</div>
+				<div>
+					<dt>Genre</dt>
+					<dd>{selectedTrack.genre ?? ''}</dd>
+				</div>
+				<div>
+					<dt>Track</dt>
+					<dd>{selectedTrack.track_number ?? ''}</dd>
+				</div>
+				<div>
+					<dt>Quality</dt>
+					<dd>{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd>
+				</div>
+				<div>
+					<dt>Duration</dt>
+					<dd>{formatDuration(selectedTrack.duration_ms)}</dd>
+				</div>
+				<div>
+					<dt>File size</dt>
+					<dd>{formatFileSize(selectedTrack.file_size)}</dd>
+				</div>
+				<div>
+					<dt>Modified</dt>
+					<dd>{formatDate(selectedTrack.modified_secs)}</dd>
+				</div>
+				<div class="wide">
+					<dt>Path</dt>
+					<dd>{selectedTrack.path}</dd>
+				</div>
+			</dl>
 
-		<div class="lyrics-panel">
-			<h3>Lyrics</h3>
-			{#if loadingLyrics}
-				<p>Loading lyrics</p>
-			{:else if selectedLyrics}
-				<p>{selectedLyrics.synced ? 'Synced' : 'Plain'} from {selectedLyrics.source}</p>
-				<pre>{selectedLyrics.content}</pre>
-			{:else}
-				<p>No local lyrics found</p>
-			{/if}
-		</div>
+			<div class="lyrics-panel">
+				<h3>Lyrics</h3>
+				{#if loadingLyrics}
+					<p>Loading lyrics</p>
+				{:else if selectedLyrics}
+					<p>{selectedLyrics.synced ? 'Synced' : 'Plain'} from {selectedLyrics.source}</p>
+					<pre>{selectedLyrics.content}</pre>
+				{:else}
+					<p>No local lyrics found</p>
+				{/if}
+			</div>
 
-		<div class="metadata-panel">
-			<h3>Metadata Suggestions</h3>
-			{#if loadingMetadata}
-				<p>Searching MusicBrainz</p>
-			{:else if metadataSuggestions.length > 0}
-				<table>
-					<thead>
-						<tr>
-							<th>Title</th>
-							<th>Artist</th>
-							<th>Album</th>
-							<th>Date</th>
-							<th>Score</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each metadataSuggestions as suggestion}
+			<div class="metadata-panel">
+				<h3>Metadata Suggestions</h3>
+				{#if loadingMetadata}
+					<p>Searching MusicBrainz</p>
+				{:else if metadataSuggestions.length > 0}
+					<table>
+						<thead>
 							<tr>
-								<td>
-									<strong>{suggestion.title}</strong>
-									<span>{suggestion.recording_mbid}</span>
-								</td>
-								<td>{suggestion.artist}</td>
-								<td>{suggestion.album ?? ''}</td>
-								<td>{suggestion.first_release_date ?? ''}</td>
-								<td>{suggestion.score ?? ''}</td>
+								<th>Title</th>
+								<th>Artist</th>
+								<th>Album</th>
+								<th>Date</th>
+								<th>Score</th>
 							</tr>
-						{/each}
-					</tbody>
-				</table>
-			{:else}
-				<p>No suggestions loaded</p>
-			{/if}
+						</thead>
+						<tbody>
+							{#each metadataSuggestions as suggestion}
+								<tr>
+									<td>
+										<strong>{suggestion.title}</strong>
+										<span>{suggestion.recording_mbid}</span>
+									</td>
+									<td>{suggestion.artist}</td>
+									<td>{suggestion.album ?? ''}</td>
+									<td>{suggestion.first_release_date ?? ''}</td>
+									<td>{suggestion.score ?? ''}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{:else}
+					<p>No suggestions loaded</p>
+				{/if}
+			</div>
 		</div>
 	</section>
 {/if}
 
-<section class="playlist-section">
-	<div class="section-title">
-		<div>
-			<h2>Playlists</h2>
-			<span>{playlists.length} saved</span>
-		</div>
-		<div class="playlist-tools">
-			<input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" />
-			<button onclick={createPlaylist}>Create</button>
-		</div>
-	</div>
-
+<section class="content-section">
+	<h2>Playlists</h2>
 	<div class="playlist-grid">
 		<div class="playlist-list">
+			<div class="playlist-tools">
+				<input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" />
+				<button onclick={createPlaylist}>Create</button>
+			</div>
 			{#if playlists.length === 0}
 				<p>No playlists yet</p>
 			{:else}
@@ -861,9 +831,10 @@
 	</div>
 </section>
 
-<section class="history-section">
+<section class="content-section">
+	<h2>Recent Listening</h2>
 	<div class="section-title">
-		<h2>Recent Listening</h2>
+		<span>{listeningHistory.length} entries</span>
 		<button onclick={loadListeningHistory}>Refresh</button>
 	</div>
 	{#if listeningHistory.length === 0 && listeningSummaries.length === 0}
@@ -928,43 +899,37 @@
 	{/if}
 </section>
 
-<section class="table-section">
+<section class="content-section">
+	<h2>Remote Search</h2>
 	<div class="section-title">
-		<div>
-			<h2>Remote Search</h2>
-			<span
-				>{loadingRemote || loadingRemotePlaylists
-					? 'Loading...'
-					: `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span
-			>
-		</div>
-		<div class="scan">
-			<select bind:value={selectedRemoteProvider} onchange={changeRemoteProvider}>
-				{#each remoteProviderOptions as provider}
-					<option value={provider.id}>{provider.label}</option>
-				{/each}
-			</select>
+		<span>{loadingRemote ? 'Loading...' : `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span>
+	</div>
+	<div class="scan">
+		<select bind:value={selectedRemoteProvider} onchange={changeRemoteProvider}>
+			{#each remoteProviderOptions as provider}
+				<option value={provider.id}>{provider.label}</option>
+			{/each}
+		</select>
+		<input
+			bind:value={remoteQuery}
+			placeholder="Track, artist, album"
+			aria-label="Remote search"
+		/>
+		{#if selectedRemoteProvider === 'tidal'}
 			<input
-				bind:value={remoteQuery}
-				placeholder="Track, artist, album"
-				aria-label="Remote search"
+				class="country-input"
+				bind:value={remoteCountryCode}
+				placeholder="US"
+				aria-label="TIDAL country code"
 			/>
-			{#if selectedRemoteProvider === 'tidal'}
-				<input
-					class="country-input"
-					bind:value={remoteCountryCode}
-					placeholder="US"
-					aria-label="TIDAL country code"
-				/>
-			{/if}
-			<button onclick={searchRemote} disabled={loadingRemote}>Search</button>
-			<button
-				onclick={loadRemotePlaylists}
-				disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}
-			>
-				Playlists
-			</button>
-		</div>
+		{/if}
+		<button onclick={searchRemote} disabled={loadingRemote}>Search</button>
+		<button
+			onclick={loadRemotePlaylists}
+			disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}
+		>
+			Playlists
+		</button>
 	</div>
 	{#if remotePlaylists.length > 0}
 		<div class="remote-playlists">
@@ -1010,9 +975,10 @@
 	</table>
 </section>
 
-<section class="table-section">
+<section class="content-section">
+	<h2>Jellyfin</h2>
 	<div class="section-title">
-		<h2>Jellyfin</h2>
+		<span>Remote media server</span>
 		<button onclick={loadJellyfin} disabled={loadingJellyfin}>Load songs</button>
 	</div>
 	<table>
@@ -1038,7 +1004,7 @@
 </section>
 
 <style>
-	.toolbar,
+	.heading,
 	.section-title {
 		display: flex;
 		align-items: center;
@@ -1070,17 +1036,17 @@
 		font-size: 0.95rem;
 	}
 
-	.toolbar p,
+	.heading p,
 	.section-title span,
 	td span {
 		color: var(--muted);
 		font-size: 0.84rem;
 	}
 
-	.toolbar {
+	.heading {
 		position: relative;
 		overflow: hidden;
-		min-height: 250px;
+		min-height: 210px;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
 		background:
@@ -1090,10 +1056,10 @@
 				color-mix(in oklch, var(--surface-2) 58%, transparent)
 			);
 		box-shadow: var(--shadow);
-		padding: clamp(22px, 5vw, 56px);
+		padding: clamp(22px, 5vw, 52px);
 	}
 
-	.toolbar::after {
+	.heading::after {
 		content: '';
 		position: absolute;
 		right: clamp(18px, 5vw, 64px);
@@ -1112,14 +1078,18 @@
 		pointer-events: none;
 	}
 
-	.toolbar > * {
+	.heading > * {
 		position: relative;
 		z-index: 1;
 	}
 
-	.section-title > div:first-child {
-		display: grid;
-		gap: 3px;
+	.heading-actions {
+		display: flex;
+		gap: 8px;
+	}
+
+	.section-title {
+		margin-bottom: 8px;
 	}
 
 	.column-controls {
@@ -1148,9 +1118,7 @@
 		flex-wrap: wrap;
 		align-items: center;
 		gap: 8px;
-		flex: 1 1 340px;
-		justify-content: flex-end;
-		min-width: min(100%, 340px);
+		margin-bottom: 8px;
 	}
 
 	input,
@@ -1174,24 +1142,16 @@
 		text-transform: uppercase;
 	}
 
-	.table-section {
+	.content-section {
 		margin-top: 24px;
-	}
-
-	.playlist-section {
-		margin-top: 24px;
-	}
-
-	.history-section {
-		margin-top: 24px;
-	}
-
-	.track-inspector {
-		margin-top: 18px;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
 		background: color-mix(in oklch, var(--surface) 90%, transparent);
 		padding: 18px;
+	}
+
+	.track-inspector {
+		margin-top: 10px;
 	}
 
 	.track-inspector dl {
@@ -1295,7 +1255,7 @@
 		display: flex;
 		flex-wrap: wrap;
 		gap: 8px;
-		margin-top: 10px;
+		margin-bottom: 8px;
 	}
 
 	.remote-playlists button {
@@ -1381,15 +1341,6 @@
 		white-space: nowrap;
 	}
 
-	.table-section,
-	.playlist-section,
-	.history-section {
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 90%, transparent);
-		padding: 18px;
-	}
-
 	.error,
 	.message {
 		margin-top: 12px;
@@ -1409,13 +1360,12 @@
 	}
 
 	@media (max-width: 1180px) and (min-width: 761px) {
-		.toolbar {
-			align-items: flex-end;
-			min-height: 340px;
+		.heading {
+			min-height: 280px;
 			padding: clamp(24px, 5vw, 48px);
 		}
 
-		.toolbar::after {
+		.heading::after {
 			width: min(34vw, 260px);
 		}
 
@@ -1429,14 +1379,12 @@
 	}
 
 	@media (max-width: 760px) {
-		.toolbar {
-			align-items: stretch;
-			flex-direction: column;
-			min-height: 320px;
+		.heading {
+			min-height: 240px;
 			padding: 22px;
 		}
 
-		.toolbar::after {
+		.heading::after {
 			right: 18px;
 			bottom: 18px;
 			width: min(64vw, 250px);
@@ -1453,8 +1401,6 @@
 
 		.scan {
 			flex-wrap: wrap;
-			flex: 0 1 auto;
-			justify-content: flex-start;
 		}
 
 		.column-controls {
@@ -1473,9 +1419,7 @@
 			grid-template-columns: 1fr 1fr;
 		}
 
-		.table-section,
-		.playlist-section,
-		.history-section {
+		.content-section {
 			margin-top: 14px;
 			padding: 14px;
 		}

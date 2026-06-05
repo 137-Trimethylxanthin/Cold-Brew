@@ -9,8 +9,11 @@
 		ProviderAccount,
 		ProviderCapability,
 		ProviderLoginStart,
-		ProviderLoginState
+		ProviderLoginState,
+		ScanSummary
 	} from '$lib/types';
+	import * as Tabs from '$lib/components/ui/tabs';
+	import ProviderLoginPanel from '$lib/components/ProviderLoginPanel.svelte';
 
 	let account: JellyfinAccount | null = null;
 	let audioOutputs: AudioOutputDevice[] = [];
@@ -48,6 +51,9 @@
 	let youtubeAuthorizationState = '';
 	let youtubeAuthorizationUrl = '';
 	let lastFmAuthorizationUrl = '';
+	let libraryPath = '';
+	let loadingLibrary = false;
+	let scanSummary: ScanSummary | null = null;
 	let message = '';
 	let error = '';
 
@@ -60,6 +66,25 @@
 		void loadProviderLoginStates();
 		void loadLastFmScrobbleStatus();
 	});
+
+	async function scanLibrary() {
+		if (!libraryPath.trim()) {
+			error = 'Enter a local music folder path.';
+			return;
+		}
+
+		loadingLibrary = true;
+		error = '';
+		message = '';
+		try {
+			scanSummary = await invoke<ScanSummary>('scan_library_path', { path: libraryPath });
+			message = `Indexed ${scanSummary.indexed_tracks} of ${scanSummary.scanned_files} audio files from ${scanSummary.root}.`;
+		} catch (err) {
+			error = toErrorMessage(err);
+		} finally {
+			loadingLibrary = false;
+		}
+	}
 
 	async function loadAccount() {
 		error = '';
@@ -565,7 +590,7 @@
 <section class="settings">
 	<div class="heading">
 		<h1>Settings</h1>
-		<p>Accounts and library foundations</p>
+		<p>Accounts, audio, and library configuration</p>
 	</div>
 
 	{#if error}
@@ -575,438 +600,462 @@
 		<p class="message">{message}</p>
 	{/if}
 
-	<section class="panel">
-		<div>
-			<h2>Services</h2>
-			<p>Provider capabilities and current implementation state</p>
-		</div>
+	<Tabs.Root value="general" class="tabs-root">
+		<Tabs.List>
+			<Tabs.Trigger value="general">General</Tabs.Trigger>
+			<Tabs.Trigger value="accounts">Accounts</Tabs.Trigger>
+			<Tabs.Trigger value="audio">Audio</Tabs.Trigger>
+			<Tabs.Trigger value="library">Library</Tabs.Trigger>
+		</Tabs.List>
 
-		<table class="service-table">
-			<thead>
-				<tr>
-					<th>Service</th>
-					<th>State</th>
-					<th>Auth</th>
-					<th>Search</th>
-					<th>Playlists</th>
-					<th>Playback</th>
-					<th>Scrobble</th>
-					<th>Notes</th>
-				</tr>
-			</thead>
-			<tbody>
-				{#each serviceCapabilities as provider}
-					<tr>
-						<td>
-							<strong>{provider.name}</strong>
-							{#if provider.documentation_url}
-								<a href={provider.documentation_url} target="_blank" rel="noreferrer">Docs</a>
-							{/if}
-						</td>
-						<td
-							><span class={`state ${provider.integration_state}`}
-								>{stateLabel(provider.integration_state)}</span
-							></td
-						>
-						<td>{provider.auth_model}</td>
-						<td>{yesNo(provider.can_search)}</td>
-						<td>{yesNo(provider.can_list_playlists)}</td>
-						<td>{playbackLabel(provider)}</td>
-						<td>{yesNo(provider.can_scrobble)}</td>
-						<td>{notesPreview(provider)}</td>
-					</tr>
-				{/each}
-			</tbody>
-		</table>
-	</section>
+		<Tabs.Content value="general" class="tab-content">
+			<section class="panel">
+				<div>
+					<h2>Services</h2>
+					<p>Provider capabilities and current implementation state</p>
+				</div>
 
-	<section class="panel">
-		<div>
-			<h2>Service Credentials</h2>
-			<p>Secure storage for provider OAuth/API material and user app credentials</p>
-		</div>
-
-		<div class="credential-grid">
-			<label>
-				Service
-				<select bind:value={selectedProviderId}>
-					{#each credentialProviderOptions() as provider}
-						<option value={provider.id}>{provider.name}</option>
-					{/each}
-				</select>
-			</label>
-			<label>
-				Account label
-				<input bind:value={providerDisplayName} placeholder="Personal account" autocomplete="off" />
-			</label>
-			<label>
-				Client ID / App ID
-				<input bind:value={providerClientId} autocomplete="off" />
-			</label>
-			<label>
-				Client secret / App secret
-				<input bind:value={providerClientSecret} type="password" autocomplete="off" />
-			</label>
-			<label>
-				API key
-				<input bind:value={providerApiKey} autocomplete="off" />
-			</label>
-			<label>
-				API secret
-				<input bind:value={providerApiSecret} type="password" autocomplete="off" />
-			</label>
-			<label>
-				Access token / Session key
-				<input bind:value={providerAccessToken} type="password" autocomplete="off" />
-			</label>
-			<label>
-				Refresh token
-				<input bind:value={providerRefreshToken} type="password" autocomplete="off" />
-			</label>
-		</div>
-
-		<div class="actions">
-			<button onclick={saveProviderAccount}>Save provider credentials</button>
-			<button onclick={clearProviderAccount}>Clear selected service</button>
-			<button onclick={refreshProviderCredentialStatus}>Refresh status</button>
-		</div>
-
-		{#if providerLoginStateRows().length > 0}
-			<table class="credential-table">
-				<thead>
-					<tr>
-						<th>Service</th>
-						<th>Login state</th>
-						<th>Details</th>
-						<th>Last failure</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each providerLoginStateRows() as loginState}
+				<table class="service-table">
+					<thead>
 						<tr>
-							<td>{providerName(loginState.provider_id)}</td>
-							<td
-								><span class={`state ${loginState.status}`}>{stateLabel(loginState.status)}</span
-								></td
-							>
-							<td>{loginState.message}</td>
-							<td class:error-cell={loginState.status === 'failed'}>
-								{loginState.last_error ?? 'None'}
-							</td>
+							<th>Service</th>
+							<th>State</th>
+							<th>Auth</th>
+							<th>Search</th>
+							<th>Playlists</th>
+							<th>Playback</th>
+							<th>Scrobble</th>
+							<th>Notes</th>
 						</tr>
-					{/each}
-				</tbody>
-			</table>
-		{/if}
+					</thead>
+					<tbody>
+						{#each serviceCapabilities as provider}
+							<tr>
+								<td>
+									<strong>{provider.name}</strong>
+									{#if provider.documentation_url}
+										<a href={provider.documentation_url} target="_blank" rel="noreferrer">Docs</a>
+									{/if}
+								</td>
+								<td
+									><span class={`state ${provider.integration_state}`}
+										>{stateLabel(provider.integration_state)}</span
+									></td
+								>
+								<td>{provider.auth_model}</td>
+								<td>{yesNo(provider.can_search)}</td>
+								<td>{yesNo(provider.can_list_playlists)}</td>
+								<td>{playbackLabel(provider)}</td>
+								<td>{yesNo(provider.can_scrobble)}</td>
+								<td>{notesPreview(provider)}</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			</section>
 
-		<div class="login-grid">
-			<section class="login-panel">
-				<div class="login-panel-header">
-					<div>
-						<h3>Spotify</h3>
-						<p>OAuth PKCE</p>
-					</div>
-					<span class={`state ${loginStateForProvider('spotify')?.status ?? 'missing'}`}>
-						{stateLabel(loginStateForProvider('spotify')?.status ?? 'missing')}
-					</span>
+			<section class="panel">
+				<div>
+					<h2>ReplayGain</h2>
+					<p>Applied during local playback when matching ReplayGain tags are present</p>
 				</div>
+
 				<label>
-					Redirect URI
-					<input bind:value={spotifyRedirectUri} autocomplete="off" />
+					Mode
+					<select bind:value={replayGainMode} onchange={setReplayGainMode}>
+						<option value="off">Off</option>
+						<option value="track">Track</option>
+						<option value="album">Album</option>
+					</select>
+				</label>
+			</section>
+		</Tabs.Content>
+
+		<Tabs.Content value="accounts" class="tab-content">
+			<section class="panel">
+				<div>
+					<h2>Jellyfin</h2>
+					<p>
+						{#if account}
+							Stored from {account.source}; password present: {account.has_password ? 'yes' : 'no'}
+						{:else}
+							No Jellyfin account saved
+						{/if}
+					</p>
+				</div>
+
+				<label>
+					Server URL
+					<input bind:value={baseUrl} placeholder="https://jellyfin.example" />
 				</label>
 				<label>
-					Scope
-					<input bind:value={spotifyScope} autocomplete="off" />
+					Username
+					<input bind:value={userName} autocomplete="username" />
 				</label>
+				<label>
+					Password
+					<input bind:value={password} type="password" autocomplete="current-password" />
+				</label>
+
 				<div class="actions">
-					<button onclick={completeSpotifyLoginInBrowser}>Login in browser</button>
-					<button onclick={startSpotifyLogin}>Manual login URL</button>
-					<button onclick={refreshSpotifyToken}>Refresh Spotify token</button>
+					<button onclick={saveAccount}>Save</button>
+					<button onclick={clearAccount}>Clear</button>
 				</div>
-				{#if spotifyAuthorizationUrl}
-					<a class="auth-link" href={spotifyAuthorizationUrl} target="_blank" rel="noreferrer">
-						Open Spotify authorization
-					</a>
+			</section>
+
+			<section class="panel">
+				<div>
+					<h2>Service Credentials</h2>
+					<p>Secure storage for provider OAuth/API material and user app credentials</p>
+				</div>
+
+				<div class="credential-grid">
 					<label>
-						Returned URL or code
-						<input bind:value={spotifyAuthorizationCode} autocomplete="off" />
+						Service
+						<select bind:value={selectedProviderId}>
+							{#each credentialProviderOptions() as provider}
+								<option value={provider.id}>{provider.name}</option>
+							{/each}
+						</select>
 					</label>
 					<label>
-						State
-						<input bind:value={spotifyAuthorizationState} autocomplete="off" />
+						Account label
+						<input bind:value={providerDisplayName} placeholder="Personal account" autocomplete="off" />
 					</label>
-					<div class="actions">
-						<button onclick={finishSpotifyLogin}>Finish Spotify login</button>
-					</div>
+					<label>
+						Client ID / App ID
+						<input bind:value={providerClientId} autocomplete="off" />
+					</label>
+					<label>
+						Client secret / App secret
+						<input bind:value={providerClientSecret} type="password" autocomplete="off" />
+					</label>
+					<label>
+						API key
+						<input bind:value={providerApiKey} autocomplete="off" />
+					</label>
+					<label>
+						API secret
+						<input bind:value={providerApiSecret} type="password" autocomplete="off" />
+					</label>
+					<label>
+						Access token / Session key
+						<input bind:value={providerAccessToken} type="password" autocomplete="off" />
+					</label>
+					<label>
+						Refresh token
+						<input bind:value={providerRefreshToken} type="password" autocomplete="off" />
+					</label>
+				</div>
+
+				<div class="actions">
+					<button onclick={saveProviderAccount}>Save provider credentials</button>
+					<button onclick={clearProviderAccount}>Clear selected service</button>
+					<button onclick={refreshProviderCredentialStatus}>Refresh status</button>
+				</div>
+
+				{#if providerLoginStateRows().length > 0}
+					<table class="credential-table">
+						<thead>
+							<tr>
+								<th>Service</th>
+								<th>Login state</th>
+								<th>Details</th>
+								<th>Last failure</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each providerLoginStateRows() as loginState}
+								<tr>
+									<td>{providerName(loginState.provider_id)}</td>
+									<td
+										><span class={`state ${loginState.status}`}>{stateLabel(loginState.status)}</span
+										></td
+									>
+									<td>{loginState.message}</td>
+									<td class:error-cell={loginState.status === 'failed'}>
+										{loginState.last_error ?? 'None'}
+									</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				{/if}
+
+				<div class="login-grid">
+					<ProviderLoginPanel
+						providerId="spotify"
+						providerName="Spotify"
+						description="OAuth PKCE"
+						loginState={loginStateForProvider('spotify')}
+					>
+						<label>
+							Redirect URI
+							<input bind:value={spotifyRedirectUri} autocomplete="off" />
+						</label>
+						<label>
+							Scope
+							<input bind:value={spotifyScope} autocomplete="off" />
+						</label>
+						<div class="actions">
+							<button onclick={completeSpotifyLoginInBrowser}>Login in browser</button>
+							<button onclick={startSpotifyLogin}>Manual login URL</button>
+							<button onclick={refreshSpotifyToken}>Refresh Spotify token</button>
+						</div>
+						{#if spotifyAuthorizationUrl}
+							<a class="auth-link" href={spotifyAuthorizationUrl} target="_blank" rel="noreferrer">
+								Open Spotify authorization
+							</a>
+							<label>
+								Returned URL or code
+								<input bind:value={spotifyAuthorizationCode} autocomplete="off" />
+							</label>
+							<label>
+								State
+								<input bind:value={spotifyAuthorizationState} autocomplete="off" />
+							</label>
+							<div class="actions">
+								<button onclick={finishSpotifyLogin}>Finish Spotify login</button>
+							</div>
+						{/if}
+					</ProviderLoginPanel>
+
+					<ProviderLoginPanel
+						providerId="tidal"
+						providerName="TIDAL"
+						description="OAuth PKCE"
+						loginState={loginStateForProvider('tidal')}
+					>
+						<label>
+							Redirect URI
+							<input bind:value={tidalRedirectUri} autocomplete="off" />
+						</label>
+						<label>
+							Scope
+							<input bind:value={tidalScope} autocomplete="off" />
+						</label>
+						<div class="actions">
+							<button onclick={startTidalLogin}>Start TIDAL login</button>
+							<button onclick={refreshTidalToken}>Refresh TIDAL token</button>
+						</div>
+						{#if tidalAuthorizationUrl}
+							<a class="auth-link" href={tidalAuthorizationUrl} target="_blank" rel="noreferrer">
+								Open TIDAL authorization
+							</a>
+							<label>
+								Returned URL or code
+								<input bind:value={tidalAuthorizationCode} autocomplete="off" />
+							</label>
+							<label>
+								State
+								<input bind:value={tidalAuthorizationState} autocomplete="off" />
+							</label>
+							<div class="actions">
+								<button onclick={finishTidalLogin}>Finish TIDAL login</button>
+							</div>
+						{/if}
+					</ProviderLoginPanel>
+
+					<ProviderLoginPanel
+						providerId="youtube"
+						providerName="YouTube"
+						description="Google OAuth"
+						loginState={loginStateForProvider('youtube')}
+					>
+						<label>
+							Redirect URI
+							<input bind:value={youtubeRedirectUri} autocomplete="off" />
+						</label>
+						<label>
+							Scope
+							<input bind:value={youtubeScope} autocomplete="off" />
+						</label>
+						<div class="actions">
+							<button onclick={startYoutubeLogin}>Start YouTube login</button>
+							<button onclick={refreshYoutubeToken}>Refresh YouTube token</button>
+						</div>
+						{#if youtubeAuthorizationUrl}
+							<a class="auth-link" href={youtubeAuthorizationUrl} target="_blank" rel="noreferrer">
+								Open Google authorization
+							</a>
+							<label>
+								Returned URL or code
+								<input bind:value={youtubeAuthorizationCode} autocomplete="off" />
+							</label>
+							<label>
+								State
+								<input bind:value={youtubeAuthorizationState} autocomplete="off" />
+							</label>
+							<div class="actions">
+								<button onclick={finishYoutubeLogin}>Finish YouTube login</button>
+							</div>
+						{/if}
+					</ProviderLoginPanel>
+
+					<ProviderLoginPanel
+						providerId="lastfm"
+						providerName="Last.fm"
+						description="Desktop session"
+						loginState={loginStateForProvider('lastfm')}
+					>
+						<div class="actions">
+							<button onclick={startLastFmLogin}>Start Last.fm login</button>
+						</div>
+						{#if lastFmAuthorizationUrl}
+							<a class="auth-link" href={lastFmAuthorizationUrl} target="_blank" rel="noreferrer">
+								Open Last.fm authorization
+							</a>
+							<div class="actions">
+								<button onclick={finishLastFmLogin}>Finish Last.fm login</button>
+							</div>
+						{/if}
+					</ProviderLoginPanel>
+
+					<ProviderLoginPanel
+						providerId="qobuz"
+						providerName="Qobuz"
+						description="App credentials"
+						loginState={loginStateForProvider('qobuz')}
+					>
+						<p>{loginStateForProvider('qobuz')?.message ?? 'No Qobuz credentials saved'}</p>
+						<div class="actions">
+							<button onclick={() => selectProviderCredentials('qobuz')}>Edit Qobuz credentials</button>
+						</div>
+					</ProviderLoginPanel>
+
+					<ProviderLoginPanel
+						providerId="bandcamp"
+						providerName="Bandcamp"
+						description="Link-out"
+						loginState={loginStateForProvider('bandcamp')}
+					>
+						<p>{loginStateForProvider('bandcamp')?.message ?? 'No Bandcamp login state available'}</p>
+						<div class="actions">
+							<button onclick={() => selectProviderCredentials('bandcamp')}>Edit Bandcamp note</button>
+						</div>
+						<a class="auth-link" href="https://bandcamp.com/developer" target="_blank" rel="noreferrer">
+							Open Bandcamp developer docs
+						</a>
+					</ProviderLoginPanel>
+				</div>
+
+				{#if providerAccounts.length > 0}
+					<table class="credential-table">
+						<thead>
+							<tr>
+								<th>Service</th>
+								<th>Saved fields</th>
+								<th>Source</th>
+							</tr>
+						</thead>
+						<tbody>
+							{#each providerAccounts as providerAccount}
+								<tr>
+									<td>{providerName(providerAccount.provider_id)}</td>
+									<td>{savedProviderFlags(providerAccount)}</td>
+									<td>{providerAccount.source}</td>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
 				{/if}
 			</section>
 
-			<section class="login-panel">
-				<div class="login-panel-header">
+			<section class="panel">
+				<div>
+					<h2>Last.fm Scrobbling</h2>
+					<p>
+						{lastFmCredentialsReady()
+							? 'Last.fm scrobbling credentials are ready'
+							: 'Save a Last.fm API key, API secret, and session key in Service Credentials'}
+					</p>
+				</div>
+
+				<div class="scrobble-grid">
 					<div>
-						<h3>TIDAL</h3>
-						<p>OAuth PKCE</p>
+						<span>Pending</span>
+						<strong>{lastFmScrobbleStatus?.pending_count ?? 0}</strong>
 					</div>
-					<span class={`state ${loginStateForProvider('tidal')?.status ?? 'missing'}`}>
-						{stateLabel(loginStateForProvider('tidal')?.status ?? 'missing')}
-					</span>
+					<div>
+						<span>Submitted</span>
+						<strong>{lastFmScrobbleStatus?.submitted_count ?? 0}</strong>
+					</div>
+					<div>
+						<span>Failed</span>
+						<strong>{lastFmScrobbleStatus?.failed_count ?? 0}</strong>
+					</div>
 				</div>
-				<label>
-					Redirect URI
-					<input bind:value={tidalRedirectUri} autocomplete="off" />
-				</label>
-				<label>
-					Scope
-					<input bind:value={tidalScope} autocomplete="off" />
-				</label>
+
+				{#if lastFmScrobbleStatus?.last_error}
+					<p class="inline-error">{lastFmScrobbleStatus.last_error}</p>
+				{/if}
+
 				<div class="actions">
-					<button onclick={startTidalLogin}>Start TIDAL login</button>
-					<button onclick={refreshTidalToken}>Refresh TIDAL token</button>
+					<button onclick={retryLastFmScrobbles} disabled={!lastFmCredentialsReady()}>
+						Retry pending scrobbles
+					</button>
+					<button onclick={loadLastFmScrobbleStatus}>Refresh status</button>
 				</div>
-				{#if tidalAuthorizationUrl}
-					<a class="auth-link" href={tidalAuthorizationUrl} target="_blank" rel="noreferrer">
-						Open TIDAL authorization
-					</a>
-					<label>
-						Returned URL or code
-						<input bind:value={tidalAuthorizationCode} autocomplete="off" />
-					</label>
-					<label>
-						State
-						<input bind:value={tidalAuthorizationState} autocomplete="off" />
-					</label>
-					<div class="actions">
-						<button onclick={finishTidalLogin}>Finish TIDAL login</button>
+			</section>
+		</Tabs.Content>
+
+		<Tabs.Content value="audio" class="tab-content">
+			<section class="panel">
+				<div>
+					<h2>Audio Output</h2>
+					<p>{selectedAudioOutputDescription()}</p>
+				</div>
+
+				<label>
+					Output device
+					<select bind:value={selectedAudioOutput} onchange={selectAudioOutput}>
+						{#each audioOutputs as device}
+							<option value={device.id}>{device.name}</option>
+						{/each}
+					</select>
+				</label>
+
+				<div class="actions">
+					<button onclick={loadAudioOutputs}>Refresh devices</button>
+				</div>
+			</section>
+		</Tabs.Content>
+
+		<Tabs.Content value="library" class="tab-content">
+			<section class="panel">
+				<div>
+					<h2>Library Scan</h2>
+					<p>Index local music files for browsing and playback</p>
+				</div>
+
+				<div class="scan-row">
+					<input bind:value={libraryPath} placeholder="/path/to/music" aria-label="Music folder path" />
+					<button onclick={scanLibrary} disabled={loadingLibrary}>Scan</button>
+				</div>
+
+				{#if scanSummary}
+					<div class="scan-stats">
+						<div class="stat">
+							<span>Scanned</span>
+							<strong>{scanSummary.scanned_files}</strong>
+						</div>
+						<div class="stat">
+							<span>Indexed</span>
+							<strong>{scanSummary.indexed_tracks}</strong>
+						</div>
+						<div class="stat">
+							<span>Skipped</span>
+							<strong>{scanSummary.skipped_files}</strong>
+						</div>
+						<div class="stat">
+							<span>Root</span>
+							<strong class="mono">{scanSummary.root}</strong>
+						</div>
 					</div>
 				{/if}
 			</section>
-
-			<section class="login-panel">
-				<div class="login-panel-header">
-					<div>
-						<h3>YouTube</h3>
-						<p>Google OAuth</p>
-					</div>
-					<span class={`state ${loginStateForProvider('youtube')?.status ?? 'missing'}`}>
-						{stateLabel(loginStateForProvider('youtube')?.status ?? 'missing')}
-					</span>
-				</div>
-				<label>
-					Redirect URI
-					<input bind:value={youtubeRedirectUri} autocomplete="off" />
-				</label>
-				<label>
-					Scope
-					<input bind:value={youtubeScope} autocomplete="off" />
-				</label>
-				<div class="actions">
-					<button onclick={startYoutubeLogin}>Start YouTube login</button>
-					<button onclick={refreshYoutubeToken}>Refresh YouTube token</button>
-				</div>
-				{#if youtubeAuthorizationUrl}
-					<a class="auth-link" href={youtubeAuthorizationUrl} target="_blank" rel="noreferrer">
-						Open Google authorization
-					</a>
-					<label>
-						Returned URL or code
-						<input bind:value={youtubeAuthorizationCode} autocomplete="off" />
-					</label>
-					<label>
-						State
-						<input bind:value={youtubeAuthorizationState} autocomplete="off" />
-					</label>
-					<div class="actions">
-						<button onclick={finishYoutubeLogin}>Finish YouTube login</button>
-					</div>
-				{/if}
-			</section>
-
-			<section class="login-panel">
-				<div class="login-panel-header">
-					<div>
-						<h3>Last.fm</h3>
-						<p>Desktop session</p>
-					</div>
-					<span class={`state ${loginStateForProvider('lastfm')?.status ?? 'missing'}`}>
-						{stateLabel(loginStateForProvider('lastfm')?.status ?? 'missing')}
-					</span>
-				</div>
-				<div class="actions">
-					<button onclick={startLastFmLogin}>Start Last.fm login</button>
-				</div>
-				{#if lastFmAuthorizationUrl}
-					<a class="auth-link" href={lastFmAuthorizationUrl} target="_blank" rel="noreferrer">
-						Open Last.fm authorization
-					</a>
-					<div class="actions">
-						<button onclick={finishLastFmLogin}>Finish Last.fm login</button>
-					</div>
-				{/if}
-			</section>
-
-			<section class="login-panel">
-				<div class="login-panel-header">
-					<div>
-						<h3>Qobuz</h3>
-						<p>App credentials</p>
-					</div>
-					<span class={`state ${loginStateForProvider('qobuz')?.status ?? 'missing'}`}>
-						{stateLabel(loginStateForProvider('qobuz')?.status ?? 'missing')}
-					</span>
-				</div>
-				<p>{loginStateForProvider('qobuz')?.message ?? 'No Qobuz credentials saved'}</p>
-				<div class="actions">
-					<button onclick={() => selectProviderCredentials('qobuz')}>Edit Qobuz credentials</button>
-				</div>
-			</section>
-
-			<section class="login-panel">
-				<div class="login-panel-header">
-					<div>
-						<h3>Bandcamp</h3>
-						<p>Link-out</p>
-					</div>
-					<span class={`state ${loginStateForProvider('bandcamp')?.status ?? 'missing'}`}>
-						{stateLabel(loginStateForProvider('bandcamp')?.status ?? 'missing')}
-					</span>
-				</div>
-				<p>{loginStateForProvider('bandcamp')?.message ?? 'No Bandcamp login state available'}</p>
-				<div class="actions">
-					<button onclick={() => selectProviderCredentials('bandcamp')}>Edit Bandcamp note</button>
-				</div>
-				<a class="auth-link" href="https://bandcamp.com/developer" target="_blank" rel="noreferrer">
-					Open Bandcamp developer docs
-				</a>
-			</section>
-		</div>
-
-		{#if providerAccounts.length > 0}
-			<table class="credential-table">
-				<thead>
-					<tr>
-						<th>Service</th>
-						<th>Saved fields</th>
-						<th>Source</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each providerAccounts as providerAccount}
-						<tr>
-							<td>{providerName(providerAccount.provider_id)}</td>
-							<td>{savedProviderFlags(providerAccount)}</td>
-							<td>{providerAccount.source}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-		{:else}
-			<p>No provider credentials saved</p>
-		{/if}
-	</section>
-
-	<section class="panel">
-		<div>
-			<h2>Last.fm Scrobbling</h2>
-			<p>
-				{lastFmCredentialsReady()
-					? 'Last.fm scrobbling credentials are ready'
-					: 'Save a Last.fm API key, API secret, and session key in Service Credentials'}
-			</p>
-		</div>
-
-		<div class="scrobble-grid">
-			<div>
-				<span>Pending</span>
-				<strong>{lastFmScrobbleStatus?.pending_count ?? 0}</strong>
-			</div>
-			<div>
-				<span>Submitted</span>
-				<strong>{lastFmScrobbleStatus?.submitted_count ?? 0}</strong>
-			</div>
-			<div>
-				<span>Failed</span>
-				<strong>{lastFmScrobbleStatus?.failed_count ?? 0}</strong>
-			</div>
-		</div>
-
-		{#if lastFmScrobbleStatus?.last_error}
-			<p class="inline-error">{lastFmScrobbleStatus.last_error}</p>
-		{/if}
-
-		<div class="actions">
-			<button onclick={retryLastFmScrobbles} disabled={!lastFmCredentialsReady()}>
-				Retry pending scrobbles
-			</button>
-			<button onclick={loadLastFmScrobbleStatus}>Refresh status</button>
-		</div>
-	</section>
-
-	<section class="panel">
-		<div>
-			<h2>Jellyfin</h2>
-			<p>
-				{#if account}
-					Stored from {account.source}; password present: {account.has_password ? 'yes' : 'no'}
-				{:else}
-					No Jellyfin account saved
-				{/if}
-			</p>
-		</div>
-
-		<label>
-			Server URL
-			<input bind:value={baseUrl} placeholder="https://jellyfin.example" />
-		</label>
-		<label>
-			Username
-			<input bind:value={userName} autocomplete="username" />
-		</label>
-		<label>
-			Password
-			<input bind:value={password} type="password" autocomplete="current-password" />
-		</label>
-
-		<div class="actions">
-			<button onclick={saveAccount}>Save</button>
-			<button onclick={clearAccount}>Clear</button>
-		</div>
-	</section>
-
-	<section class="panel">
-		<div>
-			<h2>Audio Output</h2>
-			<p>{selectedAudioOutputDescription()}</p>
-		</div>
-
-		<label>
-			Output device
-			<select bind:value={selectedAudioOutput} onchange={selectAudioOutput}>
-				{#each audioOutputs as device}
-					<option value={device.id}>{device.name}</option>
-				{/each}
-			</select>
-		</label>
-
-		<div class="actions">
-			<button onclick={loadAudioOutputs}>Refresh devices</button>
-		</div>
-	</section>
-
-	<section class="panel">
-		<div>
-			<h2>ReplayGain</h2>
-			<p>Applied during local playback when matching ReplayGain tags are present</p>
-		</div>
-
-		<label>
-			Mode
-			<select bind:value={replayGainMode} onchange={setReplayGainMode}>
-				<option value="off">Off</option>
-				<option value="track">Track</option>
-				<option value="album">Album</option>
-			</select>
-		</label>
-	</section>
+		</Tabs.Content>
+	</Tabs.Root>
 </section>
 
 <style>
@@ -1019,7 +1068,7 @@
 	.heading {
 		position: relative;
 		overflow: hidden;
-		min-height: 210px;
+		min-height: 180px;
 		border: 1px solid var(--border);
 		border-radius: var(--radius-lg);
 		background:
@@ -1050,15 +1099,16 @@
 		line-height: 1.04;
 	}
 
-	h3 {
-		margin: 0;
-		font-size: 0.9rem;
-	}
-
 	.heading p,
 	.panel p {
 		color: var(--muted);
 		font-size: 0.9rem;
+	}
+
+	.tab-content {
+		display: grid;
+		gap: 16px;
+		margin-top: 4px;
 	}
 
 	.panel {
@@ -1086,6 +1136,51 @@
 		background: color-mix(in oklch, var(--surface) 88%, transparent);
 		color: var(--fg);
 		padding: 0.55rem 0.65rem;
+	}
+
+	.scan-row {
+		display: flex;
+		gap: 8px;
+	}
+
+	.scan-row input {
+		flex: 1;
+	}
+
+	.scan-row button {
+		flex: 0 0 auto;
+	}
+
+	.scan-stats {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 10px;
+	}
+
+	.stat {
+		display: grid;
+		gap: 4px;
+		border: 1px solid var(--border);
+		border-radius: var(--radius-md);
+		background: color-mix(in oklch, var(--surface-2) 42%, transparent);
+		padding: 10px;
+	}
+
+	.stat span {
+		color: var(--muted);
+		font-family: var(--font-mono);
+		font-size: 0.78rem;
+		text-transform: uppercase;
+	}
+
+	.stat strong {
+		font-size: 1.2rem;
+		overflow-wrap: anywhere;
+	}
+
+	.stat .mono {
+		font-family: var(--font-mono);
+		font-size: 0.76rem;
 	}
 
 	.service-table {
@@ -1200,26 +1295,6 @@
 		gap: 12px;
 	}
 
-	.login-panel {
-		display: grid;
-		gap: 10px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-		background: color-mix(in oklch, var(--surface-2) 42%, transparent);
-		padding: 12px;
-	}
-
-	.login-panel-header {
-		display: flex;
-		align-items: flex-start;
-		justify-content: space-between;
-		gap: 10px;
-	}
-
-	.login-panel-header p {
-		margin-top: 2px;
-	}
-
 	.auth-link {
 		color: var(--accent);
 		font-size: 0.86rem;
@@ -1288,7 +1363,7 @@
 		}
 
 		.heading {
-			min-height: 190px;
+			min-height: 160px;
 		}
 
 		.service-table thead,
@@ -1300,6 +1375,10 @@
 		.login-grid {
 			grid-template-columns: 1fr;
 		}
+
+		.scan-stats {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
 	}
 
 	@media (max-width: 880px) {
@@ -1308,7 +1387,7 @@
 		}
 
 		.heading {
-			min-height: 160px;
+			min-height: 140px;
 			padding: 22px;
 		}
 
@@ -1327,10 +1406,6 @@
 		.service-table thead,
 		.service-table tbody {
 			min-width: 680px;
-		}
-
-		.login-panel-header {
-			display: grid;
 		}
 
 		.actions button {

@@ -14,9 +14,7 @@
 
 	onMount(() => {
 		void refreshPlayerRoute();
-		const refreshTimer = window.setInterval(() => {
-			void refreshPlayerRoute();
-		}, 1500);
+		const refreshTimer = window.setInterval(() => { void refreshPlayerRoute(); }, 1500);
 		return () => window.clearInterval(refreshTimer);
 	});
 
@@ -31,9 +29,7 @@
 			upcomingSongs = queue.upcoming;
 			oldSongs = queue.old;
 			routeError = '';
-		} catch {
-			// Tauri commands not available during browser-only dev
-		}
+		} catch { /* Tauri commands not available during browser-only dev */ }
 	}
 
 	async function refreshPlaybackStatus() {
@@ -42,9 +38,7 @@
 			$playbackStatus = status;
 			spotifyIsActive = false;
 			routeError = '';
-		} catch {
-			// Tauri commands not available during browser-only dev
-		}
+		} catch { /* Tauri commands not available during browser-only dev */ }
 	}
 
 	async function runPlayerCommand(command: string) {
@@ -52,9 +46,7 @@
 			await invoke(command);
 			await refreshPlayerRoute();
 			routeError = '';
-		} catch (error) {
-			routeError = toErrorMessage(error);
-		}
+		} catch (error) { routeError = toErrorMessage(error); }
 	}
 
 	async function playRouteSelection() {
@@ -66,20 +58,14 @@
 			}
 			await refreshPlayerRoute();
 			routeError = '';
-		} catch (error) {
-			routeError = toErrorMessage(error);
-		}
+		} catch (error) { routeError = toErrorMessage(error); }
 	}
 
 	async function handleVolumeChange(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
 		const val = Number(input.value);
 		$volume = val;
-		try {
-			await invoke<PlaybackStatus>('set_playback_volume', { volume: val });
-		} catch {
-			// Browser-only dev
-		}
+		try { await invoke<PlaybackStatus>('set_playback_volume', { volume: val }); } catch { /* Browser-only dev */ }
 	}
 
 	function nowPlayingDetail() {
@@ -136,35 +122,35 @@
 
 		<div class="player-copy">
 			{#if spotifyIsActive}
-				<p class="eyebrow accent-warn">Spotify is playing</p>
+				<p class="text-danger font-mono text-[0.68rem] tracking-widest uppercase">Spotify is playing</p>
 			{/if}
-			<div class="quality-row">
-				<span class="quality-pill">{formatSource($currentSong.source ?? 'local') || 'Local'}</span>
+			<div class="flex flex-wrap gap-2">
+				<span class="state-pill">{formatSource($currentSong.source ?? 'local') || 'Local'}</span>
 				{#if $currentSong.quality}
-					<span class="quality-pill hires">{$currentSong.quality}</span>
+					<span class="state-pill partial">{$currentSong.quality}</span>
 				{/if}
-				<span class="quality-pill">{$playbackStatus?.state ?? 'Idle'}</span>
+				<span class="state-pill">{$playbackStatus?.state ?? 'Idle'}</span>
 			</div>
 
-			<div class="spectrum" aria-hidden="true">
+			<div class="grid grid-cols-[repeat(28,minmax(2px,1fr))] items-end gap-1 h-[54px]" aria-hidden="true">
 				{#each Array.from({ length: 28 }, () => Math.floor(Math.random() * 70) + 28) as height}
-					<span style={`--bar-height: ${height}%`}></span>
+					<span class="spectrum-bar" style="--bar-height: {height}%"></span>
 				{/each}
 			</div>
 
-			<div class="progress-block">
-				<div class="duration-bar" style={`--progress: ${playbackProgress()}%`} aria-hidden="true"></div>
-				<div class="progress-labels">
+			<div class="grid gap-2">
+				<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
+				<div class="flex justify-between font-mono text-[0.76rem] text-muted">
 					<span>{playbackTimeLabel()}</span>
 					<span>{$playbackStatus?.output_sample_rate ? formatSampleRate($playbackStatus.output_sample_rate) : 'Ready'}</span>
 				</div>
 			</div>
 
-			<div class="transport" aria-label="Playback controls">
+			<div class="player-transport" aria-label="Playback controls">
 				<button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0}>
 					<SkipBack class="size-4" /> Prev
 				</button>
-				<button class="main" onclick={playRouteSelection}
+				<button class="player-transport-main" onclick={playRouteSelection}
 					disabled={$currentSong.id === '' && upcomingSongs.length === 0}>
 					<Play class="size-4" /> Play
 				</button>
@@ -179,34 +165,34 @@
 				</button>
 			</div>
 
-			<label class="volume-label">
+			<label class="grid gap-[3px] text-muted text-[0.78rem]">
 				<span>Volume</span>
 				<input type="range" min="0" max="1" step="0.01" value={$volume}
-					oninput={handleVolumeChange} aria-label="Playback volume" />
+					oninput={handleVolumeChange} aria-label="Playback volume" class="w-full accent-accent" />
 			</label>
 		</div>
 	</section>
 
-	<div class="player-grid">
-		<section class="panel">
-			<div class="section-title">
+	<div class="player-panel-grid">
+		<section class="player-panel">
+			<div class="flex items-end justify-between gap-[14px]">
 				<div>
-					<p class="eyebrow">Queue</p>
-					<h2>Up next</h2>
+					<p class="text-accent font-mono text-[0.68rem] tracking-widest uppercase m-0">Queue</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Up next</h2>
 				</div>
 				<span class="state-pill">{upcomingSongs.length} tracks</span>
 			</div>
 			{#if upcomingSongs.length === 0}
-				<p class="muted">Queue is empty</p>
+				<p class="text-muted">Queue is empty</p>
 			{:else}
-				<ol class="queue-list">
+				<ol class="grid gap-2 m-0 p-0 list-none">
 					{#each upcomingSongs.slice(0, 5) as song, index}
-						<li class="queue-item">
-							<span class="queue-index">{String(index + 1).padStart(2, '0')}</span>
-							<span class="queue-main">
-								<strong>{song.title}</strong>
+						<li class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border border-border rounded-[20px] p-2.5 bg-surface/78">
+							<span class="text-muted font-mono text-[0.76rem]">{String(index + 1).padStart(2, '0')}</span>
+							<span class="grid gap-0.5 min-w-0">
+								<strong class="truncate">{song.title}</strong>
 								{#if queuedSongDetail(song)}
-									<small>{queuedSongDetail(song)}</small>
+									<small class="truncate text-muted">{queuedSongDetail(song)}</small>
 								{/if}
 							</span>
 						</li>
@@ -215,25 +201,25 @@
 			{/if}
 		</section>
 
-		<section class="panel">
-			<div class="section-title">
+		<section class="player-panel">
+			<div class="flex items-end justify-between gap-[14px]">
 				<div>
-					<p class="eyebrow">Output</p>
-					<h2>{$playbackStatus?.output_device_name ?? 'Default device'}</h2>
+					<p class="text-accent font-mono text-[0.68rem] tracking-widest uppercase m-0">Output</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{$playbackStatus?.output_device_name ?? 'Default device'}</h2>
 				</div>
 				<span class="state-pill">{$playbackStatus?.playing ? 'Playing' : 'Idle'}</span>
 			</div>
-			<div class="stat-grid">
-				<div>
-					<span>Source</span>
+			<div class="grid grid-cols-3 gap-2.5">
+				<div class="grid gap-1 min-w-0 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+					<span class="font-mono text-[0.76rem] uppercase text-muted">Source</span>
 					<strong>{$currentSong.source ? formatSource($currentSong.source) : 'Local'}</strong>
 				</div>
-				<div>
-					<span>Quality</span>
+				<div class="grid gap-1 min-w-0 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+					<span class="font-mono text-[0.76rem] uppercase text-muted">Quality</span>
 					<strong>{qualityDisplay()}</strong>
 				</div>
-				<div>
-					<span>ReplayGain</span>
+				<div class="grid gap-1 min-w-0 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+					<span class="font-mono text-[0.76rem] uppercase text-muted">ReplayGain</span>
 					<strong>{$playbackStatus?.replay_gain_mode ?? 'off'}</strong>
 				</div>
 			</div>
@@ -241,18 +227,18 @@
 	</div>
 
 	{#if oldSongs.length > 0}
-		<section class="panel history">
-			<div class="section-title">
+		<section class="player-panel">
+			<div class="flex items-end justify-between gap-[14px]">
 				<div>
-					<p class="eyebrow">History</p>
-					<h2>Recent</h2>
+					<p class="text-accent font-mono text-[0.68rem] tracking-widest uppercase m-0">History</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Recent</h2>
 				</div>
 			</div>
-			<ol class="history-list">
+			<ol class="grid gap-2 m-0 p-0 list-none">
 				{#each oldSongs.slice(-4).reverse() as song}
-					<li>
-						<strong>{song.title}</strong>
-						<span>{queuedSongDetail(song)}</span>
+					<li class="grid gap-1 min-w-0 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+						<strong class="truncate">{song.title}</strong>
+						<span class="truncate text-muted">{queuedSongDetail(song)}</span>
 					</li>
 				{/each}
 			</ol>
@@ -260,33 +246,12 @@
 	{/if}
 
 	{#if routeError}
-		<p class="error">{routeError}</p>
+		<p class="p-[0.65rem] px-3.5 border border-border rounded-[20px] bg-danger/20 text-danger/70">{routeError}</p>
 	{/if}
 </section>
 
 <style>
-	.player-route {
-		display: grid;
-		gap: 16px;
-	}
-
-	h2,
-	p {
-		margin: 0;
-	}
-
-	h2 {
-		font-family: var(--font-display);
-		font-size: clamp(22px, 2vw, 30px);
-		line-height: 1.04;
-	}
-
-	.player-hero,
-	.panel {
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 90%, transparent);
-	}
+	.player-route { display: grid; gap: 16px; }
 
 	.player-hero {
 		display: grid;
@@ -294,234 +259,55 @@
 		gap: 24px;
 		align-items: start;
 		min-height: 440px;
-		background:
-			linear-gradient(
-				145deg,
-				color-mix(in oklch, var(--surface) 92%, transparent),
-				color-mix(in oklch, var(--surface-2) 58%, transparent)
-			);
-		box-shadow: var(--shadow);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		background: linear-gradient(145deg, oklch(22% 0.026 58 / 0.92), oklch(28% 0.035 58 / 0.58));
+		box-shadow: 0 26px 80px oklch(0% 0 0 / 0.34);
 		padding: clamp(18px, 3vw, 28px);
 	}
 
-	.player-copy {
-		display: grid;
-		gap: 14px;
-		min-width: 0;
-	}
+	.player-copy { display: grid; gap: 14px; min-width: 0; }
 
-	.player-copy > p:not(.eyebrow),
-	.muted,
-	.progress-labels,
-	.history-list span,
-	.queue-main small,
-	.stat-grid span {
-		color: var(--muted);
-	}
-
-	.eyebrow {
-		color: var(--accent);
-		font-family: var(--font-mono);
-		font-size: 0.68rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
-	.accent-warn {
-		color: var(--danger);
-	}
-
-	.quality-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-	}
-
-	.quality-pill,
-	.state-pill {
-		display: inline-flex;
-		align-items: center;
-		min-height: 28px;
-		border: 1px solid var(--border);
-		border-radius: 999px;
-		background: color-mix(in oklch, var(--surface) 72%, transparent);
-		color: var(--muted);
-		font-family: var(--font-mono);
-		font-size: 0.68rem;
-		padding: 0 10px;
-		text-transform: uppercase;
-	}
-
-	.quality-pill.hires {
-		border-color: color-mix(in oklch, var(--accent) 44%, var(--border));
-		color: var(--accent);
-	}
-
-	.spectrum {
-		display: grid;
-		grid-template-columns: repeat(28, minmax(2px, 1fr));
-		align-items: end;
-		gap: 4px;
-		height: 54px;
-	}
-
-	.spectrum span {
-		height: var(--bar-height);
-		min-height: 7px;
-		border-radius: 999px;
-		background: color-mix(in oklch, var(--accent) 72%, var(--surface));
-	}
-
-	.progress-block {
-		display: grid;
-		gap: 8px;
-	}
-
-	.duration-bar {
-		height: 8px;
-		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			var(--accent) 0 var(--progress, 0%),
-			color-mix(in oklch, var(--surface-3) 70%, transparent) var(--progress, 0%)
-		);
-	}
-
-	.progress-labels {
-		display: flex;
-		justify-content: space-between;
-		font-family: var(--font-mono);
-		font-size: 0.76rem;
-	}
-
-	.transport {
+	.player-transport {
 		display: flex;
 		align-items: center;
 		flex-wrap: wrap;
 		gap: 8px;
 	}
 
-	.transport button {
+	.player-transport button {
 		display: inline-flex;
 		align-items: center;
 		gap: 6px;
-		min-height: var(--tap);
-		border: 1px solid var(--border);
+		min-height: 48px;
+		border: 1px solid var(--color-border);
 		border-radius: 999px;
-		background: color-mix(in oklch, var(--surface) 86%, transparent);
-		color: var(--fg);
+		background: oklch(22% 0.026 58 / 0.86);
+		color: var(--color-fg);
 		padding: 0 16px;
 	}
 
-	.transport button.main {
+	.player-transport-main {
 		min-width: 66px;
-		border-color: var(--fg);
-		background: var(--fg);
-		color: var(--bg);
+		border-color: var(--color-fg);
+		background: var(--color-fg);
+		color: var(--color-bg);
 	}
 
-	.volume-label {
-		display: grid;
-		gap: 3px;
-		color: var(--muted);
-		font-size: 0.78rem;
-	}
-
-	.volume-label input {
-		width: 100%;
-		accent-color: var(--accent);
-	}
-
-	.player-grid {
+	.player-panel-grid {
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 14px;
 	}
 
-	.panel {
+	.player-panel {
 		display: grid;
 		align-content: start;
 		gap: 12px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-lg);
+		background: oklch(22% 0.026 58 / 0.9);
 		padding: 18px;
-	}
-
-	.section-title {
-		display: flex;
-		align-items: end;
-		justify-content: space-between;
-		gap: 14px;
-	}
-
-	.queue-list,
-	.history-list {
-		display: grid;
-		gap: 8px;
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.queue-item {
-		display: grid;
-		grid-template-columns: auto minmax(0, 1fr);
-		align-items: center;
-		gap: 12px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-		background: color-mix(in oklch, var(--surface) 78%, transparent);
-		padding: 10px;
-	}
-
-	.queue-index {
-		color: var(--muted);
-		font-family: var(--font-mono);
-		font-size: 0.76rem;
-	}
-
-	.queue-main {
-		display: grid;
-		gap: 2px;
-		min-width: 0;
-	}
-
-	.queue-main strong,
-	.queue-main small,
-	.history-list strong,
-	.history-list span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.stat-grid {
-		display: grid;
-		grid-template-columns: repeat(3, minmax(0, 1fr));
-		gap: 10px;
-	}
-
-	.stat-grid div,
-	.history-list li {
-		display: grid;
-		gap: 4px;
-		min-width: 0;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-		background: color-mix(in oklch, var(--surface-2) 42%, transparent);
-		padding: 10px;
-	}
-
-	.stat-grid span {
-		font-family: var(--font-mono);
-		font-size: 0.76rem;
-		text-transform: uppercase;
-	}
-
-	.error {
-		padding: 0.65rem 0.8rem;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-		background: color-mix(in oklch, var(--danger) 20%, var(--surface));
-		color: color-mix(in oklch, var(--danger) 72%, var(--fg));
 	}
 
 	@media (max-width: 1180px) and (min-width: 761px) {
@@ -529,81 +315,28 @@
 			grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1fr);
 			min-height: 360px;
 		}
-
-		.transport {
+		.player-transport {
 			display: grid;
 			grid-template-columns: repeat(5, minmax(0, 1fr));
 			gap: 6px;
 			width: 100%;
 		}
-
-		.transport button {
-			min-width: 0;
-			min-height: 44px;
-			padding: 0 0.3rem;
-			font-size: 0.8rem;
-		}
-
-		.transport button.main {
-			min-width: 0;
-		}
+		.player-transport button { min-width: 0; min-height: 44px; padding: 0 0.3rem; font-size: 0.8rem; }
+		.player-transport-main { min-width: 0; }
 	}
 
 	@media (max-width: 760px) {
-		.player-route {
-			gap: 12px;
-		}
-
-		.player-hero,
-		.player-grid,
-		.stat-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.player-hero {
-			min-height: 0;
-			gap: 12px;
-			text-align: center;
-			padding: 16px;
-		}
-
-		.player-copy {
-			gap: 10px;
-		}
-
-		.spectrum {
-			height: 44px;
-			gap: 3px;
-		}
-
-		.quality-row {
-			justify-content: center;
-		}
-
-		.transport {
+		.player-route { gap: 12px; }
+		.player-hero, .player-panel-grid, .player-panel .grid-cols-3 { grid-template-columns: 1fr; }
+		.player-hero { min-height: 0; gap: 12px; text-align: center; padding: 16px; }
+		.player-copy { gap: 10px; }
+		.player-transport {
 			display: grid;
 			grid-template-columns: repeat(5, minmax(0, 1fr));
 			gap: 6px;
 			width: 100%;
 		}
-
-		.transport button {
-			min-width: 0;
-			min-height: 42px;
-			padding: 0 0.25rem;
-			font-size: 0.76rem;
-		}
-
-		.transport button.main {
-			min-width: 0;
-		}
-
-		.section-title {
-			align-items: flex-start;
-		}
-
-		.panel {
-			padding: 14px;
-		}
+		.player-transport button { min-width: 0; min-height: 42px; padding: 0 0.25rem; font-size: 0.76rem; }
+		.player-transport-main { min-width: 0; }
 	}
 </style>

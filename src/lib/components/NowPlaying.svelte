@@ -13,90 +13,24 @@
 	}
 </script>
 
-<div class="now-playing-hero">
-	<div class="hero-cover" aria-hidden="true">
+<div class="grid gap-[18px]">
+	<div class="w-full max-w-[380px] aspect-square relative overflow-hidden border border-border/70 rounded-3xl shadow-xl" aria-hidden="true">
 		{#if song.cover_art}
-			<img src={song.cover_art} alt={`${song.title} album art`} />
+			<img class="object-cover w-full h-full rounded-3xl" src={song.cover_art} alt={`${song.title} album art`} />
 		{:else}
-			<div class="hero-cover-gradient"></div>
+			<div class="hero-cover-placeholder w-full h-full"></div>
 		{/if}
 	</div>
-	<div class="hero-info">
-		<h1>{song.title}</h1>
-		<p>{detail()}</p>
+	<div class="grid gap-[6px]">
+		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(36px,6vw,64px)] leading-[0.96]">
+			{song.title}
+		</h1>
+		<p class="m-0 text-muted font-mono text-[0.82rem]">{detail()}</p>
 		{#if song.artist}
-			<span class="hero-artist">{song.artist}</span>
+			<span class="text-muted text-[0.9rem]">{song.artist}</span>
 		{/if}
 		{#if song.album}
-			<span class="hero-album">{song.album}</span>
+			<span class="text-muted text-[0.9rem]">{song.album}</span>
 		{/if}
 	</div>
 </div>
-
-<style>
-	.now-playing-hero {
-		display: grid;
-		gap: 18px;
-	}
-
-	.hero-cover {
-		aspect-ratio: 1;
-		max-width: 380px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		position: relative;
-		overflow: hidden;
-	}
-
-	.hero-cover img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	.hero-cover-gradient {
-		width: 100%;
-		height: 100%;
-		background:
-			radial-gradient(
-				circle at 50% 50%,
-				color-mix(in oklch, var(--surface) 82%, transparent) 0 12%,
-				transparent 13%
-			),
-			conic-gradient(from 235deg, var(--fg), var(--accent), var(--accent-2), var(--surface-2), var(--fg));
-		box-shadow: var(--shadow);
-	}
-
-	.hero-cover-gradient::before {
-		content: '';
-		position: absolute;
-		inset: 8%;
-		border: 1px solid color-mix(in oklch, var(--surface) 52%, transparent);
-		border-radius: inherit;
-	}
-
-	.hero-info {
-		display: grid;
-		gap: 6px;
-	}
-
-	.hero-info h1 {
-		margin: 0;
-		font-family: var(--font-display);
-		font-size: clamp(36px, 6vw, 64px);
-		line-height: 0.96;
-	}
-
-	.hero-info p {
-		margin: 0;
-		color: var(--muted);
-		font-family: var(--font-mono);
-		font-size: 0.82rem;
-	}
-
-	.hero-artist,
-	.hero-album {
-		color: var(--muted);
-		font-size: 0.9rem;
-	}
-</style>

@@ -5,117 +5,42 @@
 	import { Library, Play, Settings } from '@lucide/svelte';
 </script>
 
-<nav class="sidenav" aria-label="Primary">
-	<div class="brand-mark">
-		<span class="brand-dot" aria-hidden="true"></span>
+<nav
+	class="grid grid-rows-[auto_auto_1fr_auto] content-start gap-5 min-w-0 border border-border rounded-3xl p-[18px] bg-surface/92"
+	aria-label="Primary"
+>
+	<div class="inline-flex items-center gap-2.5 font-[family-name:var(--font-family-display)] text-xl font-bold">
+		<span class="brand-dot-bg w-7 h-7 rounded-[10px]" aria-hidden="true"></span>
 		<span>Cold Brew</span>
 	</div>
-	<p class="rail-kicker">Audiophile Player</p>
-	<div class="rail-nav">
-		<button onclick={() => goto('/')}><Library class="size-4 mr-2" /> Library</button>
-		<button onclick={() => goto('/player')}><Play class="size-4 mr-2" /> Player</button>
-		<button onclick={() => goto('/settings')}><Settings class="size-4 mr-2" /> Settings</button>
+	<p class="text-muted text-sm">Audiophile Player</p>
+	<div class="grid gap-2 content-start">
+		<button
+			onclick={() => goto('/')}
+			class="flex items-center justify-start gap-[9px] min-h-[42px] px-3 text-muted text-left hover:bg-accent/10 hover:text-fg focus-visible:bg-accent/10 focus-visible:text-fg"
+		>
+			<Library class="size-4 mr-2" /> Library
+		</button>
+		<button
+			onclick={() => goto('/player')}
+			class="flex items-center justify-start gap-[9px] min-h-[42px] px-3 text-muted text-left hover:bg-accent/10 hover:text-fg focus-visible:bg-accent/10 focus-visible:text-fg"
+		>
+			<Play class="size-4 mr-2" /> Player
+		</button>
+		<button
+			onclick={() => goto('/settings')}
+			class="flex items-center justify-start gap-[9px] min-h-[42px] px-3 text-muted text-left hover:bg-accent/10 hover:text-fg focus-visible:bg-accent/10 focus-visible:text-fg"
+		>
+			<Settings class="size-4 mr-2" /> Settings
+		</button>
 	</div>
-	<section class="rail-status">
-		<p class="eyebrow">Output</p>
-		<strong>{$playbackStatus?.output_device_name ?? 'Default device'}</strong>
-		<span>
+	<section class="min-w-0 border border-border rounded-3xl p-4 bg-surface-2/56">
+		<p class="m-0 mb-2 text-accent font-mono text-[0.68rem] tracking-widest uppercase">Output</p>
+		<strong class="block truncate">{$playbackStatus?.output_device_name ?? 'Default device'}</strong>
+		<span class="text-muted text-sm">
 			{$playbackStatus?.output_sample_rate
 				? `${formatSampleRate($playbackStatus.output_sample_rate)} output`
 				: 'Waiting for playback'}
 		</span>
 	</section>
 </nav>
-
-<style>
-	.sidenav {
-		display: grid;
-		grid-template-rows: auto auto 1fr auto;
-		align-content: start;
-		gap: 20px;
-		min-width: 0;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 92%, transparent);
-		padding: 18px;
-	}
-
-	.brand-mark {
-		display: inline-flex;
-		align-items: center;
-		gap: 10px;
-		font-family: var(--font-display);
-		font-size: 20px;
-		font-weight: 700;
-	}
-
-	.brand-dot {
-		width: 28px;
-		height: 28px;
-		border-radius: 10px;
-		background:
-			radial-gradient(
-				circle at 50% 50%,
-				color-mix(in oklch, var(--surface) 78%, transparent) 0 18%,
-				transparent 19%
-			),
-			conic-gradient(from 210deg, var(--fg), var(--accent), var(--accent-2), var(--fg));
-	}
-
-	.rail-kicker {
-		color: var(--muted);
-		font-size: 0.84rem;
-	}
-
-	.eyebrow {
-		margin: 0 0 8px;
-		color: var(--accent);
-		font-family: var(--font-mono);
-		font-size: 0.68rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
-	.rail-nav {
-		display: grid;
-		gap: 8px;
-		align-content: start;
-	}
-
-	.rail-nav button {
-		display: flex;
-		align-items: center;
-		justify-content: flex-start;
-		gap: 9px;
-		min-height: 42px;
-		padding: 0 12px;
-		color: var(--muted);
-		text-align: left;
-	}
-
-	.rail-nav button:hover,
-	.rail-nav button:focus-visible {
-		background: color-mix(in oklch, var(--accent) 11%, var(--surface));
-		color: var(--fg);
-	}
-
-	.rail-status {
-		min-width: 0;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface-2) 56%, transparent);
-		padding: 16px;
-	}
-
-	.rail-status strong {
-		display: block;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.rail-status span {
-		color: var(--muted);
-		font-size: 0.84rem;
-	}
-</style>

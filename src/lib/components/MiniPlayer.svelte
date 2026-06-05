@@ -68,210 +68,32 @@
 	}
 </script>
 
-<div class="miniPlayer">
-	<div class="now-playing">
-		<div class="cover" aria-hidden="true">
+<div class="miniplayer">
+	<div class="flex items-center gap-3 min-w-0">
+		<div class="w-12 h-12 relative overflow-hidden border border-border rounded-[14px]" aria-hidden="true">
 			{#if $currentSong.cover_art}
-				<img src={$currentSong.cover_art} alt={`${$currentSong.title} album art`} />
+				<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={`${$currentSong.title} album art`} />
 			{:else}
-				<div class="cover-gradient"></div>
+				<div class="cover-placeholder w-full h-full [&::before]:hidden"></div>
 			{/if}
 		</div>
-		<div>
-			<strong>{$currentSong.title}</strong>
-			<span>{nowPlayingDetail()}</span>
+		<div class="grid gap-0.5 min-w-0">
+			<strong class="truncate">{$currentSong.title}</strong>
+			<span class="truncate text-muted text-sm">{nowPlayingDetail()}</span>
 		</div>
 	</div>
-	<span class="time">{playbackTimeLabel()}</span>
-	<div class="durationBar" style={`--progress: ${playbackProgress()}%`} aria-hidden="true"></div>
-	<div class="transport">
-		<button onclick={onPlayPrevious} disabled={!canPrev}>
-			<SkipBack class="size-4" /> Prev
-		</button>
-		<button onclick={onResume} disabled={!canPlay || isPlaying}>
-			<Play class="size-4" /> Play
-		</button>
-		<button onclick={onPause} disabled={!isPauseEnabled}>
-			<Pause class="size-4" /> Pause
-		</button>
-		<button onclick={onStop} disabled={!isStopEnabled}>
-			<Square class="size-4" /> Stop
-		</button>
-		<button onclick={onPlayNext} disabled={!canNext}>
-			<SkipForward class="size-4" /> Next
-		</button>
+	<span class="text-muted font-mono tabular-nums whitespace-nowrap">{playbackTimeLabel()}</span>
+	<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
+	<div class="flex gap-2">
+		<button onclick={onPlayPrevious} disabled={!canPrev}><SkipBack class="size-4" /> Prev</button>
+		<button onclick={onResume} disabled={!canPlay || isPlaying}><Play class="size-4" /> Play</button>
+		<button onclick={onPause} disabled={!isPauseEnabled}><Pause class="size-4" /> Pause</button>
+		<button onclick={onStop} disabled={!isStopEnabled}><Square class="size-4" /> Stop</button>
+		<button onclick={onPlayNext} disabled={!canNext}><SkipForward class="size-4" /> Next</button>
 	</div>
-	<label class="volume">
+	<label class="grid gap-[3px] text-muted text-[0.78rem]">
 		<span>Volume</span>
-		<input
-			type="range"
-			min="0"
-			max="1"
-			step="0.01"
-			value={$volume}
-			oninput={onVolumeChange}
-			aria-label="Playback volume"
-		/>
+		<input type="range" min="0" max="1" step="0.01" value={$volume}
+			oninput={onVolumeChange} aria-label="Playback volume" class="w-full accent-accent" />
 	</label>
 </div>
-
-<style>
-	.miniPlayer {
-		position: fixed;
-		z-index: 10;
-		right: 20px;
-		bottom: 16px;
-		left: 20px;
-		display: grid;
-		grid-template-columns: minmax(220px, 360px) auto minmax(160px, 1fr) auto minmax(130px, 180px);
-		align-items: center;
-		gap: 18px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 94%, transparent);
-		backdrop-filter: blur(18px);
-		box-shadow: var(--shadow);
-		padding: 12px 18px;
-		box-sizing: border-box;
-	}
-
-	.now-playing {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		min-width: 0;
-	}
-
-	.now-playing div:last-child {
-		display: grid;
-		gap: 2px;
-		min-width: 0;
-	}
-
-	.now-playing strong,
-	.now-playing span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.now-playing span {
-		color: var(--muted);
-		font-size: 0.84rem;
-	}
-
-	.cover {
-		width: 48px;
-		height: 48px;
-		border: 1px solid var(--border);
-		border-radius: 14px;
-		position: relative;
-		overflow: hidden;
-	}
-
-	.cover img {
-		width: 100%;
-		height: 100%;
-		object-fit: cover;
-	}
-
-	.cover-gradient {
-		width: 100%;
-		height: 100%;
-		background:
-			radial-gradient(
-				circle at 50% 50%,
-				color-mix(in oklch, var(--surface) 82%, transparent) 0 12%,
-				transparent 13%
-			),
-			conic-gradient(from 235deg, var(--fg), var(--accent), var(--accent-2), var(--surface-2), var(--fg));
-	}
-
-	.cover-gradient::before {
-		content: '';
-		position: absolute;
-		inset: 8%;
-		border: 1px solid color-mix(in oklch, var(--surface) 52%, transparent);
-		border-radius: inherit;
-	}
-
-	.durationBar {
-		height: 8px;
-		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			var(--accent) 0 var(--progress, 0%),
-			color-mix(in oklch, var(--surface-3) 70%, transparent) var(--progress, 0%)
-		);
-	}
-
-	.transport {
-		display: flex;
-		gap: 8px;
-	}
-
-	.time {
-		color: var(--muted);
-		font-family: var(--font-mono);
-		font-variant-numeric: tabular-nums;
-		white-space: nowrap;
-	}
-
-	.volume {
-		display: grid;
-		gap: 3px;
-		color: var(--muted);
-		font-size: 0.78rem;
-	}
-
-	.volume input {
-		width: 100%;
-		accent-color: var(--accent);
-	}
-
-	@media (max-width: 1180px) {
-		.miniPlayer {
-			grid-template-columns: minmax(190px, 280px) auto minmax(120px, 1fr) auto;
-		}
-
-		.volume {
-			display: none;
-		}
-	}
-
-	@media (max-width: 880px) {
-		.miniPlayer {
-			right: 0;
-			left: 0;
-			bottom: 12px;
-			width: min(430px, calc(100% - 24px));
-			margin: 0 auto;
-			grid-template-columns: minmax(0, 1fr) auto;
-			gap: 10px;
-			border-radius: 28px;
-			padding: 12px;
-		}
-
-		.now-playing {
-			grid-column: 1 / -1;
-		}
-
-		.transport {
-			grid-column: 1 / -1;
-			justify-content: space-between;
-		}
-
-		.transport button {
-			flex: 1 1 0;
-			min-width: 0;
-			padding: 0 0.45rem;
-			font-size: 0.78rem;
-		}
-
-		.miniPlayer > .durationBar,
-		.miniPlayer > .time,
-		.volume {
-			display: none;
-		}
-	}
-</style>

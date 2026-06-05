@@ -143,9 +143,7 @@
 		message = '';
 		try {
 			if (selectedRemoteProvider === 'spotify') {
-				remotePlaylists = await invoke<RemotePlaylist[]>('list_spotify_playlists', {
-					limit: 20
-				});
+				remotePlaylists = await invoke<RemotePlaylist[]>('list_spotify_playlists', { limit: 20 });
 				message = `Loaded ${remotePlaylists.length} Spotify playlists.`;
 			} else if (selectedRemoteProvider === 'tidal') {
 				if (remoteQuery.trim()) {
@@ -207,7 +205,7 @@
 		try {
 			playlists = await invoke<PlaylistSummary[]>('list_playlists');
 			if (selectedPlaylistId !== null) {
-				const stillExists = playlists.some((playlist) => playlist.id === selectedPlaylistId);
+				const stillExists = playlists.some((p) => p.id === selectedPlaylistId);
 				if (stillExists) {
 					selectedPlaylist = await invoke<PlaylistDetail>('get_playlist', {
 						playlist_id: selectedPlaylistId
@@ -234,22 +232,15 @@
 	}
 
 	async function createPlaylist() {
-		if (!playlistName.trim()) {
-			error = 'Enter a playlist name.';
-			return;
-		}
-
-		error = '';
-		message = '';
+		if (!playlistName.trim()) { error = 'Enter a playlist name.'; return; }
+		error = ''; message = '';
 		try {
 			selectedPlaylist = await invoke<PlaylistDetail>('create_playlist', { name: playlistName });
 			selectedPlaylistId = selectedPlaylist.id;
 			playlistName = '';
 			await loadPlaylists();
 			message = `Created playlist ${selectedPlaylist.name}.`;
-		} catch (err) {
-			error = toErrorMessage(err);
-		}
+		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function selectPlaylist(playlistId: number) {
@@ -257,17 +248,11 @@
 		try {
 			selectedPlaylistId = playlistId;
 			selectedPlaylist = await invoke<PlaylistDetail>('get_playlist', { playlist_id: playlistId });
-		} catch (err) {
-			error = toErrorMessage(err);
-		}
+		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function addLocalToPlaylist(track: LibraryTrack) {
-		if (selectedPlaylistId === null) {
-			error = 'Select or create a playlist first.';
-			return;
-		}
-
+		if (selectedPlaylistId === null) { error = 'Select or create a playlist first.'; return; }
 		error = '';
 		try {
 			selectedPlaylist = await invoke<PlaylistDetail>('add_song_to_playlist', {
@@ -276,54 +261,31 @@
 			});
 			await loadPlaylists();
 			message = `Added ${track.title} to ${selectedPlaylist.name}.`;
-		} catch (err) {
-			error = toErrorMessage(err);
-		}
+		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function importPlaylist() {
-		if (!playlistImportPath.trim()) {
-			error = 'Enter an M3U or M3U8 path to import.';
-			return;
-		}
-
-		error = '';
-		message = '';
+		if (!playlistImportPath.trim()) { error = 'Enter an M3U or M3U8 path to import.'; return; }
+		error = ''; message = '';
 		try {
 			selectedPlaylist = await invoke<PlaylistDetail>('import_m3u_playlist', {
-				path: playlistImportPath,
-				name: playlistName || null
+				path: playlistImportPath, name: playlistName || null
 			});
 			selectedPlaylistId = selectedPlaylist.id;
 			playlistName = '';
 			await loadPlaylists();
 			message = `Imported ${selectedPlaylist.tracks.length} tracks into ${selectedPlaylist.name}.`;
-		} catch (err) {
-			error = toErrorMessage(err);
-		}
+		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function exportPlaylist() {
-		if (selectedPlaylistId === null) {
-			error = 'Select a playlist to export.';
-			return;
-		}
-		if (!playlistExportPath.trim()) {
-			error = 'Enter an export path.';
-			return;
-		}
-
-		error = '';
-		message = '';
+		if (selectedPlaylistId === null) { error = 'Select a playlist to export.'; return; }
+		if (!playlistExportPath.trim()) { error = 'Enter an export path.'; return; }
+		error = ''; message = '';
 		try {
-			await invoke('export_m3u_playlist', {
-				playlist_id: selectedPlaylistId,
-				path: playlistExportPath
-			});
+			await invoke('export_m3u_playlist', { playlist_id: selectedPlaylistId, path: playlistExportPath });
 			message = 'Playlist exported.';
-		} catch (err) {
-			error = toErrorMessage(err);
-		}
+		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function queueSong(song: Song) {
@@ -331,69 +293,38 @@
 		try {
 			await invoke<QueueSnapshot>('queue_song', { song });
 			message = `Queued ${song.title}.`;
-		} catch (err) {
-			error = toErrorMessage(err);
-		}
+		} catch (err) { error = toErrorMessage(err); }
 	}
 
-	function queueLocal(track: LibraryTrack) {
-		void queueSong(localTrackToSong(track));
-	}
+	function queueLocal(track: LibraryTrack) { void queueSong(localTrackToSong(track)); }
 
 	async function inspectTrack(track: LibraryTrack) {
 		selectedTrack = track;
 		trackInspectorOpen = true;
-		selectedLyrics = null;
-		metadataSuggestions = [];
-		loadingLyrics = true;
+		selectedLyrics = null; metadataSuggestions = []; loadingLyrics = true;
 		try {
 			selectedLyrics = await invoke<LyricsResult | null>('get_track_lyrics', {
-				path: track.path,
-				title: track.title,
-				artist: track.artist,
-				album: track.album,
-				duration_ms: track.duration_ms
+				path: track.path, title: track.title, artist: track.artist,
+				album: track.album, duration_ms: track.duration_ms
 			});
-		} catch {
-			selectedLyrics = null;
-		} finally {
-			loadingLyrics = false;
-		}
+		} catch { selectedLyrics = null; }
+		finally { loadingLyrics = false; }
 	}
 
 	async function lookupMetadata(track: LibraryTrack) {
-		loadingMetadata = true;
-		error = '';
+		loadingMetadata = true; error = '';
 		try {
 			metadataSuggestions = await invoke<MetadataSuggestion[]>('search_metadata_suggestions', {
-				title: track.title,
-				artist: track.artist,
-				album: track.album,
-				duration_ms: track.duration_ms
+				title: track.title, artist: track.artist, album: track.album, duration_ms: track.duration_ms
 			});
-		} catch (err) {
-			error = toErrorMessage(err);
-			metadataSuggestions = [];
-		} finally {
-			loadingMetadata = false;
-		}
+		} catch (err) { error = toErrorMessage(err); metadataSuggestions = []; }
+		finally { loadingMetadata = false; }
 	}
 
-	function playSelectedTrack() {
-		if (selectedTrack) void playLocal(selectedTrack);
-	}
-
-	function queueSelectedTrack() {
-		if (selectedTrack) queueLocal(selectedTrack);
-	}
-
-	function addSelectedTrackToPlaylist() {
-		if (selectedTrack) void addLocalToPlaylist(selectedTrack);
-	}
-
-	function lookupSelectedTrackMetadata() {
-		if (selectedTrack) void lookupMetadata(selectedTrack);
-	}
+	function playSelectedTrack() { if (selectedTrack) void playLocal(selectedTrack); }
+	function queueSelectedTrack() { if (selectedTrack) queueLocal(selectedTrack); }
+	function addSelectedTrackToPlaylist() { if (selectedTrack) void addLocalToPlaylist(selectedTrack); }
+	function lookupSelectedTrackMetadata() { if (selectedTrack) void lookupMetadata(selectedTrack); }
 
 	async function playLocal(track: LibraryTrack) {
 		error = '';
@@ -401,55 +332,40 @@
 			await invoke('play_track_now', { song: localTrackToSong(track) });
 			await loadListeningHistory();
 			message = `Playing ${track.title}.`;
-		} catch (err) {
-			error = toErrorMessage(err);
-		}
+		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	function toJellyfinSong(element: any): Song {
 		return {
 			title: element.Name ?? 'Untitled',
 			artist: element.Artists ? element.Artists.join(', ') : (element.Artist ?? 'Unknown artist'),
-			album: element.Album ?? '',
-			duration: element.RunTimeTicks ?? 0,
-			id: element.Id ?? '',
-			source: 'jellyfin',
-			quality: 'remote library'
+			album: element.Album ?? '', duration: element.RunTimeTicks ?? 0,
+			id: element.Id ?? '', source: 'jellyfin', quality: 'remote library'
 		};
 	}
 
 	function localTrackToSong(track: LibraryTrack): Song {
 		return {
-			id: track.path,
-			title: track.title,
-			artist: track.artist ?? 'Unknown artist',
-			album: track.album ?? '',
+			id: track.path, title: track.title,
+			artist: track.artist ?? 'Unknown artist', album: track.album ?? '',
 			duration: Math.round((track.duration_ms ?? 0) * 10000),
-			source: 'local',
-			uri: track.path,
-			quality: formatQuality(track) || track.extension.toUpperCase(),
-			playable: true
+			source: 'local', uri: track.path,
+			quality: formatQuality(track) || track.extension.toUpperCase(), playable: true
 		};
 	}
 
 	function remoteTrackToSong(track: RemoteTrack): Song {
 		return {
-			id: `${track.source}:${track.id}`,
-			title: track.title,
-			artist: track.artist || track.source,
-			album: track.album ?? '',
+			id: `${track.source}:${track.id}`, title: track.title,
+			artist: track.artist || track.source, album: track.album ?? '',
 			duration: Math.round((track.duration_ms ?? 0) * 10000),
-			source: track.source,
-			uri: track.uri,
-			external_url: track.external_url,
+			source: track.source, uri: track.uri, external_url: track.external_url,
 			quality: track.quality ?? (track.playable ? 'remote playable' : 'metadata only'),
 			playable: track.playable
 		};
 	}
 
-	function queueRemote(track: RemoteTrack) {
-		void queueSong(remoteTrackToSong(track));
-	}
+	function queueRemote(track: RemoteTrack) { void queueSong(remoteTrackToSong(track)); }
 
 	function remoteSearchCommand(provider: RemoteProvider) {
 		if (provider === 'spotify') return 'search_spotify_tracks';
@@ -460,23 +376,16 @@
 	}
 
 	function remoteProviderLabel(provider: RemoteProvider) {
-		return remoteProviderOptions.find((option) => option.id === provider)?.label ?? provider;
+		return remoteProviderOptions.find((o) => o.id === provider)?.label ?? provider;
 	}
 
 	function changeRemoteProvider() {
-		remoteResults = [];
-		remotePlaylists = [];
-		selectedRemotePlaylistId = null;
-		message = '';
-		error = '';
+		remoteResults = []; remotePlaylists = []; selectedRemotePlaylistId = null;
+		message = ''; error = '';
 	}
 
 	function remotePlaylistsSupported() {
-		return (
-			selectedRemoteProvider === 'spotify' ||
-			selectedRemoteProvider === 'tidal' ||
-			selectedRemoteProvider === 'youtube'
-		);
+		return selectedRemoteProvider === 'spotify' || selectedRemoteProvider === 'tidal' || selectedRemoteProvider === 'youtube';
 	}
 
 	function remotePlaylistCountLabel(playlist: RemotePlaylist) {
@@ -484,12 +393,8 @@
 	}
 
 	function sortLocalTracks(key: SortKey) {
-		if (sortKey === key) {
-			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-			return;
-		}
-		sortKey = key;
-		sortDirection = 'asc';
+		if (sortKey === key) { sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'; return; }
+		sortKey = key; sortDirection = 'asc';
 	}
 
 	function toggleColumn(column: LocalColumn) {
@@ -497,20 +402,16 @@
 	}
 
 	function sortedLocalTracks() {
-		return [...localTracks].sort((first, second) => {
-			const result = compareTrackValues(first, second, sortKey);
+		return [...localTracks].sort((a, b) => {
+			const result = compareTrackValues(a, b, sortKey);
 			return sortDirection === 'asc' ? result : -result;
 		});
 	}
 
-	function compareTrackValues(first: LibraryTrack, second: LibraryTrack, key: SortKey) {
-		if (key === 'quality') return qualityScore(first) - qualityScore(second);
-		if (key === 'duration') return (first.duration_ms ?? 0) - (second.duration_ms ?? 0);
-
-		return textSortValue(first, key).localeCompare(textSortValue(second, key), undefined, {
-			sensitivity: 'base',
-			numeric: true
-		});
+	function compareTrackValues(a: LibraryTrack, b: LibraryTrack, key: SortKey) {
+		if (key === 'quality') return qualityScore(a) - qualityScore(b);
+		if (key === 'duration') return (a.duration_ms ?? 0) - (b.duration_ms ?? 0);
+		return textSortValue(a, key).localeCompare(textSortValue(b, key), undefined, { sensitivity: 'base', numeric: true });
 	}
 
 	function textSortValue(track: LibraryTrack, key: Exclude<SortKey, 'quality' | 'duration'>) {
@@ -567,99 +468,85 @@
 	}
 </script>
 
-<section class="heading">
-	<div>
-		<h1>Library</h1>
-		<p>{localTracks.length} local tracks indexed — scan new paths in Settings</p>
+<section class="heading-bg relative overflow-hidden border border-border rounded-3xl shadow-2xl p-[clamp(22px,5vw,52px)]"
+	style="min-height: 210px">
+	<div class="relative z-[1]">
+		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]">Library</h1>
+		<p class="text-muted text-sm">{localTracks.length} local tracks indexed — scan new paths in Settings</p>
 	</div>
-	<div class="heading-actions">
+	<div class="flex gap-2 relative z-[1]">
 		<button onclick={loadLocalLibrary} disabled={loadingLibrary}>Refresh</button>
 	</div>
+	<div class="hero-blob absolute right-[clamp(18px,5vw,64px)] bottom-[clamp(18px,5vw,54px)] w-[min(28vw,250px)] aspect-square rounded-3xl opacity-[0.22] pointer-events-none"></div>
 </section>
 
-{#if error}
-	<p class="error">{error}</p>
-{/if}
-{#if message}
-	<p class="message">{message}</p>
-{/if}
+{#if error}<p class="mt-3 px-3.5 py-2.5 border border-border rounded-[20px] bg-danger/20 text-danger/70">{error}</p>{/if}
+{#if message}<p class="mt-3 px-3.5 py-2.5 border border-border rounded-[20px] bg-success/20 text-success/80">{message}</p>{/if}
 
-<section class="content-section">
-	<div class="section-title">
-		<h2>Local Files</h2>
-		<div class="column-controls" aria-label="Visible local columns">
+<section class="mt-6 border border-border rounded-3xl p-[18px] bg-surface/90">
+	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Local Files</h2>
+		<div class="flex flex-wrap justify-end gap-x-3 gap-y-2" aria-label="Visible local columns">
 			{#each localColumnOptions as column}
-				<label>
-					<input
-						type="checkbox"
-						checked={visibleColumns[column.id]}
-						onchange={() => toggleColumn(column.id)}
-					/>
+				<label class="flex items-center gap-[5px] text-muted text-[0.82rem]">
+					<input type="checkbox" checked={visibleColumns[column.id]} onchange={() => toggleColumn(column.id)} class="w-auto min-w-0 p-0" />
 					{column.label}
 				</label>
 			{/each}
 		</div>
 	</div>
-	<table>
+	<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
 		<thead>
 			<tr>
-				<th
-					><button class="sort-button" onclick={() => sortLocalTracks('title')}
-						>Title {sortIndicator('title')}</button
-					></th
-				>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
+					<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('title')}>
+						Title {sortIndicator('title')}
+					</button>
+				</th>
 				{#if visibleColumns.artist}
-					<th
-						><button class="sort-button" onclick={() => sortLocalTracks('artist')}
-							>Artist {sortIndicator('artist')}</button
-						></th
-					>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
+						<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('artist')}>
+							Artist {sortIndicator('artist')}
+						</button>
+					</th>
 				{/if}
 				{#if visibleColumns.album}
-					<th
-						><button class="sort-button" onclick={() => sortLocalTracks('album')}
-							>Album {sortIndicator('album')}</button
-						></th
-					>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
+						<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('album')}>
+							Album {sortIndicator('album')}
+						</button>
+					</th>
 				{/if}
 				{#if visibleColumns.quality}
-					<th
-						><button class="sort-button" onclick={() => sortLocalTracks('quality')}
-							>Quality {sortIndicator('quality')}</button
-						></th
-					>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
+						<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('quality')}>
+							Quality {sortIndicator('quality')}
+						</button>
+					</th>
 				{/if}
 				{#if visibleColumns.duration}
-					<th
-						><button class="sort-button" onclick={() => sortLocalTracks('duration')}
-							>Time {sortIndicator('duration')}</button
-						></th
-					>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">
+						<button class="border-0 bg-transparent text-inherit p-0 uppercase text-inherit font-bold hover:bg-transparent hover:text-accent no-underline" onclick={() => sortLocalTracks('duration')}>
+							Time {sortIndicator('duration')}
+						</button>
+					</th>
 				{/if}
-				<th></th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase"></th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each sortedLocalTracks() as track}
 				<tr>
-					<td>
+					<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
 						<strong>{track.title}</strong>
-						<span>{track.extension.toUpperCase()}{track.has_artwork ? ' / Art' : ''}</span>
+						<span class="text-muted text-sm">{track.extension.toUpperCase()}{track.has_artwork ? ' / Art' : ''}</span>
 					</td>
-					{#if visibleColumns.artist}
-						<td>{track.artist ?? ''}</td>
-					{/if}
-					{#if visibleColumns.album}
-						<td>{track.album ?? ''}</td>
-					{/if}
-					{#if visibleColumns.quality}
-						<td>{formatQuality(track)}</td>
-					{/if}
-					{#if visibleColumns.duration}
-						<td>{formatDuration(track.duration_ms)}</td>
-					{/if}
-					<td>
-						<div class="actions">
+					{#if visibleColumns.artist}<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.artist ?? ''}</td>{/if}
+					{#if visibleColumns.album}<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.album ?? ''}</td>{/if}
+					{#if visibleColumns.quality}<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatQuality(track)}</td>{/if}
+					{#if visibleColumns.duration}<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(track.duration_ms)}</td>{/if}
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
+						<div class="flex flex-wrap gap-1.5 whitespace-nowrap">
 							<button onclick={() => playLocal(track)}>Play</button>
 							<button onclick={() => queueLocal(track)}>Queue</button>
 							<button onclick={() => addLocalToPlaylist(track)}>Add</button>
@@ -682,87 +569,63 @@
 		</Sheet.SheetHeader>
 
 		{#if selectedTrack}
-			<div class="track-inspector">
-				<div class="actions">
+			<div class="mt-2.5">
+				<div class="flex flex-wrap gap-1.5 whitespace-nowrap">
 					<button onclick={playSelectedTrack}>Play</button>
 					<button onclick={queueSelectedTrack}>Queue</button>
 					<button onclick={addSelectedTrackToPlaylist}>Add</button>
 					<button onclick={lookupSelectedTrackMetadata} disabled={loadingMetadata}>Metadata</button>
 				</div>
 
-				<dl>
-					<div>
-						<dt>Album</dt>
-						<dd>{selectedTrack.album ?? ''}</dd>
-					</div>
-					<div>
-						<dt>Genre</dt>
-						<dd>{selectedTrack.genre ?? ''}</dd>
-					</div>
-					<div>
-						<dt>Track</dt>
-						<dd>{selectedTrack.track_number ?? ''}</dd>
-					</div>
-					<div>
-						<dt>Quality</dt>
-						<dd>{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd>
-					</div>
-					<div>
-						<dt>Duration</dt>
-						<dd>{formatDuration(selectedTrack.duration_ms)}</dd>
-					</div>
-					<div>
-						<dt>File size</dt>
-						<dd>{formatFileSize(selectedTrack.file_size)}</dd>
-					</div>
-					<div>
-						<dt>Modified</dt>
-						<dd>{formatDate(selectedTrack.modified_secs)}</dd>
-					</div>
-					<div class="wide">
-						<dt>Path</dt>
-						<dd>{selectedTrack.path}</dd>
-					</div>
+				<dl class="track-inspector-dl">
+					<div class="min-w-0"><dt class="text-muted font-mono text-[0.76rem] uppercase">Album</dt><dd class="mt-[3px] break-words">{selectedTrack.album ?? ''}</dd></div>
+					<div class="min-w-0"><dt class="text-muted font-mono text-[0.76rem] uppercase">Genre</dt><dd class="mt-[3px] break-words">{selectedTrack.genre ?? ''}</dd></div>
+					<div class="min-w-0"><dt class="text-muted font-mono text-[0.76rem] uppercase">Track</dt><dd class="mt-[3px] break-words">{selectedTrack.track_number ?? ''}</dd></div>
+					<div class="min-w-0"><dt class="text-muted font-mono text-[0.76rem] uppercase">Quality</dt><dd class="mt-[3px] break-words">{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd></div>
+					<div class="min-w-0"><dt class="text-muted font-mono text-[0.76rem] uppercase">Duration</dt><dd class="mt-[3px] break-words">{formatDuration(selectedTrack.duration_ms)}</dd></div>
+					<div class="min-w-0"><dt class="text-muted font-mono text-[0.76rem] uppercase">File size</dt><dd class="mt-[3px] break-words">{formatFileSize(selectedTrack.file_size)}</dd></div>
+					<div class="min-w-0"><dt class="text-muted font-mono text-[0.76rem] uppercase">Modified</dt><dd class="mt-[3px] break-words">{formatDate(selectedTrack.modified_secs)}</dd></div>
+					<div class="col-span-full min-w-0"><dt class="text-muted font-mono text-[0.76rem] uppercase">Path</dt><dd class="mt-[3px] break-words">{selectedTrack.path}</dd></div>
 				</dl>
 
-				<div class="lyrics-panel">
-					<h3>Lyrics</h3>
+				<div class="grid gap-2 mt-3.5 pt-3 border-t border-border">
+					<h3 class="text-[0.95rem]">Lyrics</h3>
 					{#if loadingLyrics}
 						<p>Loading lyrics</p>
 					{:else if selectedLyrics}
 						<p>{selectedLyrics.synced ? 'Synced' : 'Plain'} from {selectedLyrics.source}</p>
-						<pre>{selectedLyrics.content}</pre>
+						<pre class="max-h-[220px] overflow-auto m-0 whitespace-pre-wrap text-[0.84rem]/[1.45] font-mono">{selectedLyrics.content}</pre>
 					{:else}
 						<p>No local lyrics found</p>
 					{/if}
 				</div>
 
-				<div class="metadata-panel">
-					<h3>Metadata Suggestions</h3>
+				<div class="grid gap-2 mt-3.5 pt-3 border-t border-border">
+					<h3 class="text-[0.95rem]">Metadata Suggestions</h3>
 					{#if loadingMetadata}
 						<p>Searching MusicBrainz</p>
 					{:else if metadataSuggestions.length > 0}
-						<table>
+						<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
 							<thead>
 								<tr>
-									<th>Title</th>
-									<th>Artist</th>
-									<th>Album</th>
-									<th>Date</th>
-									<th>Score</th>
+									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Title</th>
+									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Artist</th>
+									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Album</th>
+									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Date</th>
+									<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Score</th>
 								</tr>
 							</thead>
 							<tbody>
 								{#each metadataSuggestions as suggestion}
 									<tr>
-										<td>
+										<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
 											<strong>{suggestion.title}</strong>
-											<span>{suggestion.recording_mbid}</span>
+											<span class="text-muted text-sm">{suggestion.recording_mbid}</span>
 										</td>
-										<td>{suggestion.artist}</td>
-										<td>{suggestion.album ?? ''}</td>
-										<td>{suggestion.first_release_date ?? ''}</td>
-										<td>{suggestion.score ?? ''}</td>
+										<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{suggestion.artist}</td>
+										<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{suggestion.album ?? ''}</td>
+										<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{suggestion.first_release_date ?? ''}</td>
+										<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{suggestion.score ?? ''}</td>
 									</tr>
 								{/each}
 							</tbody>
@@ -776,51 +639,42 @@
 	</Sheet.SheetContent>
 </Sheet.Sheet>
 
-<section class="content-section">
-	<h2>Playlists</h2>
-	<div class="playlist-grid">
-		<div class="playlist-list">
-			<div class="playlist-tools">
-				<input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" />
+<section class="mt-6 border border-border rounded-3xl p-[18px] bg-surface/90">
+	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Playlists</h2>
+	<div class="library-playlist-grid">
+		<div class="grid content-start gap-1.5 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+			<div class="flex gap-2 min-w-[min(100%,440px)]">
+				<input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
 				<button onclick={createPlaylist}>Create</button>
 			</div>
 			{#if playlists.length === 0}
 				<p>No playlists yet</p>
 			{:else}
 				{#each playlists as playlist}
-					<button
-						class:selected={playlist.id === selectedPlaylistId}
-						onclick={() => selectPlaylist(playlist.id)}
-					>
+				<button
+				class="flex justify-between gap-2 text-left {playlist.id === selectedPlaylistId ? 'bg-success/15 border-success/50' : ''}"
+				onclick={() => selectPlaylist(playlist.id)}>
 						<span>{playlist.name}</span>
-						<small>{playlist.track_count} tracks</small>
+						<small class="text-muted whitespace-nowrap">{playlist.track_count} tracks</small>
 					</button>
 				{/each}
 			{/if}
 		</div>
 
-		<div class="playlist-detail">
-			<div class="playlist-tools">
-				<input
-					bind:value={playlistImportPath}
-					placeholder="/path/list.m3u"
-					aria-label="M3U import path"
-				/>
+		<div class="grid gap-2.5 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+			<div class="flex gap-2 min-w-[min(100%,440px)]">
+				<input bind:value={playlistImportPath} placeholder="/path/list.m3u" aria-label="M3U import path" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
 				<button onclick={importPlaylist}>Import</button>
 			</div>
-			<div class="playlist-tools">
-				<input
-					bind:value={playlistExportPath}
-					placeholder="/path/export.m3u8"
-					aria-label="M3U export path"
-				/>
+			<div class="flex gap-2 min-w-[min(100%,440px)]">
+				<input bind:value={playlistExportPath} placeholder="/path/export.m3u8" aria-label="M3U export path" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
 				<button onclick={exportPlaylist} disabled={selectedPlaylistId === null}>Export</button>
 			</div>
 
 			{#if selectedPlaylist}
-				<ol>
+				<ol class="m-0 pl-5">
 					{#each selectedPlaylist.tracks as song}
-						<li>
+						<li class="flex items-center justify-between gap-2 py-[5px]">
 							<span>{song.title}</span>
 							<button onclick={() => queueSong(song)}>Queue</button>
 						</li>
@@ -833,67 +687,67 @@
 	</div>
 </section>
 
-<section class="content-section">
-	<h2>Recent Listening</h2>
-	<div class="section-title">
-		<span>{listeningHistory.length} entries</span>
+<section class="mt-6 border border-border rounded-3xl p-[18px] bg-surface/90">
+	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Recent Listening</h2>
+	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+		<span class="text-muted text-sm">{listeningHistory.length} entries</span>
 		<button onclick={loadListeningHistory}>Refresh</button>
 	</div>
 	{#if listeningHistory.length === 0 && listeningSummaries.length === 0}
 		<p>No listening history yet</p>
 	{:else}
 		{#if listeningSummaries.length > 0}
-			<table>
+			<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
 				<thead>
 					<tr>
-						<th>Track</th>
-						<th>Plays</th>
-						<th>Completed</th>
-						<th>Skipped</th>
-						<th>Listened</th>
-						<th>Last played</th>
+						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Track</th>
+						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Plays</th>
+						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Completed</th>
+						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Skipped</th>
+						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Listened</th>
+						<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Last played</th>
 					</tr>
 				</thead>
 				<tbody>
 					{#each listeningSummaries as summary}
 						<tr>
-							<td>
+							<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
 								<strong>{summary.title ?? summary.path}</strong>
-								<span>{summary.source}</span>
+								<span class="text-muted text-sm">{summary.source}</span>
 							</td>
-							<td>{summary.play_count}</td>
-							<td>{summary.completion_count}</td>
-							<td>{summary.skip_count}</td>
-							<td>{formatDuration(summary.total_listened_ms)}</td>
-							<td>{summary.last_played_at}</td>
+							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{summary.play_count}</td>
+							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{summary.completion_count}</td>
+							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{summary.skip_count}</td>
+							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(summary.total_listened_ms)}</td>
+							<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{summary.last_played_at}</td>
 						</tr>
 					{/each}
 				</tbody>
 			</table>
 		{/if}
-		<table>
+		<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
 			<thead>
 				<tr>
-					<th>Track</th>
-					<th>Event</th>
-					<th>Class</th>
-					<th>Position</th>
-					<th>Listened</th>
-					<th>Time</th>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Track</th>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Event</th>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Class</th>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Position</th>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Listened</th>
+					<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Time</th>
 				</tr>
 			</thead>
 			<tbody>
 				{#each listeningHistory as entry}
 					<tr>
-						<td>
+						<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
 							<strong>{entry.title ?? entry.path}</strong>
-							<span>{entry.source}</span>
+							<span class="text-muted text-sm">{entry.source}</span>
 						</td>
-						<td>{formatHistoryLabel(entry.event)}</td>
-						<td>{formatHistoryLabel(entry.classification)}</td>
-						<td>{formatDuration(entry.position_ms)}</td>
-						<td>{formatDuration(entry.listened_ms)}</td>
-						<td>{entry.created_at}</td>
+						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatHistoryLabel(entry.event)}</td>
+						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatHistoryLabel(entry.classification)}</td>
+						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(entry.position_ms)}</td>
+						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(entry.listened_ms)}</td>
+						<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{entry.created_at}</td>
 					</tr>
 				{/each}
 			</tbody>
@@ -901,104 +755,89 @@
 	{/if}
 </section>
 
-<section class="content-section">
-	<h2>Remote Search</h2>
-	<div class="section-title">
-		<span>{loadingRemote ? 'Loading...' : `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span>
+<section class="mt-6 border border-border rounded-3xl p-[18px] bg-surface/90">
+	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Remote Search</h2>
+	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+		<span class="text-muted text-sm">{loadingRemote ? 'Loading...' : `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span>
 	</div>
-	<div class="scan">
-		<select bind:value={selectedRemoteProvider} onchange={changeRemoteProvider}>
+	<div class="library-scan-row">
+		<select bind:value={selectedRemoteProvider} onchange={changeRemoteProvider} class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem]">
 			{#each remoteProviderOptions as provider}
 				<option value={provider.id}>{provider.label}</option>
 			{/each}
 		</select>
-		<input
-			bind:value={remoteQuery}
-			placeholder="Track, artist, album"
-			aria-label="Remote search"
-		/>
+		<input bind:value={remoteQuery} placeholder="Track, artist, album" aria-label="Remote search" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
 		{#if selectedRemoteProvider === 'tidal'}
-			<input
-				class="country-input"
-				bind:value={remoteCountryCode}
-				placeholder="US"
-				aria-label="TIDAL country code"
-			/>
+			<input bind:value={remoteCountryCode} placeholder="US" aria-label="TIDAL country code" class="flex-[0_0_72px] min-w-[72px] uppercase border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
 		{/if}
 		<button onclick={searchRemote} disabled={loadingRemote}>Search</button>
-		<button
-			onclick={loadRemotePlaylists}
-			disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}
-		>
-			Playlists
-		</button>
+		<button onclick={loadRemotePlaylists} disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}>Playlists</button>
 	</div>
 	{#if remotePlaylists.length > 0}
-		<div class="remote-playlists">
+		<div class="flex flex-wrap gap-2 mb-2">
 			{#each remotePlaylists as playlist}
 				<button
-					class:selected={playlist.id === selectedRemotePlaylistId}
-					onclick={() => loadRemotePlaylistTracks(playlist)}
-				>
+					class="grid gap-0.5 min-w-[150px] text-left {playlist.id === selectedRemotePlaylistId ? 'bg-success/15 border-success/50' : ''}"
+					onclick={() => loadRemotePlaylistTracks(playlist)}>
 					<span>{playlist.name}</span>
-					<small>{remotePlaylistCountLabel(playlist)}</small>
+					<small class="text-muted">{remotePlaylistCountLabel(playlist)}</small>
 				</button>
 			{/each}
 		</div>
 	{/if}
-	<table>
+	<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
 		<thead>
 			<tr>
-				<th>Source</th>
-				<th>Title</th>
-				<th>Artist</th>
-				<th>Album</th>
-				<th>Quality</th>
-				<th>Time</th>
-				<th></th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Source</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Title</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Artist</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Album</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Quality</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Time</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase"></th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each remoteResults as track}
 				<tr>
-					<td>{track.source.toUpperCase()}</td>
-					<td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.source.toUpperCase()}</td>
+					<td class="grid gap-0.5 border-b border-border px-[0.7rem] py-[0.6rem] align-middle">
 						<strong>{track.title}</strong>
-						<span>{track.external_url ?? track.uri}</span>
+						<span class="text-muted text-sm">{track.external_url ?? track.uri}</span>
 					</td>
-					<td>{track.artist}</td>
-					<td>{track.album ?? ''}</td>
-					<td>{track.quality ?? (track.playable ? 'Remote playable' : 'Metadata only')}</td>
-					<td>{formatDuration(track.duration_ms)}</td>
-					<td><button onclick={() => queueRemote(track)}>Queue</button></td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.artist}</td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.album ?? ''}</td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{track.quality ?? (track.playable ? 'Remote playable' : 'Metadata only')}</td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{formatDuration(track.duration_ms)}</td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle"><button onclick={() => queueRemote(track)}>Queue</button></td>
 				</tr>
 			{/each}
 		</tbody>
 	</table>
 </section>
 
-<section class="content-section">
-	<h2>Jellyfin</h2>
-	<div class="section-title">
-		<span>Remote media server</span>
+<section class="mt-6 border border-border rounded-3xl p-[18px] bg-surface/90">
+	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Jellyfin</h2>
+	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+		<span class="text-muted text-sm">Remote media server</span>
 		<button onclick={loadJellyfin} disabled={loadingJellyfin}>Load songs</button>
 	</div>
-	<table>
+	<table class="w-full mt-2.5 border-collapse border border-border rounded-[20px] overflow-hidden bg-surface/84">
 		<thead>
 			<tr>
-				<th>Title</th>
-				<th>Artist</th>
-				<th>Album</th>
-				<th></th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Title</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Artist</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase">Album</th>
+				<th class="border-b border-border px-[0.7rem] py-[0.6rem] text-left align-middle bg-surface-2/62 text-muted font-mono text-[0.78rem] uppercase"></th>
 			</tr>
 		</thead>
 		<tbody>
 			{#each jellyfinSongs as song}
 				<tr>
-					<td><strong>{song.title}</strong></td>
-					<td>{song.artist}</td>
-					<td>{song.album}</td>
-					<td><button onclick={() => queueSong(song)}>Queue</button></td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle"><strong>{song.title}</strong></td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{song.artist}</td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle">{song.album}</td>
+					<td class="border-b border-border px-[0.7rem] py-[0.6rem] align-middle"><button onclick={() => queueSong(song)}>Queue</button></td>
 				</tr>
 			{/each}
 		</tbody>
@@ -1006,449 +845,40 @@
 </section>
 
 <style>
-	.heading,
-	.section-title {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 12px;
-		flex-wrap: wrap;
-	}
-
-	h1,
-	h2,
-	h3,
-	p {
-		margin: 0;
-	}
-
-	h1 {
-		font-family: var(--font-display);
-		font-size: clamp(42px, 6vw, 76px);
-		line-height: 0.94;
-	}
-
-	h2 {
-		font-family: var(--font-display);
-		font-size: clamp(22px, 2vw, 30px);
-		line-height: 1.04;
-	}
-
-	h3 {
-		font-size: 0.95rem;
-	}
-
-	.heading p,
-	.section-title span,
-	td span {
-		color: var(--muted);
-		font-size: 0.84rem;
-	}
-
-	.heading {
-		position: relative;
-		overflow: hidden;
-		min-height: 210px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background:
-			linear-gradient(
-				145deg,
-				color-mix(in oklch, var(--surface) 92%, transparent),
-				color-mix(in oklch, var(--surface-2) 58%, transparent)
-			);
-		box-shadow: var(--shadow);
-		padding: clamp(22px, 5vw, 52px);
-	}
-
-	.heading::after {
-		content: '';
-		position: absolute;
-		right: clamp(18px, 5vw, 64px);
-		bottom: clamp(18px, 5vw, 54px);
-		width: min(28vw, 250px);
-		aspect-ratio: 1;
-		border-radius: var(--radius-lg);
-		background:
-			radial-gradient(
-				circle at 48% 48%,
-				color-mix(in oklch, var(--fg) 28%, transparent) 0 12%,
-				transparent 13%
-			),
-			conic-gradient(from 230deg, var(--fg), var(--accent), var(--accent-2), var(--surface-2), var(--fg));
-		opacity: 0.22;
-		pointer-events: none;
-	}
-
-	.heading > * {
-		position: relative;
-		z-index: 1;
-	}
-
-	.heading-actions {
-		display: flex;
-		gap: 8px;
-	}
-
-	.section-title {
-		margin-bottom: 8px;
-	}
-
-	.column-controls {
-		display: flex;
-		flex-wrap: wrap;
-		justify-content: flex-end;
-		gap: 8px 12px;
-	}
-
-	.column-controls label {
-		display: flex;
-		align-items: center;
-		gap: 5px;
-		color: var(--muted);
-		font-size: 0.82rem;
-	}
-
-	.column-controls input {
-		width: auto;
-		min-width: 0;
-		padding: 0;
-	}
-
-	.scan {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: center;
-		gap: 8px;
-		margin-bottom: 8px;
-	}
-
-	input,
-	select {
-		flex: 1;
-		min-width: min(100%, 160px);
-		border: 1px solid var(--border);
-		border-radius: 999px;
-		background: color-mix(in oklch, var(--surface) 88%, transparent);
-		color: var(--fg);
-		padding: 0.5rem 0.65rem;
-	}
-
-	input::placeholder {
-		color: color-mix(in oklch, var(--muted) 72%, transparent);
-	}
-
-	.country-input {
-		flex: 0 0 72px;
-		min-width: 72px;
-		text-transform: uppercase;
-	}
-
-	.content-section {
-		margin-top: 24px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 90%, transparent);
-		padding: 18px;
-	}
-
-	.track-inspector {
-		margin-top: 10px;
-	}
-
-	.track-inspector dl {
-		display: grid;
-		grid-template-columns: repeat(4, minmax(0, 1fr));
-		gap: 12px 16px;
-		margin: 14px 0 0;
-	}
-
-	.track-inspector dl div {
-		min-width: 0;
-	}
-
-	.track-inspector .wide {
-		grid-column: 1 / -1;
-	}
-
-	dt {
-		color: var(--muted);
-		font-family: var(--font-mono);
-		font-size: 0.76rem;
-		text-transform: uppercase;
-	}
-
-	dd {
-		margin: 3px 0 0;
-		overflow-wrap: anywhere;
-	}
-
-	.lyrics-panel,
-	.metadata-panel {
-		display: grid;
-		gap: 8px;
-		margin-top: 14px;
-		border-top: 1px solid var(--border);
-		padding-top: 12px;
-	}
-
-	.lyrics-panel pre {
-		max-height: 220px;
-		overflow: auto;
-		margin: 0;
-		white-space: pre-wrap;
-		font:
-			0.84rem/1.45 ui-monospace,
-			SFMono-Regular,
-			Menlo,
-			monospace;
-	}
-
-	.playlist-tools {
-		display: flex;
-		gap: 8px;
-		min-width: min(100%, 440px);
-	}
-
-	.playlist-grid {
+	.library-playlist-grid {
 		display: grid;
 		grid-template-columns: minmax(180px, 260px) minmax(0, 1fr);
 		gap: 14px;
 		margin-top: 10px;
 	}
 
-	.playlist-list,
-	.playlist-detail {
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-		background: color-mix(in oklch, var(--surface-2) 42%, transparent);
-		padding: 10px;
-	}
-
-	.playlist-list {
-		display: grid;
-		align-content: start;
-		gap: 6px;
-	}
-
-	.playlist-list button {
-		display: flex;
-		justify-content: space-between;
-		gap: 8px;
-		text-align: left;
-	}
-
-	.playlist-list button.selected {
-		background: color-mix(in oklch, var(--success) 14%, var(--surface));
-		border-color: color-mix(in oklch, var(--success) 48%, var(--border));
-	}
-
-	.playlist-list small {
-		color: var(--muted);
-		white-space: nowrap;
-	}
-
-	.playlist-detail {
-		display: grid;
-		gap: 10px;
-	}
-
-	.remote-playlists {
+	.library-scan-row {
 		display: flex;
 		flex-wrap: wrap;
+		align-items: center;
 		gap: 8px;
 		margin-bottom: 8px;
 	}
 
-	.remote-playlists button {
+	.track-inspector-dl {
 		display: grid;
-		gap: 2px;
-		min-width: 150px;
-		text-align: left;
-	}
-
-	.remote-playlists button.selected {
-		background: color-mix(in oklch, var(--success) 14%, var(--surface));
-		border-color: color-mix(in oklch, var(--success) 48%, var(--border));
-	}
-
-	.remote-playlists small {
-		color: var(--muted);
-	}
-
-	.playlist-detail ol {
-		margin: 0;
-		padding-left: 20px;
-	}
-
-	.playlist-detail li {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 8px;
-		padding: 5px 0;
-	}
-
-	table {
-		width: 100%;
-		margin-top: 10px;
-		border-collapse: collapse;
-		background: color-mix(in oklch, var(--surface) 84%, transparent);
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-		overflow: hidden;
-	}
-
-	th,
-	td {
-		border-bottom: 1px solid var(--border);
-		padding: 0.6rem 0.7rem;
-		text-align: left;
-		vertical-align: middle;
-	}
-
-	th {
-		background: color-mix(in oklch, var(--surface-2) 62%, transparent);
-		color: var(--muted);
-		font-family: var(--font-mono);
-		font-size: 0.78rem;
-		text-transform: uppercase;
-	}
-
-	.sort-button {
-		border: 0;
-		background: transparent;
-		color: inherit;
-		padding: 0;
-		text-transform: inherit;
-		font-size: inherit;
-		font-weight: 700;
-	}
-
-	.sort-button:hover {
-		background: transparent;
-		color: var(--accent);
-		text-decoration: none;
-	}
-
-	td:first-child {
-		display: grid;
-		gap: 2px;
-	}
-
-	.actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 6px;
-		white-space: nowrap;
-	}
-
-	.error,
-	.message {
-		margin-top: 12px;
-		padding: 0.65rem 0.8rem;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-	}
-
-	.error {
-		background: color-mix(in oklch, var(--danger) 20%, var(--surface));
-		color: color-mix(in oklch, var(--danger) 72%, var(--fg));
-	}
-
-	.message {
-		background: color-mix(in oklch, var(--success) 18%, var(--surface));
-		color: color-mix(in oklch, var(--success) 82%, var(--fg));
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 12px 16px;
+		margin: 14px 0 0;
 	}
 
 	@media (max-width: 1180px) and (min-width: 761px) {
-		.heading {
-			min-height: 280px;
-			padding: clamp(24px, 5vw, 48px);
-		}
-
-		.heading::after {
-			width: min(34vw, 260px);
-		}
-
-		.playlist-grid {
-			grid-template-columns: minmax(210px, 0.42fr) minmax(0, 1fr);
-		}
-
-		.track-inspector dl {
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-		}
+		.library-playlist-grid { grid-template-columns: minmax(210px, 0.42fr) minmax(0, 1fr); }
+		.track-inspector-dl { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 	}
 
 	@media (max-width: 760px) {
-		.heading {
-			min-height: 240px;
-			padding: 22px;
-		}
-
-		.heading::after {
-			right: 18px;
-			bottom: 18px;
-			width: min(64vw, 250px);
-			opacity: 0.16;
-		}
-
-		h1 {
-			font-size: clamp(38px, 12vw, 58px);
-		}
-
-		.section-title {
-			align-items: flex-start;
-		}
-
-		.scan {
-			flex-wrap: wrap;
-		}
-
-		.column-controls {
-			justify-content: flex-start;
-		}
-
-		.playlist-tools {
-			flex-direction: column;
-		}
-
-		.playlist-grid {
-			grid-template-columns: 1fr;
-		}
-
-		.track-inspector dl {
-			grid-template-columns: 1fr 1fr;
-		}
-
-		.content-section {
-			margin-top: 14px;
-			padding: 14px;
-		}
-
-		.actions button {
-			min-height: 34px;
-			padding: 0 0.6rem;
-		}
-
-		table {
-			display: block;
-			overflow-x: auto;
-		}
+		.library-playlist-grid { grid-template-columns: 1fr; }
+		.track-inspector-dl { grid-template-columns: 1fr 1fr; }
+		.library-scan-row { flex-wrap: wrap; }
 	}
 
 	@media (max-width: 520px) {
-		.track-inspector dl {
-			grid-template-columns: 1fr;
-		}
-
-		th,
-		td {
-			padding: 0.55rem 0.6rem;
-		}
-
-		.remote-playlists button {
-			min-width: 100%;
-		}
+		.track-inspector-dl { grid-template-columns: 1fr; }
 	}
 </style>

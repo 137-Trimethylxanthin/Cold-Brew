@@ -537,7 +537,7 @@
 	}
 </script>
 
-<div class={`app-shell ${$page.url.pathname === '/player' ? 'player-shell' : ''}`}>
+<div class="app-shell">
 	<SideNav />
 	<main class="content">
 		<slot />
@@ -568,34 +568,11 @@
 <Toaster />
 
 <style>
-	:global(:root) {
-		--bg: oklch(15% 0.02 60);
-		--surface: oklch(22% 0.026 58);
-		--surface-2: oklch(28% 0.035 58);
-		--surface-3: oklch(34% 0.04 58);
-		--fg: oklch(93% 0.013 80);
-		--muted: oklch(68% 0.023 72);
-		--border: oklch(35% 0.032 60);
-		--accent: oklch(70% 0.13 205);
-		--accent-2: oklch(74% 0.14 78);
-		--success: oklch(70% 0.13 150);
-		--danger: oklch(68% 0.14 30);
-		--shadow: 0 26px 80px color-mix(in oklch, black 34%, transparent);
-		--font-display: 'Iowan Old Style', Charter, Georgia, serif;
-		--font-body:
-			-apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
-		--font-mono: 'JetBrains Mono', 'IBM Plex Mono', ui-monospace, Menlo, monospace;
-		--radius-sm: 12px;
-		--radius-md: 20px;
-		--radius-lg: 32px;
-		--tap: 48px;
-	}
-
 	:global(body) {
 		margin: 0;
-		background: var(--bg);
-		color: var(--fg);
-		font-family: var(--font-body);
+		background: var(--color-bg);
+		color: var(--color-fg);
+		font-family: var(--font-family-body);
 		line-height: 1.45;
 		text-rendering: optimizeLegibility;
 		-webkit-font-smoothing: antialiased;
@@ -603,7 +580,7 @@
 
 	:global(*) {
 		box-sizing: border-box;
-		scrollbar-color: color-mix(in oklch, var(--accent) 55%, var(--border)) transparent;
+		scrollbar-color: oklch(70% 0.13 205 / 0.55) transparent;
 	}
 
 	:global(button),
@@ -615,9 +592,9 @@
 
 	:global(button) {
 		min-height: 38px;
-		border: 1px solid var(--border);
-		background: color-mix(in oklch, var(--surface) 88%, transparent);
-		color: var(--fg);
+		border: 1px solid var(--color-border);
+		background: oklch(22% 0.026 58 / 0.88);
+		color: var(--color-fg);
 		border-radius: 999px;
 		padding: 0.45rem 0.8rem;
 		cursor: pointer;
@@ -625,74 +602,12 @@
 
 	:global(button:hover),
 	:global(button:focus-visible) {
-		border-color: var(--accent);
+		border-color: var(--color-accent);
 		outline: none;
 	}
 
 	:global(button:disabled) {
 		cursor: default;
 		opacity: 0.55;
-	}
-
-	.app-shell {
-		display: grid;
-		grid-template-columns: 230px minmax(0, 1fr) 330px;
-		gap: 18px;
-		min-height: 100vh;
-		padding: 18px 18px 112px;
-	}
-
-	.content {
-		min-width: 0;
-		overflow: hidden;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 92%, transparent);
-		padding: 20px;
-	}
-
-	@media (max-width: 1180px) {
-		.app-shell {
-			grid-template-columns: minmax(250px, 0.42fr) minmax(0, 1fr);
-			gap: 18px;
-			min-height: calc(100vh - 44px);
-			padding: 22px 22px 118px;
-		}
-
-		.content {
-			grid-column: 2;
-			grid-row: 1;
-		}
-	}
-
-	@media (max-width: 880px) {
-		.app-shell {
-			width: min(430px, calc(100% - 24px));
-			min-height: min(880px, calc(100vh - 24px));
-			grid-template-columns: 1fr;
-			grid-template-rows: auto minmax(0, 1fr);
-			gap: 0;
-			margin: 12px auto 132px;
-			overflow: hidden;
-			border: 1px solid var(--border);
-			border-radius: 38px;
-			background: var(--bg);
-			box-shadow: var(--shadow);
-			padding: 0;
-		}
-
-		.content {
-			grid-column: 1;
-			grid-row: 2;
-			overflow: auto;
-			border: 0;
-			border-radius: 0;
-			background: transparent;
-			padding: 16px;
-		}
-
-		.app-shell.player-shell {
-			margin-bottom: 12px;
-		}
 	}
 </style>

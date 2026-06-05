@@ -4,6 +4,7 @@
 	import * as Sheet from '$lib/components/ui/sheet';
 	import * as Table from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button';
+	import { Play, ListPlus, Plus, Info } from '@lucide/svelte';
 	import type {
 		LibraryTrack,
 		ListeningHistoryEntry,
@@ -496,68 +497,73 @@
 			{/each}
 		</div>
 	</div>
-	<Table.Root class="w-full rounded-[20px] overflow-hidden border border-border">
+	<div class="overflow-auto rounded-[20px] border border-border">
+	<Table.Root class="w-full table-fixed">
 		<Table.Header>
 			<Table.Row>
-				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
-					<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('title')}>
+				<Table.Head class="w-2/5 h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+					<Button variant="ghost" size="sm" class="-mx-2 truncate max-w-full" onclick={() => sortLocalTracks('title')}>
 						Title {sortIndicator('title')}
 					</Button>
 				</Table.Head>
 				{#if visibleColumns.artist}
-					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
-						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('artist')}>
+					<Table.Head class="w-1/5 h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+						<Button variant="ghost" size="sm" class="-mx-2 truncate max-w-full" onclick={() => sortLocalTracks('artist')}>
 							Artist {sortIndicator('artist')}
 						</Button>
 					</Table.Head>
 				{/if}
 				{#if visibleColumns.album}
-					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
-						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('album')}>
+					<Table.Head class="w-1/5 h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+						<Button variant="ghost" size="sm" class="-mx-2 truncate max-w-full" onclick={() => sortLocalTracks('album')}>
 							Album {sortIndicator('album')}
 						</Button>
 					</Table.Head>
 				{/if}
 				{#if visibleColumns.quality}
-					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+					<Table.Head class="w-[90px] h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
 						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('quality')}>
 							Quality {sortIndicator('quality')}
 						</Button>
 					</Table.Head>
 				{/if}
 				{#if visibleColumns.duration}
-					<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
+					<Table.Head class="w-[70px] h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider">
 						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('duration')}>
 							Time {sortIndicator('duration')}
 						</Button>
 					</Table.Head>
 				{/if}
-				<Table.Head class="h-10 px-3 text-left align-middle text-muted font-mono text-xs uppercase tracking-wider"></Table.Head>
+				<Table.Head class="w-[140px] h-10 px-2 text-center align-middle text-muted font-mono text-xs uppercase tracking-wider">Actions</Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
-			{#each sortedLocalTracks() as track}
+			{#each sortedLocalTracks().slice(0, 100) as track}
 				<Table.Row class="border-b border-border/60 hover:bg-surface/50 transition-colors">
-					<Table.Cell class="px-3 py-2.5 align-middle">
-						<strong>{track.title}</strong>
-						<span class="text-muted text-sm block">{track.extension.toUpperCase()}{track.has_artwork ? ' / Art' : ''}</span>
+					<Table.Cell class="px-3 py-2 align-middle min-w-0">
+						<div class="truncate">
+							<strong class="text-sm">{track.title}</strong>
+							<span class="text-muted text-xs ml-1.5">{track.extension.toUpperCase()}{track.has_artwork ? ' · Art' : ''}</span>
+						</div>
 					</Table.Cell>
-					{#if visibleColumns.artist}<Table.Cell class="px-3 py-2.5 align-middle">{track.artist ?? ''}</Table.Cell>{/if}
-					{#if visibleColumns.album}<Table.Cell class="px-3 py-2.5 align-middle">{track.album ?? ''}</Table.Cell>{/if}
-					{#if visibleColumns.quality}<Table.Cell class="px-3 py-2.5 align-middle">{formatQuality(track)}</Table.Cell>{/if}
-					{#if visibleColumns.duration}<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(track.duration_ms)}</Table.Cell>{/if}
-					<Table.Cell class="px-3 py-2 align-middle">
-						<div class="flex flex-wrap gap-1.5 whitespace-nowrap">
-							<Button size="sm" class="h-7 px-2.5 text-xs" onclick={() => playLocal(track)}>Play</Button>
-							<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueLocal(track)}>Queue</Button>
-							<Button variant="secondary" size="sm" class="h-7 px-2.5 text-xs" onclick={() => addLocalToPlaylist(track)}>Add</Button>
-							<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => inspectTrack(track)}>Info</Button>
+					{#if visibleColumns.artist}<Table.Cell class="px-3 py-2 align-middle min-w-0"><span class="truncate block text-sm">{track.artist ?? '—'}</span></Table.Cell>{/if}
+					{#if visibleColumns.album}<Table.Cell class="px-3 py-2 align-middle min-w-0"><span class="truncate block text-sm">{track.album ?? '—'}</span></Table.Cell>{/if}
+					{#if visibleColumns.quality}<Table.Cell class="px-3 py-2 align-middle text-sm text-muted font-mono">{formatQuality(track)}</Table.Cell>{/if}
+					{#if visibleColumns.duration}<Table.Cell class="px-3 py-2 align-middle text-sm text-muted font-mono tabular-nums">{formatDuration(track.duration_ms)}</Table.Cell>{/if}
+					<Table.Cell class="px-1.5 py-1.5 align-middle">
+						<div class="flex justify-center gap-1">
+							<Button size="sm" class="h-7 w-7 p-0" onclick={() => playLocal(track)} aria-label="Play"><Play class="size-3.5" /></Button>
+							<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => queueLocal(track)} aria-label="Queue"><ListPlus class="size-3.5" /></Button>
+							<Button variant="secondary" size="sm" class="h-7 w-7 p-0" onclick={() => addLocalToPlaylist(track)} aria-label="Add to playlist"><Plus class="size-3.5" /></Button>
+							<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => inspectTrack(track)} aria-label="Track info"><Info class="size-3.5" /></Button>
 						</div>
 					</Table.Cell>
 				</Table.Row>
 			{/each}
 		</Table.Body>
 	</Table.Root>
+	</div>
+
 </section>
 
 <Sheet.Sheet bind:open={trackInspectorOpen}>

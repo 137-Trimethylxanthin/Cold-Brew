@@ -23,8 +23,8 @@ serde = { version = "1.0", features = ["derive"] }
 tauri = { version = "2.11.2", features = [] }
 reqwest = { version = "0.12.24", features = ["json"] }
 lazy_static = "1.4.0"
-ezsockets = {version="0.6.2", features= ["server", "tungstenite"] }
-async-trait = {version="0.1.80", features= [] }
+ezsockets = { version = "0.6.2", features = ["server", "tungstenite"] }
+async-trait = { version = "0.1.80", features = [] }
 tracing-subscriber = "0.3.18"
 tokio = { version = "1.37.0", features = ["full"] }
 rusqlite = { version = "0.37.0", features = ["bundled"] }
@@ -44,7 +44,9 @@ tempfile = "3.27.0"
 linux-keyutils-keyring-store = "1.0.0"
 
 [target.'cfg(any(target_os = "linux", target_os = "freebsd"))'.dependencies]
-dbus-secret-service-keyring-store = { version = "1.0.0", features = ["crypto-rust"] }
+dbus-secret-service-keyring-store = { version = "1.0.0", features = [
+  "crypto-rust",
+] }
 
 [target.'cfg(any(target_os = "macos", target_os = "ios"))'.dependencies]
 apple-native-keyring-store = { version = "1.0.0", features = ["keychain"] }

@@ -351,8 +351,8 @@ pub fn get_track_cover_art(path: String) -> Result<CoverArt, String> {
         return Err(format!("File not found: {}", file_path.display()));
     }
 
-    let tagged_file =
-        lofty::read_from_path(file_path).map_err(|error| format!("Could not read audio file: {error}"))?;
+    let tagged_file = lofty::read_from_path(file_path)
+        .map_err(|error| format!("Could not read audio file: {error}"))?;
 
     let tag = tagged_file
         .primary_tag()

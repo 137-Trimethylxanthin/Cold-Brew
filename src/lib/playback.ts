@@ -29,7 +29,8 @@ export function formatSource(source: string): string {
 export function playbackQualityLabel(status: PlaybackStatus): string {
 	const parts: string[] = [];
 	if (status.source_format) parts.push(status.source_format.toUpperCase());
-	if (status.source_is_lossless !== null) parts.push(status.source_is_lossless ? 'lossless' : 'lossy');
+	if (status.source_is_lossless !== null)
+		parts.push(status.source_is_lossless ? 'lossless' : 'lossy');
 	if (status.source_sample_rate) parts.push(formatSampleRate(status.source_sample_rate));
 	if (status.source_channels) parts.push(`${status.source_channels} ch`);
 	if (status.output_sample_rate) parts.push(`out ${formatSampleRate(status.output_sample_rate)}`);

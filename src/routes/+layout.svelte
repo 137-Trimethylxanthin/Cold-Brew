@@ -1,26 +1,19 @@
 <script lang="ts">
 	import '../app.css';
-	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
+	import { toast, Toaster } from 'svelte-sonner';
 	import type { PlaybackStatus, QueuePlaybackResult, QueueSnapshot, Song } from '$lib/types';
+	import { playbackStatus, currentSong, volume } from '$lib/stores';
+	import { toErrorMessage, playbackQualityLabel, formatSource, formatSampleRate, formatDb, titleFromPath, emptySong } from '$lib/playback';
+	import SideNav from '$lib/components/SideNav.svelte';
+	import QueuePanel from '$lib/components/QueuePanel.svelte';
+	import MiniPlayer from '$lib/components/MiniPlayer.svelte';
 
-	let currentSong: Song = {
-		title: 'Nothing playing',
-		artist: '',
-		album: '',
-		duration: 0,
-		id: ''
-	};
 	let oldSongs: Song[] = [];
 	let upcomingSongs: Song[] = [];
-	let playbackStatus: PlaybackStatus | null = null;
 	let nativePlaybackActive = false;
-	let draggedUpcomingIndex: number | null = null;
-	let dragOverUpcomingIndex: number | null = null;
-	let volume = 1;
-	let playerError = '';
 	let spotifySdkPromise: Promise<void> | null = null;
 	let spotifyPlayer: SpotifyPlayer | null = null;
 	let spotifyDeviceId: string | null = null;
@@ -35,10 +28,6 @@
 	let spotifyDurationMs: number | null = null;
 	let spotifyStateUpdatedAt = 0;
 	let spotifyLastQueueSyncId: string | null = null;
-	const spectrumBars = [
-		64, 36, 86, 48, 74, 42, 92, 58, 30, 80, 54, 70, 44, 96, 62, 34, 76, 50, 88, 46,
-		68, 38, 82, 56, 72, 40, 90, 52
-	] as const;
 
 	onMount(() => {
 		void refreshQueue();
@@ -52,7 +41,7 @@
 			if (isTypingTarget(event.target)) return;
 			if (event.code === 'Space') {
 				event.preventDefault();
-				if (playbackStatus?.playing || spotifyIsPlaying()) {
+				if ($playbackStatus?.playing || spotifyIsPlaying()) {
 					void pausePlayback();
 				} else if (canStartPlayback()) {
 					void resumePlayback();
@@ -90,7 +79,7 @@
 			const state = await spotifyPlayer.getCurrentState();
 			if (state) syncSpotifyState(state);
 		} catch (error) {
-			playerError = toErrorMessage(error);
+			toast.error(toErrorMessage(error));
 		}
 	}
 
@@ -107,9 +96,9 @@
 		upcomingSongs = queue.upcoming;
 
 		if (!nativePlaybackActive && queue.current_song) {
-			currentSong = queue.current_song;
+			$currentSong = queue.current_song;
 		} else if (!nativePlaybackActive && !queue.current_song && !spotifyPlaybackActive) {
-			currentSong = emptySong();
+			$currentSong = emptySong();
 		}
 	}
 
@@ -119,7 +108,6 @@
 			if (spotifyPlaybackActive) await pauseSpotifyPlayback(false);
 			spotifyPlaybackActive = false;
 			syncPlaybackStatus(result.playback_status);
-			playerError = '';
 			return;
 		}
 
@@ -128,13 +116,13 @@
 			try {
 				await playSpotifySong(song, result.queue);
 			} catch (error) {
-				playerError = toErrorMessage(error);
+				toast.error(toErrorMessage(error));
 			}
 			return;
 		}
 
 		if (result.message) {
-			playerError = result.message;
+			toast.error(result.message);
 		}
 	}
 
@@ -152,53 +140,15 @@
 		);
 	}
 
-	function startQueueDrag(event: DragEvent, index: number) {
-		draggedUpcomingIndex = index;
-		dragOverUpcomingIndex = index;
-		if (event.dataTransfer) {
-			event.dataTransfer.effectAllowed = 'move';
-			event.dataTransfer.setData('text/plain', String(index));
-		}
-	}
-
-	function allowQueueDrop(event: DragEvent, index: number) {
-		event.preventDefault();
-		dragOverUpcomingIndex = index;
-		if (event.dataTransfer) {
-			event.dataTransfer.dropEffect = 'move';
-		}
-	}
-
-	async function dropQueuedSong(event: DragEvent, toIndex: number) {
-		event.preventDefault();
-		const transferIndex = Number(event.dataTransfer?.getData('text/plain'));
-		const fromIndex =
-			draggedUpcomingIndex ?? (Number.isInteger(transferIndex) ? transferIndex : null);
-		endQueueDrag();
-		if (fromIndex === null) return;
-		await moveQueuedSong(fromIndex, toIndex);
-	}
-
-	function leaveQueueDrop(index: number) {
-		if (dragOverUpcomingIndex === index) {
-			dragOverUpcomingIndex = null;
-		}
-	}
-
-	function endQueueDrag() {
-		draggedUpcomingIndex = null;
-		dragOverUpcomingIndex = null;
-	}
-
 	function syncPlaybackStatus(status: PlaybackStatus) {
-		playbackStatus = status;
-		volume = status.volume;
+		$playbackStatus = status;
+		$volume = status.volume;
 
 		if (status.current_path) {
 			if (spotifyPlaybackActive) void pauseSpotifyPlayback(false);
 			spotifyPlaybackActive = false;
 			nativePlaybackActive = true;
-			currentSong = {
+			$currentSong = {
 				id: status.current_path,
 				title: status.current_title ?? titleFromPath(status.current_path),
 				artist: playbackQualityLabel(status),
@@ -211,7 +161,7 @@
 			};
 		} else if (nativePlaybackActive) {
 			nativePlaybackActive = false;
-			if (!spotifyPlaybackActive) currentSong = emptySong();
+			if (!spotifyPlaybackActive) $currentSong = emptySong();
 		}
 	}
 
@@ -232,10 +182,9 @@
 			}
 			spotifyPaused = false;
 			spotifyStateUpdatedAt = Date.now();
-			playerError = '';
 			return;
 		}
-		if (playbackStatus?.current_path) {
+		if ($playbackStatus?.current_path) {
 			syncPlaybackStatus(await invoke<PlaybackStatus>('playback_resume'));
 			return;
 		}
@@ -253,7 +202,7 @@
 			spotifyPlaybackActive = false;
 			spotifyPaused = true;
 			spotifyPositionMs = 0;
-			if (!nativePlaybackActive) currentSong = emptySong();
+			if (!nativePlaybackActive) $currentSong = emptySong();
 			return;
 		}
 		syncPlaybackStatus(await invoke<PlaybackStatus>('playback_stop'));
@@ -261,18 +210,19 @@
 
 	async function updateVolume(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
-		volume = Number(input.value);
+		const vol = Number(input.value);
+		$volume = vol;
 		if (spotifyPlaybackActive) {
 			if (spotifyPlayer && spotifyReady) {
-				await spotifyPlayer.setVolume(volume);
+				await spotifyPlayer.setVolume(vol);
 			} else {
-				await spotifyApiFetch(`/me/player/volume?volume_percent=${Math.round(volume * 100)}`, {
+				await spotifyApiFetch(`/me/player/volume?volume_percent=${Math.round(vol * 100)}`, {
 					method: 'PUT'
 				});
 			}
 			return;
 		}
-		syncPlaybackStatus(await invoke<PlaybackStatus>('set_playback_volume', { volume }));
+		syncPlaybackStatus(await invoke<PlaybackStatus>('set_playback_volume', { volume: vol }));
 	}
 
 	async function playPreviousQueueSong() {
@@ -285,15 +235,15 @@
 
 	async function playSpotifySong(song: Song, queue: QueueSnapshot) {
 		if (!song.uri?.startsWith('spotify:')) {
-			playerError = 'Queued Spotify track is missing a Spotify URI.';
+			toast.error('Queued Spotify track is missing a Spotify URI.');
 			return;
 		}
 		if (song.playable === false) {
-			playerError = 'This Spotify track is not playable for the current account or market.';
+			toast.error('This Spotify track is not playable for the current account or market.');
 			return;
 		}
 
-		if (playbackStatus?.current_path) {
+		if ($playbackStatus?.current_path) {
 			syncPlaybackStatus(await invoke<PlaybackStatus>('playback_stop'));
 		}
 
@@ -305,7 +255,7 @@
 			method: 'PUT',
 			body: JSON.stringify({ uris: spotifyQueueUris(queue), position_ms: 0 })
 		});
-		currentSong = song;
+		$currentSong = song;
 		spotifyPlaybackActive = true;
 		spotifyPaused = false;
 		spotifyStoppedByApp = false;
@@ -313,7 +263,6 @@
 		spotifyPositionMs = 0;
 		spotifyDurationMs = song.duration ? Math.round(song.duration / 10000) : null;
 		spotifyStateUpdatedAt = Date.now();
-		playerError = '';
 	}
 
 	async function spotifyPlaybackDeviceId() {
@@ -326,7 +275,7 @@
 			});
 			return deviceId;
 		} catch (error) {
-			playerError = `${toErrorMessage(error)} Falling back to the active Spotify device.`;
+			toast.error(`${toErrorMessage(error)} Falling back to the active Spotify device.`);
 			return null;
 		}
 	}
@@ -393,12 +342,12 @@
 
 		const player = new window.Spotify.Player({
 			name: 'Cold-Brew',
-			volume,
+			volume: $volume,
 			getOAuthToken: (callback) => {
 				void getSpotifyToken()
 					.then(callback)
 					.catch((error) => {
-						playerError = toErrorMessage(error);
+						toast.error(toErrorMessage(error));
 					});
 			}
 		});
@@ -424,8 +373,9 @@
 			'playback_error'
 		] as const) {
 			player.addListener(event, (error) => {
-				playerError = `Spotify ${event.replaceAll('_', ' ')}: ${error.message}`;
-				spotifyRejectDevice?.(new Error(playerError));
+				const msg = `Spotify ${event.replaceAll('_', ' ')}: ${error.message}`;
+				toast.error(msg);
+				spotifyRejectDevice?.(new Error(msg));
 				if (event === 'authentication_error') void refreshSpotifyToken();
 			});
 		}
@@ -527,7 +477,7 @@
 					syncQueueSnapshot
 				);
 			}
-			currentSong = {
+			$currentSong = {
 				id: queueId,
 				title: state.track_window.current_track.name,
 				artist: state.track_window.current_track.artists.map((artist) => artist.name).join(', '),
@@ -553,143 +503,13 @@
 		return spotifyPlaybackActive && !spotifyPaused;
 	}
 
-	function currentSpotifyPositionMs() {
-		if (!spotifyPlaybackActive) return 0;
-		if (spotifyPaused) return spotifyPositionMs;
-		const elapsedMs = Date.now() - spotifyStateUpdatedAt;
-		return Math.min(
-			spotifyDurationMs ?? spotifyPositionMs + elapsedMs,
-			spotifyPositionMs + elapsedMs
-		);
-	}
-
-	function durationLabel(duration: number) {
-		if (!duration) return '0:00';
-		const totalSeconds = Math.floor(duration / 10000000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-	}
-
-	function formatMilliseconds(durationMs: number) {
-		const totalSeconds = Math.floor(durationMs / 1000);
-		const minutes = Math.floor(totalSeconds / 60);
-		const seconds = totalSeconds % 60;
-		return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-	}
-
-	function playbackTimeLabel() {
-		if (spotifyPlaybackActive && spotifyDurationMs) {
-			return `${formatMilliseconds(currentSpotifyPositionMs())} / ${formatMilliseconds(
-				spotifyDurationMs
-			)}`;
-		}
-		if (!playbackStatus?.current_path) return durationLabel(currentSong.duration);
-		if (!playbackStatus.duration_ms) return formatMilliseconds(playbackStatus.position_ms);
-		return `${formatMilliseconds(playbackStatus.position_ms)} / ${formatMilliseconds(
-			playbackStatus.duration_ms
-		)}`;
-	}
-
-	function playbackProgress() {
-		if (spotifyPlaybackActive && spotifyDurationMs) {
-			return Math.min(100, (currentSpotifyPositionMs() / spotifyDurationMs) * 100);
-		}
-		if (!playbackStatus?.current_path || !playbackStatus.duration_ms) return 0;
-		return Math.min(100, (playbackStatus.position_ms / playbackStatus.duration_ms) * 100);
-	}
-
 	function canStartPlayback() {
 		return Boolean(
 			spotifyPlaybackActive ||
-			playbackStatus?.current_path ||
-			currentSong.id ||
+			$playbackStatus?.current_path ||
+			$currentSong.id ||
 			upcomingSongs.length > 0
 		);
-	}
-
-	function playbackQualityLabel(status: PlaybackStatus) {
-		const parts: string[] = [];
-		if (status.source_format) parts.push(status.source_format);
-		if (status.source_is_lossless !== null)
-			parts.push(status.source_is_lossless ? 'lossless' : 'lossy');
-		if (status.source_sample_rate) parts.push(formatSampleRate(status.source_sample_rate));
-		if (status.source_channels) parts.push(`${status.source_channels} ch`);
-		if (status.output_sample_rate) parts.push(`out ${formatSampleRate(status.output_sample_rate)}`);
-		if (status.replay_gain_db !== null) {
-			parts.push(
-				`RG ${status.replay_gain_source ?? status.replay_gain_mode} ${formatDb(status.replay_gain_db)}`
-			);
-		}
-		if (status.quality_warnings[0]) parts.push(status.quality_warnings[0]);
-		return parts.join(' / ') || 'Local file';
-	}
-
-	function nowPlayingDetail() {
-		if (playerError) return playerError;
-		if (playbackStatus?.current_path) return playbackQualityLabel(playbackStatus);
-		if (spotifyPlaybackActive) return spotifyPaused ? 'Spotify paused' : 'Spotify playing';
-		return (
-			songDetailLabel(currentSong) || currentSong.artist || currentSong.album || 'No active track'
-		);
-	}
-
-	function queuedSongDetail(song: Song) {
-		return songDetailLabel(song) || song.artist || song.album;
-	}
-
-	function songDetailLabel(song: Song) {
-		const parts: string[] = [];
-		if (song.source) parts.push(formatSource(song.source));
-		if (song.quality) parts.push(song.quality);
-		if (song.playable === false) parts.push('metadata only');
-		if (song.external_url) parts.push('link out');
-		return uniqueParts(parts).join(' / ');
-	}
-
-	function formatSource(source: string) {
-		if (source === 'lastfm') return 'Last.fm';
-		if (source === 'qobuz') return 'Qobuz';
-		if (source === 'tidal') return 'TIDAL';
-		if (source === 'youtube') return 'YouTube';
-		if (source === 'spotify') return 'Spotify';
-		if (source === 'jellyfin') return 'Jellyfin';
-		if (source === 'local') return 'Local';
-		return source;
-	}
-
-	function uniqueParts(parts: string[]) {
-		return [...new Set(parts.filter(Boolean))];
-	}
-
-	function formatSampleRate(sampleRate: number) {
-		const value = sampleRate / 1000;
-		return `${Number.isInteger(value) ? value : value.toFixed(1)} kHz`;
-	}
-
-	function formatDb(value: number) {
-		return `${value > 0 ? '+' : ''}${value.toFixed(1)} dB`;
-	}
-
-	function titleFromPath(path: string) {
-		const fileName = path.split(/[\\/]/).pop() ?? 'Untitled';
-		return fileName.replace(/\.[^.]+$/, '') || 'Untitled';
-	}
-
-	function emptySong(): Song {
-		return {
-			title: 'Nothing playing',
-			artist: '',
-			album: '',
-			duration: 0,
-			id: ''
-		};
-	}
-
-	function toErrorMessage(error: unknown) {
-		if (typeof error === 'string') return error;
-		if (error instanceof Error) return error.message;
-		return 'Unexpected playback error.';
 	}
 
 	function isTypingTarget(target: EventTarget | null) {
@@ -699,147 +519,34 @@
 </script>
 
 <div class={`app-shell ${$page.url.pathname === '/player' ? 'player-shell' : ''}`}>
-	<nav class="sidenav" aria-label="Primary">
-		<div class="brand-mark">
-			<span class="brand-dot" aria-hidden="true"></span>
-			<span>Cold Brew</span>
-		</div>
-		<p class="rail-kicker">Audiophile Player</p>
-		<div class="rail-nav">
-			<button onclick={() => goto('/')}>Library</button>
-			<button onclick={() => goto('/player')}>Player</button>
-			<button onclick={() => goto('/settings')}>Audio</button>
-		</div>
-		<section class="rail-status">
-			<p class="eyebrow">Output</p>
-			<strong>{playbackStatus?.output_device_name ?? 'Default device'}</strong>
-			<span>
-				{playbackStatus?.output_sample_rate
-					? `${formatSampleRate(playbackStatus.output_sample_rate)} output`
-					: 'Waiting for playback'}
-			</span>
-		</section>
-	</nav>
-
+	<SideNav />
 	<main class="content">
 		<slot />
 	</main>
-
-	<aside class="queue">
-		<section class="desktop-player">
-			<div class="cover-art" aria-hidden="true"></div>
-			<div class="track-title">
-				<h2>{currentSong.title}</h2>
-				<p>{nowPlayingDetail()}</p>
-			</div>
-			<div class="quality-row">
-				<span class="quality-pill">{formatSource(currentSong.source ?? 'local')}</span>
-				{#if currentSong.quality}
-					<span class="quality-pill hires">{currentSong.quality}</span>
-				{/if}
-			</div>
-			<div class="spectrum" aria-hidden="true">
-				{#each spectrumBars as height}
-					<span style={`--bar-height: ${height}%`}></span>
-				{/each}
-			</div>
-			<div class="progress-block">
-				<div class="durationBar" style={`--progress: ${playbackProgress()}%`} aria-hidden="true"></div>
-				<div class="progress-labels">
-					<span>{playbackTimeLabel()}</span>
-					<span>{playbackStatus?.state ?? (spotifyPlaybackActive ? 'spotify' : 'idle')}</span>
-				</div>
-			</div>
-		</section>
-
-		<section class="queue-panel">
-			<h3>Up next</h3>
-			{#if upcomingSongs.length === 0}
-				<p>Queue is empty</p>
-			{:else}
-				<ol>
-					{#each upcomingSongs as song, index}
-						<li
-							class={`queue-item ${draggedUpcomingIndex === index ? 'dragging' : ''} ${
-								dragOverUpcomingIndex === index && draggedUpcomingIndex !== index ? 'drag-over' : ''
-							}`}
-							draggable="true"
-							ondragstart={(event) => startQueueDrag(event, index)}
-							ondragover={(event) => allowQueueDrop(event, index)}
-							ondragleave={() => leaveQueueDrop(index)}
-							ondrop={(event) => dropQueuedSong(event, index)}
-							ondragend={endQueueDrag}
-						>
-							<span class="queue-track">
-								<strong>{song.title}</strong>
-								{#if queuedSongDetail(song)}
-									<small>{queuedSongDetail(song)}</small>
-								{/if}
-							</span>
-							<button onclick={() => removeQueuedSong(song)}>Remove</button>
-						</li>
-					{/each}
-				</ol>
-			{/if}
-		</section>
-
-		<section class="history-panel">
-			<h3>History</h3>
-			<ol>
-				{#each oldSongs.slice(-4).reverse() as song}
-					<li>
-						<span class="queue-track">
-							<strong>{song.title}</strong>
-							{#if queuedSongDetail(song)}
-								<small>{queuedSongDetail(song)}</small>
-							{/if}
-						</span>
-					</li>
-				{/each}
-			</ol>
-		</section>
-	</aside>
+	<QueuePanel
+		{upcomingSongs}
+		{oldSongs}
+		onRemove={removeQueuedSong}
+		onMove={moveQueuedSong}
+	/>
 </div>
 
-<div class="miniPlayer">
-	<div class="now-playing">
-		<div class="cover" aria-hidden="true"></div>
-		<div>
-			<strong>{currentSong.title}</strong>
-			<span>{nowPlayingDetail()}</span>
-		</div>
-	</div>
-	<span class="time">{playbackTimeLabel()}</span>
-	<div class="durationBar" style={`--progress: ${playbackProgress()}%`} aria-hidden="true"></div>
-	<div class="transport">
-		<button onclick={playPreviousQueueSong} disabled={oldSongs.length === 0}>Prev</button>
-		<button
-			onclick={resumePlayback}
-			disabled={!canStartPlayback() || Boolean(playbackStatus?.playing) || spotifyIsPlaying()}
-			>Play</button
-		>
-		<button onclick={pausePlayback} disabled={!playbackStatus?.playing && !spotifyIsPlaying()}
-			>Pause</button
-		>
-		<button
-			onclick={stopPlayback}
-			disabled={!playbackStatus?.current_path && !spotifyPlaybackActive}>Stop</button
-		>
-		<button onclick={playNextQueueSong} disabled={upcomingSongs.length === 0}>Next</button>
-	</div>
-	<label class="volume">
-		<span>Volume</span>
-		<input
-			type="range"
-			min="0"
-			max="1"
-			step="0.01"
-			value={volume}
-			oninput={updateVolume}
-			aria-label="Playback volume"
-		/>
-	</label>
-</div>
+<MiniPlayer
+	onPlayPrevious={playPreviousQueueSong}
+	onResume={resumePlayback}
+	onPause={pausePlayback}
+	onStop={stopPlayback}
+	onPlayNext={playNextQueueSong}
+	onVolumeChange={updateVolume}
+	canPlay={canStartPlayback()}
+	isPlaying={Boolean($playbackStatus?.playing) || spotifyIsPlaying()}
+	isPauseEnabled={Boolean($playbackStatus?.playing) || spotifyIsPlaying()}
+	isStopEnabled={Boolean($playbackStatus?.current_path) || spotifyPlaybackActive}
+	canPrev={oldSongs.length > 0}
+	canNext={upcomingSongs.length > 0}
+/>
+
+<Toaster />
 
 <style>
 	:global(:root) {
@@ -916,96 +623,6 @@
 		padding: 18px 18px 112px;
 	}
 
-	.sidenav {
-		display: grid;
-		grid-template-rows: auto auto 1fr auto;
-		align-content: start;
-		gap: 20px;
-		min-width: 0;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 92%, transparent);
-		padding: 18px;
-	}
-
-	.brand-mark {
-		display: inline-flex;
-		align-items: center;
-		gap: 10px;
-		font-family: var(--font-display);
-		font-size: 20px;
-		font-weight: 700;
-	}
-
-	.brand-dot {
-		width: 28px;
-		height: 28px;
-		border-radius: 10px;
-		background:
-			radial-gradient(
-				circle at 50% 50%,
-				color-mix(in oklch, var(--surface) 78%, transparent) 0 18%,
-				transparent 19%
-			),
-			conic-gradient(from 210deg, var(--fg), var(--accent), var(--accent-2), var(--fg));
-	}
-
-	.rail-kicker,
-	.queue p,
-	.now-playing span,
-	.progress-labels,
-	.rail-status span {
-		color: var(--muted);
-		font-size: 0.84rem;
-	}
-
-	.eyebrow {
-		margin: 0 0 8px;
-		color: var(--accent);
-		font-family: var(--font-mono);
-		font-size: 0.68rem;
-		letter-spacing: 0.08em;
-		text-transform: uppercase;
-	}
-
-	.rail-nav {
-		display: grid;
-		gap: 8px;
-		align-content: start;
-	}
-
-	.rail-nav button {
-		display: flex;
-		align-items: center;
-		justify-content: flex-start;
-		gap: 9px;
-		min-height: 42px;
-		padding: 0 12px;
-		color: var(--muted);
-		text-align: left;
-	}
-
-	.rail-nav button:hover,
-	.rail-nav button:focus-visible {
-		background: color-mix(in oklch, var(--accent) 11%, var(--surface));
-		color: var(--fg);
-	}
-
-	.rail-status {
-		min-width: 0;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface-2) 56%, transparent);
-		padding: 16px;
-	}
-
-	.rail-status strong {
-		display: block;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
 	.content {
 		min-width: 0;
 		overflow: hidden;
@@ -1013,278 +630,6 @@
 		border-radius: var(--radius-lg);
 		background: color-mix(in oklch, var(--surface) 92%, transparent);
 		padding: 20px;
-	}
-
-	.queue {
-		display: grid;
-		align-content: start;
-		gap: 14px;
-		min-width: 0;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 92%, transparent);
-		padding: 18px;
-		overflow: auto;
-	}
-
-	.desktop-player,
-	.queue-panel,
-	.history-panel {
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface-2) 42%, transparent);
-		padding: 16px;
-	}
-
-	.desktop-player {
-		display: grid;
-		gap: 14px;
-	}
-
-	.app-shell.player-shell .desktop-player {
-		display: none;
-	}
-
-	.queue h3 {
-		margin: 0 0 10px;
-		font-size: 0.78rem;
-		text-transform: uppercase;
-		color: var(--muted);
-	}
-
-	.cover-art,
-	.cover {
-		position: relative;
-		overflow: hidden;
-		background:
-			radial-gradient(
-				circle at 50% 50%,
-				color-mix(in oklch, var(--surface) 82%, transparent) 0 12%,
-				transparent 13%
-			),
-			conic-gradient(from 235deg, var(--fg), var(--accent), var(--accent-2), var(--surface-2), var(--fg));
-		box-shadow: 0 22px 50px color-mix(in oklch, black 20%, transparent);
-	}
-
-	.cover-art {
-		aspect-ratio: 1;
-		border: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
-		border-radius: var(--radius-lg);
-	}
-
-	.cover-art::before,
-	.cover::before {
-		content: '';
-		position: absolute;
-		inset: 8%;
-		border: 1px solid color-mix(in oklch, var(--surface) 52%, transparent);
-		border-radius: inherit;
-	}
-
-	.track-title {
-		display: grid;
-		gap: 5px;
-		min-width: 0;
-	}
-
-	.track-title h2 {
-		overflow: hidden;
-		margin: 0;
-		font-family: var(--font-display);
-		font-size: clamp(24px, 3vw, 34px);
-		line-height: 1.02;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.quality-row {
-		display: flex;
-		flex-wrap: wrap;
-		gap: 8px;
-	}
-
-	.quality-pill {
-		display: inline-flex;
-		align-items: center;
-		min-height: 28px;
-		border: 1px solid var(--border);
-		border-radius: 999px;
-		background: color-mix(in oklch, var(--surface) 72%, transparent);
-		color: var(--muted);
-		font-family: var(--font-mono);
-		font-size: 0.68rem;
-		padding: 0 10px;
-		text-transform: uppercase;
-	}
-
-	.quality-pill.hires {
-		border-color: color-mix(in oklch, var(--accent) 44%, var(--border));
-		color: var(--accent);
-	}
-
-	.spectrum {
-		display: grid;
-		grid-template-columns: repeat(28, minmax(2px, 1fr));
-		align-items: end;
-		gap: 4px;
-		height: 54px;
-	}
-
-	.spectrum span {
-		height: var(--bar-height);
-		min-height: 7px;
-		border-radius: 999px;
-		background: color-mix(in oklch, var(--accent) 72%, var(--surface));
-	}
-
-	.progress-block {
-		display: grid;
-		gap: 8px;
-	}
-
-	.progress-labels {
-		display: flex;
-		justify-content: space-between;
-		font-family: var(--font-mono);
-		font-size: 0.76rem;
-	}
-
-	.queue ol {
-		margin: 0;
-		padding: 0;
-		list-style: none;
-	}
-
-	.queue li.queue-item {
-		display: grid;
-		grid-template-columns: minmax(0, 1fr) auto;
-		align-items: center;
-		gap: 8px;
-		margin-bottom: 8px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-md);
-		background: color-mix(in oklch, var(--surface) 76%, transparent);
-		cursor: grab;
-		padding: 10px;
-	}
-
-	.queue li.queue-item.dragging {
-		opacity: 0.55;
-	}
-
-	.queue li.queue-item.drag-over {
-		border-color: var(--accent);
-		background: color-mix(in oklch, var(--accent) 14%, var(--surface));
-	}
-
-	.queue-track {
-		display: grid;
-		gap: 1px;
-		min-width: 0;
-	}
-
-	.queue-track strong,
-	.queue-track small {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.queue-track small {
-		color: var(--muted);
-		font-size: 0.76rem;
-	}
-
-	.queue li button {
-		min-height: 32px;
-		padding: 0 0.65rem;
-		font-size: 0.76rem;
-	}
-
-	.history-panel li {
-		margin-bottom: 8px;
-		min-width: 0;
-	}
-
-	.miniPlayer {
-		position: fixed;
-		z-index: 10;
-		right: 20px;
-		bottom: 16px;
-		left: 20px;
-		display: grid;
-		grid-template-columns: minmax(220px, 360px) auto minmax(160px, 1fr) auto minmax(130px, 180px);
-		align-items: center;
-		gap: 18px;
-		border: 1px solid var(--border);
-		border-radius: var(--radius-lg);
-		background: color-mix(in oklch, var(--surface) 94%, transparent);
-		backdrop-filter: blur(18px);
-		box-shadow: var(--shadow);
-		padding: 12px 18px;
-		box-sizing: border-box;
-	}
-
-	.now-playing {
-		display: flex;
-		align-items: center;
-		gap: 12px;
-		min-width: 0;
-	}
-
-	.now-playing div:last-child {
-		display: grid;
-		gap: 2px;
-		min-width: 0;
-	}
-
-	.now-playing strong,
-	.now-playing span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.cover {
-		width: 48px;
-		height: 48px;
-		border: 1px solid var(--border);
-		border-radius: 14px;
-		box-shadow: none;
-	}
-
-	.durationBar {
-		height: 8px;
-		border-radius: 999px;
-		background: linear-gradient(
-			90deg,
-			var(--accent) 0 var(--progress, 0%),
-			color-mix(in oklch, var(--surface-3) 70%, transparent) var(--progress, 0%)
-		);
-	}
-
-	.transport {
-		display: flex;
-		gap: 8px;
-	}
-
-	.time {
-		color: var(--muted);
-		font-family: var(--font-mono);
-		font-variant-numeric: tabular-nums;
-		white-space: nowrap;
-	}
-
-	.volume {
-		display: grid;
-		gap: 3px;
-		color: var(--muted);
-		font-size: 0.78rem;
-	}
-
-	.volume input {
-		width: 100%;
-		accent-color: var(--accent);
 	}
 
 	@media (max-width: 1180px) {
@@ -1295,52 +640,9 @@
 			padding: 22px 22px 118px;
 		}
 
-		.sidenav {
-			grid-column: 1;
-			grid-row: 1 / span 2;
-			align-content: start;
-			gap: 14px;
-			padding: 16px;
-		}
-
 		.content {
 			grid-column: 2;
 			grid-row: 1;
-		}
-
-		.rail-status {
-			display: none;
-		}
-
-		.queue {
-			grid-column: 2;
-			grid-row: 2;
-			grid-template-columns: repeat(2, minmax(0, 1fr));
-			align-items: start;
-			overflow: visible;
-		}
-
-		.desktop-player {
-			grid-column: 1 / -1;
-			grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1fr);
-			gap: 20px;
-			align-items: center;
-		}
-
-		.desktop-player .cover-art {
-			grid-row: 1 / span 4;
-		}
-
-		.desktop-player .spectrum {
-			margin: 4px 0;
-		}
-
-		.miniPlayer {
-			grid-template-columns: minmax(190px, 280px) auto minmax(120px, 1fr) auto;
-		}
-
-		.volume {
-			display: none;
 		}
 	}
 
@@ -1360,48 +662,6 @@
 			padding: 0;
 		}
 
-		.sidenav {
-			grid-column: 1;
-			grid-row: 1;
-			grid-template-columns: 1fr auto;
-			grid-template-rows: auto auto;
-			align-items: center;
-			gap: 12px;
-			border: 0;
-			border-bottom: 1px solid var(--border);
-			border-radius: 0;
-			background: color-mix(in oklch, var(--surface) 88%, transparent);
-			padding: 18px 18px 10px;
-		}
-
-		.brand-mark {
-			font-size: 18px;
-		}
-
-		.rail-kicker {
-			display: none;
-		}
-
-		.rail-nav {
-			grid-column: 1 / -1;
-			grid-template-columns: repeat(3, minmax(0, 1fr));
-			gap: 4px;
-			border: 1px solid var(--border);
-			border-radius: 999px;
-			background: color-mix(in oklch, var(--surface) 72%, transparent);
-			padding: 4px;
-		}
-
-		.rail-nav button {
-			justify-content: center;
-			min-height: 40px;
-			border: 0;
-			background: transparent;
-			font-size: 0.78rem;
-			white-space: nowrap;
-			padding: 0 8px;
-		}
-
 		.content {
 			grid-column: 1;
 			grid-row: 2;
@@ -1412,51 +672,8 @@
 			padding: 16px;
 		}
 
-		.rail-status,
-		.queue {
-			display: none;
-		}
-
-		.miniPlayer {
-			right: 0;
-			left: 0;
-			bottom: 12px;
-			width: min(430px, calc(100% - 24px));
-			margin: 0 auto;
-			grid-template-columns: minmax(0, 1fr) auto;
-			gap: 10px;
-			border-radius: 28px;
-			padding: 12px;
-		}
-
 		.app-shell.player-shell {
 			margin-bottom: 12px;
-		}
-
-		.app-shell.player-shell + .miniPlayer {
-			display: none;
-		}
-
-		.now-playing {
-			grid-column: 1 / -1;
-		}
-
-		.transport {
-			grid-column: 1 / -1;
-			justify-content: space-between;
-		}
-
-		.transport button {
-			flex: 1 1 0;
-			min-width: 0;
-			padding: 0 0.45rem;
-			font-size: 0.78rem;
-		}
-
-		.miniPlayer > .durationBar,
-		.miniPlayer > .time,
-		.volume {
-			display: none;
 		}
 	}
 </style>

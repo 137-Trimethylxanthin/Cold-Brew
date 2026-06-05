@@ -4,13 +4,13 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use base64::engine::general_purpose::STANDARD as BASE64;
-use tracing::instrument;
 use base64::Engine;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::prelude::Accessor;
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
+use tracing::instrument;
 use walkdir::WalkDir;
 
 const AUDIO_EXTENSIONS: &[&str] = &[

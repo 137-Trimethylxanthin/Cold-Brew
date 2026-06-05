@@ -1,0 +1,70 @@
+# CSpell config for Cold-Brew
+version: '0.2'
+language: en
+words:
+  # Tech
+  - tauri
+  - svelte
+  - sveltekit
+  - shadcn
+  - tailwindcss
+  - lucide
+  - sonner
+  - vitest
+  - rodio
+  - symphonia
+  - thiserror
+  - dotenvy
+  - reqwest
+  - rusqlite
+  - tokio
+  # Audio
+  - audiophile
+  - gapless
+  - crossfeed
+  - replgain
+  - replaygain
+  - lossless
+  - aiff
+  - flac
+  - mpeg
+  - vorbis
+  - bitrate
+  - codec
+  # Music services
+  - spotify
+  - tidal
+  - qobuz
+  - jellyfin
+  - scrobbling
+  - lastfm
+  # Misc
+  - okclh
+  - minmax
+  - antialiased
+  - subpixel
+  - lucide
+  - trufflehog
+  - clippy
+  - rustfmt
+  - shfmt
+  - taplo
+  - yamllint
+  - markdownlint
+  - shellcheck
+  - oxipng
+  - cspell
+  - biome
+  - svgo
+  - pnpm
+  # Project
+  - maxi
+ignorePaths:
+  - node_modules
+  - src-tauri/target
+  - build
+  - .svelte-kit
+  - .ai
+  - pnpm-lock.yaml
+  - bun.lock
+  - Cargo.lock

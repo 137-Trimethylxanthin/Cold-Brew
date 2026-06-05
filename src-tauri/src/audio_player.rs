@@ -4,12 +4,12 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::Duration;
 
 use lofty::file::TaggedFileExt;
-use tracing::instrument;
 use lofty::tag::ItemKey;
 use rodio::cpal;
 use rodio::cpal::traits::{DeviceTrait, HostTrait};
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 use serde::Serialize;
+use tracing::instrument;
 
 static AUDIO_PLAYER: OnceLock<Mutex<AudioPlayer>> = OnceLock::new();
 

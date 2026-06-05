@@ -15,10 +15,7 @@ pub enum AppError {
     #[error("Serialization error: {0}")]
     Serde(#[from] serde_json::Error),
     #[error("Provider error ({provider}): {message}")]
-    Provider {
-        provider: String,
-        message: String,
-    },
+    Provider { provider: String, message: String },
     #[error("{0}")]
     General(String),
 }

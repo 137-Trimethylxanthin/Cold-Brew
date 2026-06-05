@@ -25,12 +25,38 @@ lint:
 
     # --- Linters ---
     # NOTE: clippy runs via system Rust (`cargo clippy`), not Trunk
-    #       (Trunk bundles Rust 1.65 which is too old for our deps)
     - yamllint@1.38.0 # YAML configs
     - markdownlint@0.48.0 # Markdown docs
     - shellcheck@0.10.0 # Shell script analysis
+    - cspell@8.17.0 # Spell check code
+
+    # --- Assets ---
     - oxipng@10.1.1 # PNG optimization
+    - svgo@3.3.2 # SVG optimization (icons)
+
+    # --- Housekeeping ---
+    - sort-package-json@3.1.0 # Keep package.json tidy
 
     # --- Safety ---
     - git-diff-check # Blocks commits with unformatted code
-    - trufflehog@3.95.5 # Secret scanning (catches leaked keys)
+    - trufflehog@3.95.5 # Secret scanning
+
+  ignore:
+    - linters: [ALL]
+      paths:
+        - node_modules/**
+        - src-tauri/target/**
+        - build/**
+        - .svelte-kit/**
+        - .ai/**
+
+  definitions:
+    - name: cspell
+      files: [svelte, typescript, rust, markdown, json, yaml, toml]
+      direct_configs: [.trunk/configs/.cspell.yaml]
+
+actions:
+  enabled:
+    - trunk-announce
+    - trunk-upgrade-available
+    - git-blame-ignore-revs

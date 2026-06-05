@@ -1,19 +1,19 @@
 {
-  "productName": "cold-brew",
+  "productName": "Cold-Brew",
   "version": "0.1.0",
-  "identifier": "com.tauri.dev",
+  "identifier": "at.maxsitter.coldbrew",
   "build": {
     "frontendDist": "../build",
     "devUrl": "http://localhost:5173",
-    "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeDevCommand": "pnpm run dev",
+    "beforeBuildCommand": "pnpm run build"
   },
   "app": {
     "windows": [
       {
-        "title": "cold-brew",
-        "width": 800,
-        "height": 600,
+        "title": "Cold-Brew",
+        "width": 1200,
+        "height": 760,
         "resizable": true,
         "fullscreen": false
       }

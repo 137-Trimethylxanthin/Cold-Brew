@@ -85,11 +85,11 @@
 	<span class="text-muted font-mono tabular-nums whitespace-nowrap">{playbackTimeLabel()}</span>
 	<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
 	<div class="flex gap-2">
-		<button onclick={onPlayPrevious} disabled={!canPrev}><SkipBack class="size-4" /> Prev</button>
-		<button onclick={onResume} disabled={!canPlay || isPlaying}><Play class="size-4" /> Play</button>
-		<button onclick={onPause} disabled={!isPauseEnabled}><Pause class="size-4" /> Pause</button>
-		<button onclick={onStop} disabled={!isStopEnabled}><Square class="size-4" /> Stop</button>
-		<button onclick={onPlayNext} disabled={!canNext}><SkipForward class="size-4" /> Next</button>
+		<button onclick={onPlayPrevious} disabled={!canPrev} class="rounded-full w-10 h-10" aria-label="Previous track"><SkipBack class="size-5" /></button>
+		<button onclick={onResume} disabled={!canPlay || isPlaying} class="rounded-full w-10 h-10" aria-label="Play"><Play class="size-5" /></button>
+		<button onclick={onPause} disabled={!isPauseEnabled} class="rounded-full w-10 h-10" aria-label="Pause"><Pause class="size-5" /></button>
+		<button onclick={onStop} disabled={!isStopEnabled} class="rounded-full w-10 h-10" aria-label="Stop"><Square class="size-5" /></button>
+		<button onclick={onPlayNext} disabled={!canNext} class="rounded-full w-10 h-10" aria-label="Next track"><SkipForward class="size-5" /></button>
 	</div>
 	<label class="grid gap-[3px] text-muted text-[0.78rem]">
 		<span>Volume</span>

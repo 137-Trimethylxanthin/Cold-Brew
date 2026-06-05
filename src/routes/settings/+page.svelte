@@ -13,6 +13,10 @@
 		ScanSummary
 	} from '$lib/types';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import * as Select from '$lib/components/ui/select';
+	import { Select as SelectPrimitive } from 'bits-ui';
+	import { Input } from '$lib/components/ui/input';
+	import { Button } from '$lib/components/ui/button';
 	import ProviderLoginPanel from '$lib/components/ProviderLoginPanel.svelte';
 
 	let account: JellyfinAccount | null = null;
@@ -450,11 +454,16 @@
 				</div>
 				<label class="grid gap-[6px] text-muted text-[0.86rem]">
 					Mode
-					<select bind:value={replayGainMode} onchange={setReplayGainMode} class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem]">
-						<option value="off">Off</option>
-						<option value="track">Track</option>
-						<option value="album">Album</option>
-					</select>
+					<Select.Root bind:value={replayGainMode} onValueChange={setReplayGainMode}>
+						<Select.Trigger class="w-[180px]">
+							<SelectPrimitive.Value placeholder="Select mode" />
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Item value="off">Off</Select.Item>
+							<Select.Item value="track">Track</Select.Item>
+							<Select.Item value="album">Album</Select.Item>
+						</Select.Content>
+					</Select.Root>
 				</label>
 			</section>
 		</Tabs.Content>
@@ -469,12 +478,12 @@
 						{/if}
 					</p>
 				</div>
-				<label class="grid gap-[6px] text-muted text-[0.86rem]">Server URL <input bind:value={baseUrl} placeholder="https://jellyfin.example" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-				<label class="grid gap-[6px] text-muted text-[0.86rem]">Username <input bind:value={userName} autocomplete="username" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-				<label class="grid gap-[6px] text-muted text-[0.86rem]">Password <input bind:value={password} type="password" autocomplete="current-password" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
+				<label class="grid gap-[6px] text-muted text-[0.86rem]">Server URL <Input bind:value={baseUrl} placeholder="https://jellyfin.example" class="w-full" /></label>
+				<label class="grid gap-[6px] text-muted text-[0.86rem]">Username <Input bind:value={userName} autocomplete="username" class="w-full" /></label>
+				<label class="grid gap-[6px] text-muted text-[0.86rem]">Password <Input bind:value={password} type="password" autocomplete="current-password" class="w-full" /></label>
 				<div class="flex flex-wrap gap-2">
-					<button onclick={saveAccount}>Save</button>
-					<button onclick={clearAccount}>Clear</button>
+					<Button onclick={saveAccount}>Save</Button>
+					<Button variant="outline" onclick={clearAccount}>Clear</Button>
 				</div>
 			</section>
 
@@ -486,23 +495,30 @@
 
 				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
 					<label class="grid gap-[6px] text-muted text-[0.86rem]">Service
-						<select bind:value={selectedProviderId} class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem]">
-							{#each credentialProviderOptions() as provider}<option value={provider.id}>{provider.name}</option>{/each}
-						</select>
+						<Select.Root bind:value={selectedProviderId}>
+							<Select.Trigger class="w-full">
+								<SelectPrimitive.Value placeholder="Select service" />
+							</Select.Trigger>
+							<Select.Content>
+								{#each credentialProviderOptions() as provider}
+									<Select.Item value={provider.id}>{provider.name}</Select.Item>
+								{/each}
+							</Select.Content>
+						</Select.Root>
 					</label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Account label <input bind:value={providerDisplayName} placeholder="Personal account" autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Client ID / App ID <input bind:value={providerClientId} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Client secret / App secret <input bind:value={providerClientSecret} type="password" autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">API key <input bind:value={providerApiKey} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">API secret <input bind:value={providerApiSecret} type="password" autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Access token / Session key <input bind:value={providerAccessToken} type="password" autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Refresh token <input bind:value={providerRefreshToken} type="password" autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
+					<label class="grid gap-[6px] text-muted text-[0.86rem]">Account label <Input bind:value={providerDisplayName} placeholder="Personal account" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-muted text-[0.86rem]">Client ID / App ID <Input bind:value={providerClientId} autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-muted text-[0.86rem]">Client secret / App secret <Input bind:value={providerClientSecret} type="password" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-muted text-[0.86rem]">API key <Input bind:value={providerApiKey} autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-muted text-[0.86rem]">API secret <Input bind:value={providerApiSecret} type="password" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-muted text-[0.86rem]">Access token / Session key <Input bind:value={providerAccessToken} type="password" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-muted text-[0.86rem]">Refresh token <Input bind:value={providerRefreshToken} type="password" autocomplete="off" class="w-full" /></label>
 				</div>
 
 				<div class="flex flex-wrap gap-2">
-					<button onclick={saveProviderAccount}>Save provider credentials</button>
-					<button onclick={clearProviderAccount}>Clear selected service</button>
-					<button onclick={refreshProviderCredentialStatus}>Refresh status</button>
+					<Button onclick={saveProviderAccount}>Save provider credentials</Button>
+					<Button variant="outline" onclick={clearProviderAccount}>Clear selected service</Button>
+					<Button variant="secondary" onclick={refreshProviderCredentialStatus}>Refresh status</Button>
 				</div>
 
 				{#if providerLoginStateRows().length > 0}
@@ -530,57 +546,57 @@
 
 				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
 					<ProviderLoginPanel providerId="spotify" providerName="Spotify" description="OAuth PKCE" loginState={loginStateForProvider('spotify')}>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <input bind:value={spotifyRedirectUri} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <input bind:value={spotifyScope} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-						<div class="flex flex-wrap gap-2"><button onclick={completeSpotifyLoginInBrowser}>Login in browser</button><button onclick={startSpotifyLogin}>Manual login URL</button><button onclick={refreshSpotifyToken}>Refresh Spotify token</button></div>
+						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <Input bind:value={spotifyRedirectUri} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <Input bind:value={spotifyScope} autocomplete="off" class="w-full" /></label>
+						<div class="flex flex-wrap gap-2"><Button onclick={completeSpotifyLoginInBrowser}>Login in browser</Button><Button variant="secondary" onclick={startSpotifyLogin}>Manual login URL</Button><Button variant="secondary" onclick={refreshSpotifyToken}>Refresh Spotify token</Button></div>
 						{#if spotifyAuthorizationUrl}
 							<a class="text-accent text-[0.86rem]" href={spotifyAuthorizationUrl} target="_blank" rel="noreferrer">Open Spotify authorization</a>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <input bind:value={spotifyAuthorizationCode} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <input bind:value={spotifyAuthorizationState} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-							<div class="flex flex-wrap gap-2"><button onclick={finishSpotifyLogin}>Finish Spotify login</button></div>
+							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <Input bind:value={spotifyAuthorizationCode} autocomplete="off" class="w-full" /></label>
+							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <Input bind:value={spotifyAuthorizationState} autocomplete="off" class="w-full" /></label>
+							<div class="flex flex-wrap gap-2"><Button onclick={finishSpotifyLogin}>Finish Spotify login</Button></div>
 						{/if}
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="tidal" providerName="TIDAL" description="OAuth PKCE" loginState={loginStateForProvider('tidal')}>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <input bind:value={tidalRedirectUri} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <input bind:value={tidalScope} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-						<div class="flex flex-wrap gap-2"><button onclick={startTidalLogin}>Start TIDAL login</button><button onclick={refreshTidalToken}>Refresh TIDAL token</button></div>
+						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <Input bind:value={tidalRedirectUri} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <Input bind:value={tidalScope} autocomplete="off" class="w-full" /></label>
+						<div class="flex flex-wrap gap-2"><Button onclick={startTidalLogin}>Start TIDAL login</Button><Button variant="secondary" onclick={refreshTidalToken}>Refresh TIDAL token</Button></div>
 						{#if tidalAuthorizationUrl}
 							<a class="text-accent text-[0.86rem]" href={tidalAuthorizationUrl} target="_blank" rel="noreferrer">Open TIDAL authorization</a>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <input bind:value={tidalAuthorizationCode} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <input bind:value={tidalAuthorizationState} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-							<div class="flex flex-wrap gap-2"><button onclick={finishTidalLogin}>Finish TIDAL login</button></div>
+							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <Input bind:value={tidalAuthorizationCode} autocomplete="off" class="w-full" /></label>
+							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <Input bind:value={tidalAuthorizationState} autocomplete="off" class="w-full" /></label>
+							<div class="flex flex-wrap gap-2"><Button onclick={finishTidalLogin}>Finish TIDAL login</Button></div>
 						{/if}
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="youtube" providerName="YouTube" description="Google OAuth" loginState={loginStateForProvider('youtube')}>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <input bind:value={youtubeRedirectUri} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <input bind:value={youtubeScope} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-						<div class="flex flex-wrap gap-2"><button onclick={startYoutubeLogin}>Start YouTube login</button><button onclick={refreshYoutubeToken}>Refresh YouTube token</button></div>
+						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <Input bind:value={youtubeRedirectUri} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <Input bind:value={youtubeScope} autocomplete="off" class="w-full" /></label>
+						<div class="flex flex-wrap gap-2"><Button onclick={startYoutubeLogin}>Start YouTube login</Button><Button variant="secondary" onclick={refreshYoutubeToken}>Refresh YouTube token</Button></div>
 						{#if youtubeAuthorizationUrl}
 							<a class="text-accent text-[0.86rem]" href={youtubeAuthorizationUrl} target="_blank" rel="noreferrer">Open Google authorization</a>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <input bind:value={youtubeAuthorizationCode} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <input bind:value={youtubeAuthorizationState} autocomplete="off" class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /></label>
-							<div class="flex flex-wrap gap-2"><button onclick={finishYoutubeLogin}>Finish YouTube login</button></div>
+							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <Input bind:value={youtubeAuthorizationCode} autocomplete="off" class="w-full" /></label>
+							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <Input bind:value={youtubeAuthorizationState} autocomplete="off" class="w-full" /></label>
+							<div class="flex flex-wrap gap-2"><Button onclick={finishYoutubeLogin}>Finish YouTube login</Button></div>
 						{/if}
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="lastfm" providerName="Last.fm" description="Desktop session" loginState={loginStateForProvider('lastfm')}>
-						<div class="flex flex-wrap gap-2"><button onclick={startLastFmLogin}>Start Last.fm login</button></div>
+						<div class="flex flex-wrap gap-2"><Button onclick={startLastFmLogin}>Start Last.fm login</Button></div>
 						{#if lastFmAuthorizationUrl}
 							<a class="text-accent text-[0.86rem]" href={lastFmAuthorizationUrl} target="_blank" rel="noreferrer">Open Last.fm authorization</a>
-							<div class="flex flex-wrap gap-2"><button onclick={finishLastFmLogin}>Finish Last.fm login</button></div>
+							<div class="flex flex-wrap gap-2"><Button onclick={finishLastFmLogin}>Finish Last.fm login</Button></div>
 						{/if}
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="qobuz" providerName="Qobuz" description="App credentials" loginState={loginStateForProvider('qobuz')}>
 						<p>{loginStateForProvider('qobuz')?.message ?? 'No Qobuz credentials saved'}</p>
-						<div class="flex flex-wrap gap-2"><button onclick={() => selectProviderCredentials('qobuz')}>Edit Qobuz credentials</button></div>
+						<div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={() => selectProviderCredentials('qobuz')}>Edit Qobuz credentials</Button></div>
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="bandcamp" providerName="Bandcamp" description="Link-out" loginState={loginStateForProvider('bandcamp')}>
 						<p>{loginStateForProvider('bandcamp')?.message ?? 'No Bandcamp login state available'}</p>
-						<div class="flex flex-wrap gap-2"><button onclick={() => selectProviderCredentials('bandcamp')}>Edit Bandcamp note</button></div>
+						<div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={() => selectProviderCredentials('bandcamp')}>Edit Bandcamp note</Button></div>
 						<a class="text-accent text-[0.86rem]" href="https://bandcamp.com/developer" target="_blank" rel="noreferrer">Open Bandcamp developer docs</a>
 					</ProviderLoginPanel>
 				</div>
@@ -614,7 +630,7 @@
 					<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Failed</span><strong class="text-xl">{lastFmScrobbleStatus?.failed_count ?? 0}</strong></div>
 				</div>
 				{#if lastFmScrobbleStatus?.last_error}<p class="text-danger">{lastFmScrobbleStatus.last_error}</p>{/if}
-				<div class="flex flex-wrap gap-2"><button onclick={retryLastFmScrobbles} disabled={!lastFmCredentialsReady()}>Retry pending scrobbles</button><button onclick={loadLastFmScrobbleStatus}>Refresh status</button></div>
+				<div class="flex flex-wrap gap-2"><Button onclick={retryLastFmScrobbles} disabled={!lastFmCredentialsReady()}>Retry pending scrobbles</Button><Button variant="secondary" onclick={loadLastFmScrobbleStatus}>Refresh status</Button></div>
 			</section>
 		</Tabs.Content>
 
@@ -625,11 +641,18 @@
 					<p class="text-muted text-[0.9rem]">{selectedAudioOutputDescription()}</p>
 				</div>
 				<label class="grid gap-[6px] text-muted text-[0.86rem]">Output device
-					<select bind:value={selectedAudioOutput} onchange={selectAudioOutput} class="w-full border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem]">
-						{#each audioOutputs as device}<option value={device.id}>{device.name}</option>{/each}
-					</select>
+					<Select.Root bind:value={selectedAudioOutput} onValueChange={selectAudioOutput}>
+						<Select.Trigger class="w-full">
+							<SelectPrimitive.Value placeholder="Select output device" />
+						</Select.Trigger>
+						<Select.Content>
+							{#each audioOutputs as device}
+								<Select.Item value={device.id}>{device.name}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
 				</label>
-				<div class="flex flex-wrap gap-2"><button onclick={loadAudioOutputs}>Refresh devices</button></div>
+				<div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={loadAudioOutputs}>Refresh devices</Button></div>
 			</section>
 		</Tabs.Content>
 
@@ -639,7 +662,7 @@
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Library Scan</h2>
 					<p class="text-muted text-[0.9rem]">Index local music files for browsing and playback</p>
 				</div>
-				<div class="flex gap-2"><input bind:value={libraryPath} placeholder="/path/to/music" aria-label="Music folder path" class="flex-1 border border-border rounded-full bg-surface/88 text-fg py-[0.55rem] px-[0.65rem] placeholder:text-muted/70" /><button onclick={scanLibrary} disabled={loadingLibrary}>Scan</button></div>
+				<div class="flex gap-2"><Input bind:value={libraryPath} placeholder="/path/to/music" aria-label="Music folder path" class="flex-1" /><Button onclick={scanLibrary} disabled={loadingLibrary}>Scan</Button></div>
 				{#if scanSummary}
 					<div class="grid grid-cols-4 gap-2.5 max-xl:grid-cols-2">
 						<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Scanned</span><strong class="text-xl break-words">{scanSummary.scanned_files}</strong></div>

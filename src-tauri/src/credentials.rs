@@ -197,6 +197,7 @@ pub fn get_provider_account(provider_id: String) -> Result<Option<ProviderAccoun
     }))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn save_provider_account(
     provider_id: String,
     display_name: Option<String>,

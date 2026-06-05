@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 use rusqlite::{params, Connection};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
+use tracing::instrument;
 
 use crate::music_player::Song;
 
@@ -22,6 +23,7 @@ pub struct PlaylistDetail {
     pub tracks: Vec<Song>,
 }
 
+#[instrument(skip(app))]
 pub fn create_playlist(app: &AppHandle, name: String) -> Result<PlaylistDetail, String> {
     let name = normalize_playlist_name(&name)?;
     let connection = open_database(app)?;
@@ -33,6 +35,7 @@ pub fn create_playlist(app: &AppHandle, name: String) -> Result<PlaylistDetail, 
     get_playlist(app, id)
 }
 
+#[instrument(skip(app))]
 pub fn list_playlists(app: &AppHandle) -> Result<Vec<PlaylistSummary>, String> {
     let connection = open_database(app)?;
     initialize_database(&connection)?;
@@ -63,6 +66,7 @@ pub fn list_playlists(app: &AppHandle) -> Result<Vec<PlaylistSummary>, String> {
     Ok(playlists)
 }
 
+#[instrument(skip(app))]
 pub fn get_playlist(app: &AppHandle, playlist_id: i64) -> Result<PlaylistDetail, String> {
     let connection = open_database(app)?;
     initialize_database(&connection)?;
@@ -81,6 +85,7 @@ pub fn get_playlist(app: &AppHandle, playlist_id: i64) -> Result<PlaylistDetail,
     })
 }
 
+#[instrument(skip(app))]
 pub fn add_song_to_playlist(
     app: &AppHandle,
     playlist_id: i64,
@@ -115,6 +120,7 @@ pub fn add_song_to_playlist(
     get_playlist(app, playlist_id)
 }
 
+#[instrument(skip(app))]
 pub fn import_m3u_playlist(
     app: &AppHandle,
     path: String,
@@ -144,6 +150,7 @@ pub fn import_m3u_playlist(
     get_playlist(app, detail.id)
 }
 
+#[instrument(skip(app))]
 pub fn export_m3u_playlist(app: &AppHandle, playlist_id: i64, path: String) -> Result<(), String> {
     let detail = get_playlist(app, playlist_id)?;
     let mut content = String::from("#EXTM3U\n");

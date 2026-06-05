@@ -4,6 +4,7 @@ use std::sync::{Mutex, MutexGuard, OnceLock};
 use std::time::Duration;
 
 use lofty::file::TaggedFileExt;
+use tracing::instrument;
 use lofty::tag::ItemKey;
 use rodio::cpal;
 use rodio::cpal::traits::{DeviceTrait, HostTrait};
@@ -582,28 +583,34 @@ impl ReplayGainMode {
     }
 }
 
+#[instrument]
 pub fn play_gapless_local_tracks(
     tracks: Vec<LocalPlaybackTrack>,
 ) -> Result<PlaybackStatus, String> {
+    tracing::info!(track_count = tracks.len(), "Starting gapless playback");
     let mut player = lock_player()?;
     player.play_gapless_tracks(tracks)
 }
 
+#[instrument]
 pub fn playback_pause() -> Result<PlaybackStatus, String> {
     let mut player = lock_player()?;
     Ok(player.pause())
 }
 
+#[instrument]
 pub fn playback_resume() -> Result<PlaybackStatus, String> {
     let mut player = lock_player()?;
     Ok(player.resume())
 }
 
+#[instrument]
 pub fn playback_stop() -> Result<PlaybackStatus, String> {
     let mut player = lock_player()?;
     Ok(player.stop())
 }
 
+#[instrument]
 pub fn playback_seek(position_ms: u64) -> Result<PlaybackStatus, String> {
     let mut player = lock_player()?;
     player.seek(position_ms)
@@ -624,6 +631,7 @@ pub fn set_replay_gain_mode(mode: String) -> Result<PlaybackStatus, String> {
     player.set_replay_gain_mode(mode)
 }
 
+#[instrument]
 pub fn get_playback_status() -> Result<PlaybackStatus, String> {
     let mut player = lock_player()?;
     Ok(player.status())

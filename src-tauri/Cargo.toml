@@ -25,7 +25,9 @@ reqwest = { version = "0.12.24", features = ["json"] }
 lazy_static = "1.4.0"
 ezsockets = { version = "0.6.2", features = ["server", "tungstenite"] }
 async-trait = { version = "0.1.80", features = [] }
+tracing = "0.1"
 tracing-subscriber = "0.3.18"
+thiserror = "2"
 tokio = { version = "1.37.0", features = ["full"] }
 rusqlite = { version = "0.37.0", features = ["bundled"] }
 walkdir = "2.5.0"

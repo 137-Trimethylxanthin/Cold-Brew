@@ -176,15 +176,15 @@ fn optional_lastfm_auth() -> Result<Option<LastFmAuth>, String> {
     let Some(secrets) = credentials::load_provider_secrets("lastfm")? else {
         return Ok(None);
     };
-    let Some(api_key) = secrets.api_key.and_then(|value| non_empty_owned(value)) else {
+    let Some(api_key) = secrets.api_key.and_then(non_empty_owned) else {
         return Ok(None);
     };
-    let Some(api_secret) = secrets.api_secret.and_then(|value| non_empty_owned(value)) else {
+    let Some(api_secret) = secrets.api_secret.and_then(non_empty_owned) else {
         return Ok(None);
     };
     let Some(session_key) = secrets
         .access_token
-        .and_then(|value| non_empty_owned(value))
+        .and_then(non_empty_owned)
     else {
         return Ok(None);
     };

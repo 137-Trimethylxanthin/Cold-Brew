@@ -9,6 +9,7 @@ use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::net::SocketAddr;
+use tracing::instrument;
 
 lazy_static! {
     static ref QUEUE_MANAGER: Mutex<QueueManager> = Mutex::new(QueueManager::new());
@@ -44,7 +45,7 @@ impl Queue {
     }
 
     fn has_current_song(&self) -> bool {
-        self.current_song.id != ""
+        !self.current_song.id.is_empty()
     }
 
     fn add_song(&mut self, song: Song) {
@@ -199,18 +200,21 @@ impl Queue {
     }
 }
 
+#[instrument]
 pub fn queue_song(song: Song) -> Result<QueueSnapshot, String> {
     let mut queue_manager = lock_queue_manager()?;
     queue_manager.add_song_to_queue(DEFAULT_QUEUE_ID, song);
     Ok(queue_manager.get_queue(DEFAULT_QUEUE_ID).snapshot())
 }
 
+#[instrument]
 pub fn remove_song(song: Song) -> Result<QueueSnapshot, String> {
     let mut queue_manager = lock_queue_manager()?;
     queue_manager.remove_song_from_queue(DEFAULT_QUEUE_ID, song);
     Ok(queue_manager.get_queue(DEFAULT_QUEUE_ID).snapshot())
 }
 
+#[instrument]
 pub fn move_song(from_index: usize, to_index: usize) -> Result<QueueSnapshot, String> {
     let mut queue_manager = lock_queue_manager()?;
     queue_manager.move_song_in_queue(DEFAULT_QUEUE_ID, from_index, to_index)?;
@@ -222,6 +226,7 @@ pub fn get_queue_snapshot() -> Result<QueueSnapshot, String> {
     Ok(queue_manager.get_queue(DEFAULT_QUEUE_ID).snapshot())
 }
 
+#[instrument]
 pub fn next_queue_song() -> Result<QueueSnapshot, String> {
     let mut queue_manager = lock_queue_manager()?;
     let queue = queue_manager.get_queue(DEFAULT_QUEUE_ID);
@@ -229,6 +234,7 @@ pub fn next_queue_song() -> Result<QueueSnapshot, String> {
     Ok(queue.snapshot())
 }
 
+#[instrument]
 pub fn previous_queue_song() -> Result<QueueSnapshot, String> {
     let mut queue_manager = lock_queue_manager()?;
     let queue = queue_manager.get_queue(DEFAULT_QUEUE_ID);
@@ -236,6 +242,7 @@ pub fn previous_queue_song() -> Result<QueueSnapshot, String> {
     Ok(queue.snapshot())
 }
 
+#[instrument]
 pub fn advance_to_song_id(song_id: &str) -> Result<QueueSnapshot, String> {
     let mut queue_manager = lock_queue_manager()?;
     let queue = queue_manager.get_queue(DEFAULT_QUEUE_ID);
@@ -243,6 +250,7 @@ pub fn advance_to_song_id(song_id: &str) -> Result<QueueSnapshot, String> {
     Ok(queue.snapshot())
 }
 
+#[instrument]
 pub fn play_track_now(song: Song) -> Result<QueueSnapshot, String> {
     let mut queue_manager = lock_queue_manager()?;
     let queue = queue_manager.get_queue(DEFAULT_QUEUE_ID);
@@ -388,12 +396,12 @@ impl ezsockets::SessionExt for MusicSession {
 fn get_queue(queue_manager: &mut MutexGuard<QueueManager>) -> String {
     let queue = queue_manager.get_queue(DEFAULT_QUEUE_ID);
     let current_song = queue.get_current_song();
-    return json!({
+    json!({
         "current_song": current_song,
         "upcoming": queue.upcoming,
         "old": queue.old
     })
-    .to_string();
+    .to_string()
 }
 
 //WS end :)

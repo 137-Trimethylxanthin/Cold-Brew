@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 use base64::engine::general_purpose::STANDARD as BASE64;
+use tracing::instrument;
 use base64::Engine;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::prelude::Accessor;
@@ -43,7 +44,9 @@ pub struct ScanSummary {
     pub tracks: Vec<LibraryTrack>,
 }
 
+#[instrument(skip(app))]
 pub fn scan_library_path(app: &AppHandle, root: String) -> Result<ScanSummary, String> {
+    tracing::info!("Scanning library at: {root}");
     let root_path = PathBuf::from(root.trim());
     if !root_path.is_dir() {
         return Err(format!(
@@ -90,9 +93,16 @@ pub fn scan_library_path(app: &AppHandle, root: String) -> Result<ScanSummary, S
         }
     }
 
+    tracing::info!(
+        scanned = summary.scanned_files,
+        indexed = summary.indexed_tracks,
+        skipped = summary.skipped_files,
+        "Library scan complete"
+    );
     Ok(summary)
 }
 
+#[instrument(skip(app))]
 pub fn list_library_tracks(app: &AppHandle) -> Result<Vec<LibraryTrack>, String> {
     let connection = open_database(app)?;
     initialize_database(&connection)?;
@@ -138,6 +148,7 @@ pub fn list_library_tracks(app: &AppHandle) -> Result<Vec<LibraryTrack>, String>
     Ok(tracks)
 }
 
+#[instrument(skip(app))]
 pub fn get_library_track_by_path(
     app: &AppHandle,
     path: &str,
@@ -161,6 +172,7 @@ pub fn get_library_track_by_path(
     row_to_library_track(row).map(Some).map_err(database_error)
 }
 
+#[instrument]
 fn read_track(path: &Path) -> Result<LibraryTrack, String> {
     let metadata = fs::metadata(path).map_err(|error| format!("{}: {error}", path.display()))?;
     let extension = path
@@ -345,6 +357,7 @@ pub struct CoverArt {
     pub data: String,
 }
 
+#[instrument]
 pub fn get_track_cover_art(path: String) -> Result<CoverArt, String> {
     let file_path = Path::new(&path);
     if !file_path.is_file() {
@@ -388,6 +401,8 @@ mod tests {
         assert!(is_audio_path(Path::new("album/song.FLAC")));
         assert!(is_audio_path(Path::new("album/song.m4a")));
         assert!(is_audio_path(Path::new("album/song.opus")));
+        assert!(is_audio_path(Path::new("album/song.aiff")));
+        assert!(is_audio_path(Path::new("album/song.aif")));
         assert!(!is_audio_path(Path::new("album/cover.jpg")));
     }
 }

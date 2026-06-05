@@ -1,6 +1,7 @@
 mod audio_player;
 mod auth_flows;
 mod credentials;
+pub mod error;
 mod jellyfin;
 mod library;
 mod listening_history;
@@ -19,6 +20,7 @@ use credentials::{JellyfinAccount, ProviderAccount, ProviderLoginState};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::AppHandle;
+use tracing::instrument;
 
 use crate::jellyfin::Api;
 
@@ -113,6 +115,7 @@ struct QueuePlaybackResult {
     message: Option<String>,
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 async fn display_song_list() -> Result<Value, String> {
     let credentials = credentials::load_jellyfin_credentials()?;
@@ -159,6 +162,7 @@ fn list_provider_login_states() -> Result<Vec<ProviderLoginState>, String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
+#[allow(clippy::too_many_arguments)]
 fn save_provider_account(
     provider_id: String,
     display_name: Option<String>,
@@ -215,11 +219,13 @@ async fn complete_spotify_pkce_login_in_browser(
     auth_flows::complete_spotify_pkce_login_in_browser(redirect_uri, scope).await
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 fn get_spotify_web_playback_token() -> Result<String, String> {
     auth_flows::get_spotify_web_playback_token()
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 fn start_tidal_pkce_login(
     redirect_uri: String,
@@ -241,6 +247,7 @@ async fn refresh_tidal_access_token() -> Result<ProviderAccount, String> {
     auth_flows::refresh_tidal_access_token().await
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 fn start_youtube_oauth_login(
     redirect_uri: String,
@@ -382,16 +389,20 @@ async fn search_lastfm_tracks(
     remote_providers::search_lastfm_tracks(query, limit).await
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn scan_library_path(app: AppHandle, path: String) -> Result<library::ScanSummary, String> {
+    tracing::info!("Starting library scan: {path}");
     library::scan_library_path(&app, path)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn list_library_tracks(app: AppHandle) -> Result<Vec<library::LibraryTrack>, String> {
     library::list_library_tracks(&app)
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 fn get_track_cover_art(path: String) -> Result<library::CoverArt, String> {
     library::get_track_cover_art(path)
@@ -402,6 +413,7 @@ fn get_local_lyrics(path: String) -> Result<Option<lyrics::LyricsResult>, String
     lyrics::get_local_lyrics(path)
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 async fn get_track_lyrics(
     path: String,
@@ -413,6 +425,7 @@ async fn get_track_lyrics(
     lyrics::get_track_lyrics(path, title, artist, album, duration_ms).await
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 async fn search_metadata_suggestions(
     title: String,
@@ -444,6 +457,7 @@ fn list_service_capabilities() -> Vec<providers::ProviderCapability> {
     providers::list_service_capabilities()
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn play_local_track(
     app: AppHandle,
@@ -453,6 +467,7 @@ fn play_local_track(
     play_local_track_with_restore(&app, path, title)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn playback_pause(app: AppHandle) -> Result<audio_player::PlaybackStatus, String> {
     let status = audio_player::playback_pause()?;
@@ -461,6 +476,7 @@ fn playback_pause(app: AppHandle) -> Result<audio_player::PlaybackStatus, String
     Ok(status)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn playback_resume(app: AppHandle) -> Result<audio_player::PlaybackStatus, String> {
     let status = audio_player::playback_resume()?;
@@ -468,6 +484,7 @@ fn playback_resume(app: AppHandle) -> Result<audio_player::PlaybackStatus, Strin
     Ok(status)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn playback_stop(app: AppHandle) -> Result<audio_player::PlaybackStatus, String> {
     let status = audio_player::get_playback_status()?;
@@ -484,6 +501,7 @@ fn playback_stop(app: AppHandle) -> Result<audio_player::PlaybackStatus, String>
     audio_player::playback_stop()
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn playback_seek(app: AppHandle, position_ms: u64) -> Result<audio_player::PlaybackStatus, String> {
     let status = audio_player::playback_seek(position_ms)?;
@@ -492,11 +510,13 @@ fn playback_seek(app: AppHandle, position_ms: u64) -> Result<audio_player::Playb
     Ok(status)
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 fn set_playback_volume(volume: f32) -> Result<audio_player::PlaybackStatus, String> {
     audio_player::set_playback_volume(volume)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn get_playback_status(app: AppHandle) -> Result<audio_player::PlaybackStatus, String> {
     let status = audio_player::get_playback_status()?;
@@ -522,6 +542,7 @@ fn set_replay_gain_mode(mode: String) -> Result<audio_player::PlaybackStatus, St
     audio_player::set_replay_gain_mode(mode)
 }
 
+#[instrument]
 #[tauri::command(rename_all = "snake_case")]
 fn queue_song(song: music_player::Song) -> Result<music_player::QueueSnapshot, String> {
     music_player::queue_song(song)
@@ -550,12 +571,14 @@ fn advance_queue_to_song_id(song_id: String) -> Result<music_player::QueueSnapsh
     music_player::advance_to_song_id(&song_id)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn play_track_now(app: AppHandle, song: music_player::Song) -> Result<QueuePlaybackResult, String> {
     let queue = music_player::play_track_now(song)?;
     play_queue_snapshot(&app, queue)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn play_current_queue_song(app: AppHandle) -> Result<QueuePlaybackResult, String> {
     let queue = music_player::get_queue_snapshot()?;
@@ -565,16 +588,19 @@ fn play_current_queue_song(app: AppHandle) -> Result<QueuePlaybackResult, String
     play_queue_snapshot(&app, music_player::next_queue_song()?)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn play_next_queue_song(app: AppHandle) -> Result<QueuePlaybackResult, String> {
     play_queue_snapshot(&app, music_player::next_queue_song()?)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn play_previous_queue_song(app: AppHandle) -> Result<QueuePlaybackResult, String> {
     play_queue_snapshot(&app, music_player::previous_queue_song()?)
 }
 
+#[instrument(skip(app))]
 fn play_queue_snapshot(
     app: &AppHandle,
     queue: music_player::QueueSnapshot,
@@ -604,6 +630,7 @@ fn play_queue_snapshot(
     })
 }
 
+#[instrument(skip(app))]
 fn play_local_track_with_restore(
     app: &AppHandle,
     path: String,
@@ -612,6 +639,7 @@ fn play_local_track_with_restore(
     play_local_tracks_with_restore(app, vec![audio_player::LocalPlaybackTrack { path, title }])
 }
 
+#[instrument(skip(app))]
 fn play_local_tracks_with_restore(
     app: &AppHandle,
     tracks: Vec<audio_player::LocalPlaybackTrack>,
@@ -663,6 +691,7 @@ fn local_gapless_tracks(
     tracks
 }
 
+#[instrument(skip(app))]
 fn record_current_track_transition(app: &AppHandle, next_path: &str) -> Result<(), String> {
     let status = audio_player::get_playback_status()?;
     if status
@@ -676,11 +705,13 @@ fn record_current_track_transition(app: &AppHandle, next_path: &str) -> Result<(
     save_status_position(app, &status)
 }
 
+#[instrument(skip(app, status))]
 fn record_playback_event(
     app: &AppHandle,
     status: &audio_player::PlaybackStatus,
     event: &str,
 ) -> Result<(), String> {
+    tracing::info!(event, path = ?status.current_path, "Recording playback event");
     listening_history::record_playback_event(app, status, event)?;
     if event == "started" {
         let app = app.clone();
@@ -699,6 +730,7 @@ fn record_playback_event(
     Ok(())
 }
 
+#[instrument(skip(app))]
 fn handle_playback_transitions(app: &AppHandle) -> Result<(), String> {
     for transition in audio_player::drain_playback_transitions()? {
         if transition.event == "started" {
@@ -712,6 +744,7 @@ fn handle_playback_transitions(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[instrument(skip(app, status))]
 fn save_status_position(
     app: &AppHandle,
     status: &audio_player::PlaybackStatus,
@@ -728,21 +761,25 @@ fn save_status_position(
     Ok(())
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn create_playlist(app: AppHandle, name: String) -> Result<playlists::PlaylistDetail, String> {
     playlists::create_playlist(&app, name)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn list_playlists(app: AppHandle) -> Result<Vec<playlists::PlaylistSummary>, String> {
     playlists::list_playlists(&app)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn get_playlist(app: AppHandle, playlist_id: i64) -> Result<playlists::PlaylistDetail, String> {
     playlists::get_playlist(&app, playlist_id)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn add_song_to_playlist(
     app: AppHandle,
@@ -752,6 +789,7 @@ fn add_song_to_playlist(
     playlists::add_song_to_playlist(&app, playlist_id, song)
 }
 
+#[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
 fn import_m3u_playlist(
     app: AppHandle,

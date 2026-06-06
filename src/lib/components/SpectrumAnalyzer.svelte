@@ -1,28 +1,33 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { listen } from '@tauri-apps/api/event';
-	import type { SpectrumData } from '$lib/types';
 
-	const BAR_COUNT = 64;
-	const SMOOTHING = 0.25;
+	const BARS = 28;
+	const SMOOTH = 0.22;
 
 	let canvasEl: HTMLCanvasElement;
 	let animFrameId: number;
-	let currentBins = $state<Float32Array>(new Float32Array(BAR_COUNT));
-	let targetBins = $state<Float32Array>(new Float32Array(BAR_COUNT));
-	let isActive = $state(false);
+	let current = $state<Float32Array>(new Float32Array(BARS));
+	let target = $state<Float32Array>(new Float32Array(BARS));
 	let unlisten: (() => void) | undefined;
 
 	onMount(async () => {
-		unlisten = await listen<SpectrumData>('spectrum_data', (event) => {
-			const data = event.payload as { bins: number[] } | number[];
-			const bins = Array.isArray(data) ? data : data.bins;
-			if (Array.isArray(bins)) {
-				targetBins = new Float32Array(bins);
-				isActive = bins.some((v: number) => v > 0.01);
+		unlisten = await listen<{ bins: number[] }>('spectrum_data', (event) => {
+			const raw = event.payload.bins ?? event.payload;
+			if (!Array.isArray(raw) || raw.length === 0) return;
+			// Downsample 64 bins → 28 bars
+			const step = 64 / BARS;
+			const arr = new Float32Array(BARS);
+			for (let i = 0; i < BARS; i++) {
+				const start = Math.floor(i * step);
+				const end = Math.floor((i + 1) * step);
+				let sum = 0;
+				for (let j = start; j < end && j < raw.length; j++) sum += raw[j];
+				arr[i] = sum / (end - start);
 			}
+			target = arr;
 		});
-		drawLoop();
+		draw();
 	});
 
 	onDestroy(() => {
@@ -30,139 +35,70 @@
 		cancelAnimationFrame(animFrameId);
 	});
 
-	function lerp(a: number, b: number, t: number): number {
-		return a + (b - a) * t;
-	}
+	function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 
-	function drawLoop() {
-		if (!canvasEl) {
-			animFrameId = requestAnimationFrame(drawLoop);
-			return;
-		}
+	function draw() {
+		if (!canvasEl) { animFrameId = requestAnimationFrame(draw); return; }
 		const ctx = canvasEl.getContext('2d');
-		if (!ctx) {
-			animFrameId = requestAnimationFrame(drawLoop);
-			return;
-		}
+		if (!ctx) { animFrameId = requestAnimationFrame(draw); return; }
 
 		const rect = canvasEl.getBoundingClientRect();
-		if (rect.width === 0 || rect.height === 0) {
-			animFrameId = requestAnimationFrame(drawLoop);
-			return;
-		}
+		if (rect.width < 4 || rect.height < 4) { animFrameId = requestAnimationFrame(draw); return; }
 
-		const w = rect.width * devicePixelRatio;
-		const h = rect.height * devicePixelRatio;
+		const dpr = devicePixelRatio || 1;
+		const w = rect.width * dpr;
+		const h = rect.height * dpr;
 		if (canvasEl.width !== w) canvasEl.width = w;
 		if (canvasEl.height !== h) canvasEl.height = h;
 
-		const newBins = new Float32Array(BAR_COUNT);
-		const allSilent = targetBins.every((v) => v < 0.005);
-		for (let i = 0; i < BAR_COUNT; i++) {
-			const t = allSilent ? lerp(targetBins[i], 0.02, SMOOTHING * 0.5) : targetBins[i];
-			newBins[i] = lerp(currentBins[i], t, SMOOTHING);
-		}
-		currentBins = newBins;
-		isActive = !newBins.every((v) => v < 0.01);
+		// Smooth interpolation
+		const c = new Float32Array(BARS);
+		for (let i = 0; i < BARS; i++) c[i] = lerp(current[i], target[i], SMOOTH);
+		current = c;
 
-		// Dark background
-		ctx.fillStyle = 'oklch(13% 0.018 58)';
-		ctx.fillRect(0, 0, w, h);
+		// Clear — transparent background so parent bg shows through
+		ctx.clearRect(0, 0, w, h);
 
-		const barW = (w / BAR_COUNT) * 0.78;
-		const gap = (w / BAR_COUNT) * 0.22;
-		const maxH = h * 0.88;
-		const yBaseline = h * 0.06;
+		const barW = (w / BARS) * 0.65;
+		const gap = (w / BARS) * 0.35;
+		const radius = barW * 0.48; // nearly round tops
+		const maxH = h * 0.92;
+		const bottom = h;
 
-		// Gradient: brand blue → teal → warm cream
-		const grad = ctx.createLinearGradient(0, h, 0, 0);
-		grad.addColorStop(0.0, 'oklch(70% 0.13 205 / 0.55)');
-		grad.addColorStop(0.4, 'oklch(70% 0.13 205 / 0.78)');
-		grad.addColorStop(0.75, 'oklch(72% 0.09 190 / 0.85)');
-		grad.addColorStop(1.0, 'oklch(93% 0.013 80 / 0.95)');
-		ctx.fillStyle = grad;
+		ctx.fillStyle = 'oklch(70% 0.13 205 / 0.72)';
 
-		for (let i = 0; i < BAR_COUNT; i++) {
-			const val = newBins[i];
-			const barH = Math.max(devicePixelRatio, val * maxH);
-			const x = i * (w / BAR_COUNT) + gap / 2;
-			const y = h - yBaseline - barH;
-			const radius = Math.min(barW / 2, 3 * devicePixelRatio);
+		for (let i = 0; i < BARS; i++) {
+			const val = c[i];
+			const barH = Math.max(dpr * 3, val * maxH);
+			const x = i * (w / BARS) + gap / 2;
+			const y = bottom - barH;
 
 			ctx.beginPath();
 			ctx.moveTo(x + radius, y);
-			ctx.lineTo(x + barW - radius, y);
 			ctx.arcTo(x + barW, y, x + barW, y + radius, radius);
-			ctx.lineTo(x + barW, h);
-			ctx.lineTo(x, h);
+			ctx.lineTo(x + barW, bottom);
+			ctx.lineTo(x, bottom);
 			ctx.lineTo(x, y + radius);
 			ctx.arcTo(x, y, x + radius, y, radius);
 			ctx.fill();
 		}
 
-		// Subtle center reflection line
-		ctx.fillStyle = 'oklch(93% 0.013 80 / 0.04)';
-		ctx.fillRect(w * 0.25, 0, w * 0.5, h);
-
-		animFrameId = requestAnimationFrame(drawLoop);
+		animFrameId = requestAnimationFrame(draw);
 	}
 </script>
 
-<div class="spectrum-wrapper" class:spectrum-inactive={!isActive}>
-	<span class="spectrum-label">Spectrum</span>
-	<canvas
-		bind:this={canvasEl}
-		class="spectrum-canvas"
-		role="img"
-		aria-label="Real-time audio spectrum analyzer"
-	></canvas>
-	<span class="spectrum-freqs">
-		<span>20Hz</span>
-		<span>1k</span>
-		<span>20kHz</span>
-	</span>
-</div>
+<canvas
+	bind:this={canvasEl}
+	class="spec"
+	role="img"
+	aria-label="Audio spectrum"
+></canvas>
 
 <style>
-	.spectrum-wrapper {
-		position: relative;
-		border: 1px solid var(--color-outline);
-		border-radius: var(--radius-lg);
-		background: oklch(13% 0.018 58);
-		overflow: hidden;
-		transition: opacity 350ms ease;
-	}
-	.spectrum-inactive {
-		opacity: 0.55;
-	}
-	.spectrum-label {
-		position: absolute;
-		top: 8px;
-		left: 14px;
-		z-index: 2;
-		font-family: var(--font-family-mono);
-		font-size: 0.64rem;
-		letter-spacing: 0.12em;
-		text-transform: uppercase;
-		color: oklch(68% 0.023 72 / 0.6);
-	}
-	.spectrum-canvas {
+	.spec {
 		display: block;
 		width: 100%;
-		height: 120px;
+		height: 54px;
 		image-rendering: auto;
-		image-rendering: crisp-edges;
-	}
-	.spectrum-freqs {
-		position: absolute;
-		bottom: 6px;
-		left: 14px;
-		right: 14px;
-		display: flex;
-		justify-content: space-between;
-		font-family: var(--font-family-mono);
-		font-size: 0.58rem;
-		color: oklch(68% 0.023 72 / 0.35);
-		pointer-events: none;
 	}
 </style>

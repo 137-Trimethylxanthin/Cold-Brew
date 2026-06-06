@@ -21,6 +21,7 @@
 	import * as DialogComponents from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
 	import { Select as SelectPrimitive } from 'bits-ui';
+	import * as Table from '$lib/components/ui/table';
 	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
@@ -28,6 +29,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import ProviderLoginPanel from '$lib/components/ProviderLoginPanel.svelte';
 	import Equalizer from '$lib/components/Equalizer.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { crossfeedState } from '$lib/stores';
 	import { t, setLocale, type Locale, localeName, initLocale } from '$lib/i18n';
 
@@ -59,7 +61,9 @@
 	let providerAccessToken = $state('');
 	let providerRefreshToken = $state('');
 	let spotifyRedirectUri = $state('http://127.0.0.1:9090/callback');
-	let spotifyScope = $state('playlist-read-private playlist-read-collaborative user-read-private user-read-email user-read-playback-state user-modify-playback-state streaming');
+	let spotifyScope = $state(
+		'playlist-read-private playlist-read-collaborative user-read-private user-read-email user-read-playback-state user-modify-playback-state streaming'
+	);
 	let spotifyAuthorizationCode = $state('');
 	let spotifyAuthorizationState = $state('');
 	let spotifyAuthorizationUrl = $state('');
@@ -83,20 +87,43 @@
 	// M20: Accent color
 	const ACCENT_STORAGE_KEY = 'coldbrew.accentColor';
 	const accentColors = [
-		{ id: 'cold-blue', label: 'Cold Blue', cssValue: 'oklch(70% 0.13 205)' },
-		{ id: 'caramel', label: 'Caramel', cssValue: 'oklch(68% 0.12 68)' },
-		{ id: 'rose', label: 'Rose', cssValue: 'oklch(65% 0.17 15)' },
-		{ id: 'mint', label: 'Mint', cssValue: 'oklch(70% 0.13 160)' },
-		{ id: 'lavender', label: 'Lavender', cssValue: 'oklch(70% 0.11 290)' },
-		{ id: 'amber', label: 'Amber', cssValue: 'oklch(75% 0.14 82)' }
+		{
+			id: 'cold-blue',
+			label: 'Cold Blue',
+			className: 'bg-[oklch(70%_0.13_205)]'
+		},
+		{
+			id: 'caramel',
+			label: 'Caramel',
+			className: 'bg-[oklch(68%_0.12_68)]'
+		},
+		{
+			id: 'rose',
+			label: 'Rose',
+			className: 'bg-[oklch(65%_0.17_15)]'
+		},
+		{
+			id: 'mint',
+			label: 'Mint',
+			className: 'bg-[oklch(70%_0.13_160)]'
+		},
+		{
+			id: 'lavender',
+			label: 'Lavender',
+			className: 'bg-[oklch(70%_0.11_290)]'
+		},
+		{
+			id: 'amber',
+			label: 'Amber',
+			className: 'bg-[oklch(75%_0.14_82)]'
+		}
 	];
 	let selectedAccent = $state('cold-blue');
 
 	function selectAccentColor(id: string) {
 		selectedAccent = id;
-		const color = accentColors.find((c) => c.id === id);
-		if (color) {
-			document.documentElement.style.setProperty('--color-brand', color.cssValue);
+		if (accentColors.some((c) => c.id === id)) {
+			document.documentElement.setAttribute('data-accent', id);
 			if (typeof localStorage !== 'undefined') localStorage.setItem(ACCENT_STORAGE_KEY, id);
 		}
 	}
@@ -121,8 +148,7 @@
 			const saved = localStorage.getItem(ACCENT_STORAGE_KEY);
 			if (saved && accentColors.some((c) => c.id === saved)) {
 				selectedAccent = saved;
-				const color = accentColors.find((c) => c.id === saved);
-				if (color) document.documentElement.style.setProperty('--color-brand', color.cssValue);
+				document.documentElement.setAttribute('data-accent', saved);
 			}
 			const savedDensity = localStorage.getItem(DENSITY_STORAGE_KEY);
 			if (savedDensity && densityOptions.some((d) => d.id === savedDensity)) {
@@ -173,32 +199,51 @@
 	let devUseDefault: Record<string, boolean> = {};
 
 	onMount(() => {
-	void loadAccount(); void loadAudioOutputs(); void loadPlaybackSettings();
-	void loadNotificationSetting();
-	void loadServiceCapabilities(); void loadProviderAccounts();
-	void loadProviderLoginStates(); void loadLastFmScrobbleStatus();
-	void loadProviderStatuses();
-	void loadCrossfeed();
-	void loadAllDevStates();
-	restoreAccentAndDensity();
-	restoreLocaleAndContrast();
+		void loadAccount();
+		void loadAudioOutputs();
+		void loadPlaybackSettings();
+		void loadNotificationSetting();
+		void loadServiceCapabilities();
+		void loadProviderAccounts();
+		void loadProviderLoginStates();
+		void loadLastFmScrobbleStatus();
+		void loadProviderStatuses();
+		void loadCrossfeed();
+		void loadAllDevStates();
+		restoreAccentAndDensity();
+		restoreLocaleAndContrast();
 	});
 
 	function providerBaseFields(providerId: string): { key: string; label: string }[] {
 		const byId: Record<string, { key: string; label: string }[]> = {
-			spotify: [{ key: 'client_id', label: 'Client ID' }, { key: 'client_secret', label: 'Client Secret' }, { key: 'redirect_uri', label: 'Redirect URI' }],
-			tidal: [{ key: 'client_id', label: 'Client ID' }, { key: 'client_secret', label: 'Client Secret' }],
-			qobuz: [{ key: 'app_id', label: 'App ID' }, { key: 'app_secret', label: 'App Secret' }],
+			spotify: [
+				{ key: 'client_id', label: 'Client ID' },
+				{ key: 'client_secret', label: 'Client Secret' },
+				{ key: 'redirect_uri', label: 'Redirect URI' }
+			],
+			tidal: [
+				{ key: 'client_id', label: 'Client ID' },
+				{ key: 'client_secret', label: 'Client Secret' }
+			],
+			qobuz: [
+				{ key: 'app_id', label: 'App ID' },
+				{ key: 'app_secret', label: 'App Secret' }
+			],
 			youtube: [{ key: 'api_key', label: 'API Key' }],
-			lastfm: [{ key: 'api_key', label: 'API Key' }, { key: 'api_secret', label: 'API Secret' }],
-			soundcloud: [{ key: 'api_key', label: 'API Key (Client ID)' }],
+			lastfm: [
+				{ key: 'api_key', label: 'API Key' },
+				{ key: 'api_secret', label: 'API Secret' }
+			],
+			soundcloud: [{ key: 'api_key', label: 'API Key (Client ID)' }]
 		};
 		return byId[providerId] ?? [];
 	}
 
 	async function loadDevProviderState(providerId: string) {
 		try {
-			const state = await invoke<ProviderCredentialState>('get_provider_credentials', { provider: providerId });
+			const state = await invoke<ProviderCredentialState>('get_provider_credentials', {
+				provider: providerId
+			});
 			devProviderStates[providerId] = state;
 			devUseDefault[providerId] = state.is_default;
 			if (!devFieldValues[providerId]) devFieldValues[providerId] = {};
@@ -208,24 +253,32 @@
 	}
 
 	async function saveDevCredentials(providerId: string) {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		const fields = providerBaseFields(providerId);
 		try {
 			for (const f of fields) {
 				const val = devFieldValues[providerId]?.[f.key]?.trim();
 				if (val) {
-					await invoke('set_provider_credentials', { provider: providerId, key: f.key, value: val });
+					await invoke('set_provider_credentials', {
+						provider: providerId,
+						key: f.key,
+						value: val
+					});
 				}
 			}
 			devUseDefault[providerId] = false;
 			await loadDevProviderState(providerId);
 			await loadProviderStatuses();
 			message = `${providerName(providerId)} custom credentials saved to keyring.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function resetDevToDefaults(providerId: string) {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			await invoke('reset_provider_credentials', { provider: providerId });
 			devUseDefault[providerId] = true;
@@ -236,30 +289,48 @@
 			await loadDevProviderState(providerId);
 			await loadProviderStatuses();
 			message = `${providerName(providerId)} reset to defaults.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function loadProviderStatuses() {
 		error = '';
 		try {
 			providerStatuses = await invoke<ProviderStatus[]>('get_all_provider_statuses');
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function scanLibrary() {
-		if (!libraryPath.trim()) { error = 'Enter a local music folder path.'; return; }
-		loadingLibrary = true; error = ''; message = '';
+		if (!libraryPath.trim()) {
+			error = 'Enter a local music folder path.';
+			return;
+		}
+		loadingLibrary = true;
+		error = '';
+		message = '';
 		try {
 			scanSummary = await invoke<ScanSummary>('scan_library_path', { path: libraryPath });
 			message = `Indexed ${scanSummary.indexed_tracks} of ${scanSummary.scanned_files} audio files from ${scanSummary.root}.`;
-		} catch (err) { error = toErrorMessage(err); } finally { loadingLibrary = false; }
+		} catch (err) {
+			error = toErrorMessage(err);
+		} finally {
+			loadingLibrary = false;
+		}
 	}
 
 	async function toggleWatchFolders() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			if (watchFolders) {
-				if (!libraryPath.trim()) { error = 'Set a library path first.'; watchFolders = false; return; }
+				if (!libraryPath.trim()) {
+					error = 'Set a library path first.';
+					watchFolders = false;
+					return;
+				}
 				await invoke('start_folder_watcher', { path: libraryPath });
 				watchingLabel = 'Watching...';
 				message = 'Folder watcher started.';
@@ -268,15 +339,21 @@
 				watchingLabel = '';
 				message = 'Folder watcher stopped.';
 			}
-		} catch (err) { error = toErrorMessage(err); watchFolders = !watchFolders; }
+		} catch (err) {
+			error = toErrorMessage(err);
+			watchFolders = !watchFolders;
+		}
 	}
 
 	async function loadAccount() {
 		error = '';
 		try {
 			account = await invoke<JellyfinAccount | null>('get_jellyfin_account');
-			baseUrl = account?.base_url ?? ''; userName = account?.user_name ?? '';
-		} catch (err) { error = toErrorMessage(err); }
+			baseUrl = account?.base_url ?? '';
+			userName = account?.user_name ?? '';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function loadAudioOutputs() {
@@ -284,16 +361,23 @@
 		try {
 			audioOutputs = await invoke<AudioOutputDevice[]>('list_audio_output_devices');
 			selectedAudioOutput = audioOutputs.find((d) => d.selected)?.id ?? 'default';
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function selectAudioOutput() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
-			await invoke<PlaybackStatus>('set_audio_output_device', { device_id: selectedAudioOutput === 'default' ? null : selectedAudioOutput });
+			await invoke<PlaybackStatus>('set_audio_output_device', {
+				device_id: selectedAudioOutput === 'default' ? null : selectedAudioOutput
+			});
 			await loadAudioOutputs();
 			message = 'Audio output updated.';
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function loadPlaybackSettings() {
@@ -308,8 +392,9 @@
 			preampGainDb = settings.preamp_gain_db;
 			playbackSpeed = settings.playback_speed;
 			playbackSpeedValue = settings.playback_speed.toString();
+		} catch (err) {
+			error = toErrorMessage(err);
 		}
-		catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function loadNotificationSetting() {
@@ -337,69 +422,114 @@
 			if (!credentialProviderOptions().some((p) => p.id === selectedProviderId)) {
 				selectedProviderId = credentialProviderOptions()[0]?.id ?? 'spotify';
 			}
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function loadProviderAccounts() {
-		error = ''; try { providerAccounts = await invoke<ProviderAccount[]>('list_provider_accounts'); } catch (err) { error = toErrorMessage(err); }
+		error = '';
+		try {
+			providerAccounts = await invoke<ProviderAccount[]>('list_provider_accounts');
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function loadProviderLoginStates() {
-		error = ''; try { providerLoginStates = await invoke<ProviderLoginState[]>('list_provider_login_states'); } catch (err) { error = toErrorMessage(err); }
+		error = '';
+		try {
+			providerLoginStates = await invoke<ProviderLoginState[]>('list_provider_login_states');
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function refreshProviderCredentialStatus() {
-		await loadProviderAccounts(); await loadProviderLoginStates(); await loadLastFmScrobbleStatus(); await loadProviderStatuses();
+		await loadProviderAccounts();
+		await loadProviderLoginStates();
+		await loadLastFmScrobbleStatus();
+		await loadProviderStatuses();
 	}
 
 	async function loadLastFmScrobbleStatus() {
-		error = ''; try { lastFmScrobbleStatus = await invoke<LastFmScrobbleStatus>('get_lastfm_scrobble_status'); } catch (err) { error = toErrorMessage(err); }
+		error = '';
+		try {
+			lastFmScrobbleStatus = await invoke<LastFmScrobbleStatus>('get_lastfm_scrobble_status');
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function retryLastFmScrobbles() {
-		error = ''; message = '';
-		try { lastFmScrobbleStatus = await invoke<LastFmScrobbleStatus>('retry_lastfm_scrobbles'); message = 'Last.fm scrobble retry finished.'; }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			lastFmScrobbleStatus = await invoke<LastFmScrobbleStatus>('retry_lastfm_scrobbles');
+			message = 'Last.fm scrobble retry finished.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function setReplayGainMode() {
-		error = ''; message = '';
-		try { const status = await invoke<PlaybackStatus>('set_replay_gain_mode', { mode: replayGainMode }); replayGainMode = status.replay_gain_mode; message = 'ReplayGain mode updated.'; }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			const status = await invoke<PlaybackStatus>('set_replay_gain_mode', { mode: replayGainMode });
+			replayGainMode = status.replay_gain_mode;
+			message = 'ReplayGain mode updated.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function setCrossfade() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			const duration = crossfadeEnabled ? crossfadeDuration : null;
 			await invoke<PlaybackStatus>('set_crossfade', { durationMs: duration });
-			message = crossfadeEnabled ? `Crossfade set to ${crossfadeDuration}ms.` : 'Crossfade disabled.';
-		} catch (err) { error = toErrorMessage(err); }
+			message = crossfadeEnabled
+				? `Crossfade set to ${crossfadeDuration}ms.`
+				: 'Crossfade disabled.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function setMonoDownmix() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			await invoke<PlaybackStatus>('set_mono_downmix', { enabled: monoDownmix });
 			message = monoDownmix ? 'Mono downmix enabled.' : 'Mono downmix disabled.';
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function setPreampGain() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			await invoke<PlaybackStatus>('set_preamp_gain', { db: preampGainDb });
 			message = `Preamp gain set to ${preampGainDb > 0 ? '+' : ''}${preampGainDb} dB.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function setPlaybackSpeed() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			playbackSpeed = parseFloat(playbackSpeedValue);
 			await invoke<PlaybackStatus>('set_playback_speed', { speed: playbackSpeed });
 			message = `Playback speed set to ${playbackSpeed}×.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	function selectedAudioOutputDescription() {
@@ -431,7 +561,8 @@
 	}
 
 	async function setCrossfeedLevel() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			const state = await invoke<CrossfeedState>('set_crossfeed', { level: $crossfeedState.level });
 			crossfeedState.set(state);
@@ -441,11 +572,9 @@
 		}
 	}
 
-	function stateLabel(value: string) {
-		return value.split('_').map((p) => p.charAt(0).toUpperCase() + p.slice(1)).join(' ');
+	function yesNo(value: boolean) {
+		return value ? 'Yes' : 'No';
 	}
-
-	function yesNo(value: boolean) { return value ? 'Yes' : 'No'; }
 	function playbackLabel(provider: ProviderCapability) {
 		if (provider.can_stream_full_tracks) return 'Full tracks';
 		if (provider.can_stream_previews) return 'Previews';
@@ -453,7 +582,9 @@
 		return 'No';
 	}
 
-	function notesPreview(provider: ProviderCapability) { return provider.notes.join(' '); }
+	function notesPreview(provider: ProviderCapability) {
+		return provider.notes.join(' ');
+	}
 
 	function credentialProviderOptions() {
 		return serviceCapabilities.filter((p) => !['local', 'jellyfin', 'lrclib'].includes(p.id));
@@ -496,152 +627,305 @@
 	}
 
 	async function startSpotifyLogin() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
-			const login = await invoke<ProviderLoginStart>('start_spotify_pkce_login', { redirect_uri: spotifyRedirectUri, scope: spotifyScope.trim() || null });
-			spotifyAuthorizationUrl = login.authorization_url; spotifyAuthorizationState = login.state ?? '';
-			message = login.message; await refreshProviderCredentialStatus();
-		} catch (err) { error = toErrorMessage(err); }
+			const login = await invoke<ProviderLoginStart>('start_spotify_pkce_login', {
+				redirect_uri: spotifyRedirectUri,
+				scope: spotifyScope.trim() || null
+			});
+			spotifyAuthorizationUrl = login.authorization_url;
+			spotifyAuthorizationState = login.state ?? '';
+			message = login.message;
+			await refreshProviderCredentialStatus();
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function finishSpotifyLogin() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
-			await invoke<ProviderAccount>('finish_spotify_pkce_login', { code: authCodeFromInput(spotifyAuthorizationCode), state: authStateFromInput(spotifyAuthorizationCode, spotifyAuthorizationState) });
-			spotifyAuthorizationCode = ''; spotifyAuthorizationUrl = '';
-			await refreshProviderCredentialStatus(); message = 'Spotify tokens saved.';
-		} catch (err) { error = toErrorMessage(err); }
+			await invoke<ProviderAccount>('finish_spotify_pkce_login', {
+				code: authCodeFromInput(spotifyAuthorizationCode),
+				state: authStateFromInput(spotifyAuthorizationCode, spotifyAuthorizationState)
+			});
+			spotifyAuthorizationCode = '';
+			spotifyAuthorizationUrl = '';
+			await refreshProviderCredentialStatus();
+			message = 'Spotify tokens saved.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function completeSpotifyLoginInBrowser() {
-		error = ''; message = 'Waiting for Spotify authorization in the browser...';
+		error = '';
+		message = 'Waiting for Spotify authorization in the browser...';
 		try {
-			await invoke<ProviderAccount>('complete_spotify_pkce_login_in_browser', { redirect_uri: spotifyRedirectUri, scope: spotifyScope.trim() || null });
-			spotifyAuthorizationCode = ''; spotifyAuthorizationUrl = '';
-			await refreshProviderCredentialStatus(); message = 'Spotify login completed.';
-		} catch (err) { error = toErrorMessage(err); message = ''; }
+			await invoke<ProviderAccount>('complete_spotify_pkce_login_in_browser', {
+				redirect_uri: spotifyRedirectUri,
+				scope: spotifyScope.trim() || null
+			});
+			spotifyAuthorizationCode = '';
+			spotifyAuthorizationUrl = '';
+			await refreshProviderCredentialStatus();
+			message = 'Spotify login completed.';
+		} catch (err) {
+			error = toErrorMessage(err);
+			message = '';
+		}
 	}
 
 	async function refreshSpotifyToken() {
-		error = ''; message = '';
-		try { await invoke<ProviderAccount>('refresh_spotify_access_token'); await refreshProviderCredentialStatus(); message = 'Spotify access token refreshed.'; }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			await invoke<ProviderAccount>('refresh_spotify_access_token');
+			await refreshProviderCredentialStatus();
+			message = 'Spotify access token refreshed.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function startTidalLogin() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
-			const login = await invoke<ProviderLoginStart>('start_tidal_pkce_login', { redirect_uri: tidalRedirectUri, scope: tidalScope.trim() || null });
-			tidalAuthorizationUrl = login.authorization_url; tidalAuthorizationState = login.state ?? '';
-			message = login.message; await refreshProviderCredentialStatus();
-		} catch (err) { error = toErrorMessage(err); }
+			const login = await invoke<ProviderLoginStart>('start_tidal_pkce_login', {
+				redirect_uri: tidalRedirectUri,
+				scope: tidalScope.trim() || null
+			});
+			tidalAuthorizationUrl = login.authorization_url;
+			tidalAuthorizationState = login.state ?? '';
+			message = login.message;
+			await refreshProviderCredentialStatus();
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function finishTidalLogin() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
-			await invoke<ProviderAccount>('finish_tidal_pkce_login', { code: authCodeFromInput(tidalAuthorizationCode), state: authStateFromInput(tidalAuthorizationCode, tidalAuthorizationState) });
-			tidalAuthorizationCode = ''; tidalAuthorizationUrl = '';
-			await refreshProviderCredentialStatus(); message = 'TIDAL tokens saved.';
-		} catch (err) { error = toErrorMessage(err); }
+			await invoke<ProviderAccount>('finish_tidal_pkce_login', {
+				code: authCodeFromInput(tidalAuthorizationCode),
+				state: authStateFromInput(tidalAuthorizationCode, tidalAuthorizationState)
+			});
+			tidalAuthorizationCode = '';
+			tidalAuthorizationUrl = '';
+			await refreshProviderCredentialStatus();
+			message = 'TIDAL tokens saved.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function refreshTidalToken() {
-		error = ''; message = '';
-		try { await invoke<ProviderAccount>('refresh_tidal_access_token'); await refreshProviderCredentialStatus(); message = 'TIDAL access token refreshed.'; }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			await invoke<ProviderAccount>('refresh_tidal_access_token');
+			await refreshProviderCredentialStatus();
+			message = 'TIDAL access token refreshed.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function startYoutubeLogin() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
-			const login = await invoke<ProviderLoginStart>('start_youtube_oauth_login', { redirect_uri: youtubeRedirectUri, scope: youtubeScope.trim() || null });
-			youtubeAuthorizationUrl = login.authorization_url; youtubeAuthorizationState = login.state ?? '';
-			message = login.message; await refreshProviderCredentialStatus();
-		} catch (err) { error = toErrorMessage(err); }
+			const login = await invoke<ProviderLoginStart>('start_youtube_oauth_login', {
+				redirect_uri: youtubeRedirectUri,
+				scope: youtubeScope.trim() || null
+			});
+			youtubeAuthorizationUrl = login.authorization_url;
+			youtubeAuthorizationState = login.state ?? '';
+			message = login.message;
+			await refreshProviderCredentialStatus();
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function finishYoutubeLogin() {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
-			await invoke<ProviderAccount>('finish_youtube_oauth_login', { code: authCodeFromInput(youtubeAuthorizationCode), state: authStateFromInput(youtubeAuthorizationCode, youtubeAuthorizationState) });
-			youtubeAuthorizationCode = ''; youtubeAuthorizationUrl = '';
-			await refreshProviderCredentialStatus(); message = 'YouTube OAuth tokens saved.';
-		} catch (err) { error = toErrorMessage(err); }
+			await invoke<ProviderAccount>('finish_youtube_oauth_login', {
+				code: authCodeFromInput(youtubeAuthorizationCode),
+				state: authStateFromInput(youtubeAuthorizationCode, youtubeAuthorizationState)
+			});
+			youtubeAuthorizationCode = '';
+			youtubeAuthorizationUrl = '';
+			await refreshProviderCredentialStatus();
+			message = 'YouTube OAuth tokens saved.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function refreshYoutubeToken() {
-		error = ''; message = '';
-		try { await invoke<ProviderAccount>('refresh_youtube_access_token'); await refreshProviderCredentialStatus(); message = 'YouTube access token refreshed.'; }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			await invoke<ProviderAccount>('refresh_youtube_access_token');
+			await refreshProviderCredentialStatus();
+			message = 'YouTube access token refreshed.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function startLastFmLogin() {
-		error = ''; message = '';
-		try { const login = await invoke<ProviderLoginStart>('start_lastfm_login'); lastFmAuthorizationUrl = login.authorization_url; message = login.message; await refreshProviderCredentialStatus(); }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			const login = await invoke<ProviderLoginStart>('start_lastfm_login');
+			lastFmAuthorizationUrl = login.authorization_url;
+			message = login.message;
+			await refreshProviderCredentialStatus();
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function finishLastFmLogin() {
-		error = ''; message = '';
-		try { await invoke<ProviderAccount>('finish_lastfm_login'); lastFmAuthorizationUrl = ''; await refreshProviderCredentialStatus(); message = 'Last.fm session key saved.'; }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			await invoke<ProviderAccount>('finish_lastfm_login');
+			lastFmAuthorizationUrl = '';
+			await refreshProviderCredentialStatus();
+			message = 'Last.fm session key saved.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function saveAccount() {
-		error = ''; message = '';
-		try { account = await invoke<JellyfinAccount>('save_jellyfin_account', { base_url: baseUrl, user_name: userName, password }); password = ''; message = 'Jellyfin account saved.'; }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			account = await invoke<JellyfinAccount>('save_jellyfin_account', {
+				base_url: baseUrl,
+				user_name: userName,
+				password
+			});
+			password = '';
+			message = 'Jellyfin account saved.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function clearAccount() {
-		error = ''; message = '';
-		try { await invoke('clear_jellyfin_account'); account = null; baseUrl = ''; userName = ''; password = ''; message = 'Jellyfin account cleared.'; }
-		catch (err) { error = toErrorMessage(err); }
+		error = '';
+		message = '';
+		try {
+			await invoke('clear_jellyfin_account');
+			account = null;
+			baseUrl = '';
+			userName = '';
+			password = '';
+			message = 'Jellyfin account cleared.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
-	function authCodeFromInput(value: string) { const t = value.trim(); if (!t) return t; return parameterFromAuthInput(t, 'code') ?? t; }
-	function authStateFromInput(value: string, fallbackState: string) { return parameterFromAuthInput(value.trim(), 'state') ?? (fallbackState.trim() || null); }
+	function authCodeFromInput(value: string) {
+		const t = value.trim();
+		if (!t) return t;
+		return parameterFromAuthInput(t, 'code') ?? t;
+	}
+	function authStateFromInput(value: string, fallbackState: string) {
+		return parameterFromAuthInput(value.trim(), 'state') ?? (fallbackState.trim() || null);
+	}
 	function parameterFromAuthInput(value: string, paramName: string) {
 		if (!value) return null;
 		try {
 			const url = new URL(value);
-			const qv = url.searchParams.get(paramName); if (qv) return qv;
+			const qv = url.searchParams.get(paramName);
+			if (qv) return qv;
 			if (url.hash.startsWith('#')) {
-				const hv = new URLSearchParams(url.hash.slice(1)).get(paramName); if (hv) return hv;
+				const hv = new URLSearchParams(url.hash.slice(1)).get(paramName);
+				if (hv) return hv;
 			}
-		} catch { return null; }
+		} catch {
+			return null;
+		}
 		return null;
 	}
 
 	function toErrorMessage(err: unknown) {
 		const message = typeof err === 'string' ? err : err instanceof Error ? err.message : null;
 		if (message?.includes('__TAURI_INTERNALS__')) return '';
-		if (message) return message; return 'Unexpected application error.';
+		if (message) return message;
+		return 'Unexpected application error.';
 	}
 
 	// Dev tab helper
 	async function loadAllDevStates() {
-		for (const pid of ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp', 'soundcloud']) {
+		for (const pid of [
+			'spotify',
+			'tidal',
+			'qobuz',
+			'youtube',
+			'lastfm',
+			'bandcamp',
+			'soundcloud'
+		]) {
 			await loadDevProviderState(pid);
 		}
 	}
 
 	const devProviderNames: Record<string, string> = {
-		spotify: 'Spotify', tidal: 'TIDAL', qobuz: 'Qobuz', youtube: 'YouTube Music', lastfm: 'Last.fm', bandcamp: 'Bandcamp', soundcloud: 'SoundCloud'
+		spotify: 'Spotify',
+		tidal: 'TIDAL',
+		qobuz: 'Qobuz',
+		youtube: 'YouTube Music',
+		lastfm: 'Last.fm',
+		bandcamp: 'Bandcamp',
+		soundcloud: 'SoundCloud'
 	};
 
-	const ALL_PROVIDER_IDS = ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp', 'soundcloud'];
+	const ALL_PROVIDER_IDS = [
+		'spotify',
+		'tidal',
+		'qobuz',
+		'youtube',
+		'lastfm',
+		'bandcamp',
+		'soundcloud'
+	];
 </script>
 
-<section class="settings-page" data-od-id="settings-page">
-	<div class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-4 pt-10 pb-10 min-h-[180px]">
-		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]">Settings</h1>
+<section class="grid max-w-[1280px] gap-4 max-lg:gap-3" data-od-id="settings-page">
+	<div
+		class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-4 pt-10 pb-10 min-h-[180px]"
+	>
+		<h1
+			class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]"
+		>
+			Settings
+		</h1>
 		<p class="text-soft text-sm">Accounts, audio, and library configuration</p>
 	</div>
 
-	{#if error}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-danger/20 text-danger">{error}</p>{/if}
-	{#if message}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-success/20 text-success">{message}</p>{/if}
+	{#if error}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-danger/20 text-danger">
+			{error}
+		</p>{/if}
+	{#if message}<p
+			class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-success/20 text-success"
+		>
+			{message}
+		</p>{/if}
 
 	<Tabs.Root value="general" class="tabs-root">
 		<Tabs.List>
@@ -654,132 +938,218 @@
 		</Tabs.List>
 
 		<!-- ===== GENERAL TAB ===== -->
-		<Tabs.Content value="general" class="settings-tab-content">
-			<section class="settings-panel">
+		<Tabs.Content value="general" class="mt-1 grid gap-4">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.accent_color')}</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						{t('settings.accent_color')}
+					</h2>
 					<p class="text-soft text-sm">{t('settings.accent_color_desc')}</p>
 				</div>
 				<div class="flex flex-wrap gap-3">
 					{#each accentColors as color}
-						<button
-							class="color-swatch"
-							class:color-swatch-active={selectedAccent === color.id}
-							style="--swatch-color: {color.cssValue}"
+						<Button
+							variant="outline"
+							size="icon"
+							class={`size-11 rounded-full border-3 p-0 transition-transform hover:scale-110 ${color.className} ${selectedAccent === color.id ? 'border-fg ring-2 ring-fg/60' : 'border-transparent'}`}
 							onclick={() => selectAccentColor(color.id)}
 							aria-label={t(`color.${color.id.replace(/-/g, '_')}` as any)}
 							title={t(`color.${color.id.replace(/-/g, '_')}` as any)}
-						></button>
+						></Button>
 					{/each}
 				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.layout_density')}</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						{t('settings.layout_density')}
+					</h2>
 					<p class="text-soft text-sm">{t('settings.layout_density_desc')}</p>
 				</div>
 				<div class="flex gap-2">
 					{#each densityOptions as option}
-						<button
-							class="density-btn"
-							class:density-btn-active={density === option.id}
+						<Button
+							variant={density === option.id ? 'default' : 'outline'}
+							size="sm"
+							class="rounded-full"
 							onclick={() => selectDensity(option.id)}
 						>
 							{t(`${option.id}_label` as any)}
-						</button>
+						</Button>
 					{/each}
 				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.notifications')}</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						{t('settings.notifications')}
+					</h2>
 					<p class="text-soft text-sm">{t('settings.notifications_desc')}</p>
 				</div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input type="checkbox" checked={notificationsEnabled} onchange={toggleNotifications} class="w-4 h-4 rounded border-outline" />
+				<div class="flex items-center gap-3">
+					<Button
+						variant={notificationsEnabled ? 'default' : 'outline'}
+						size="sm"
+						class="rounded-full"
+						role="switch"
+						aria-checked={notificationsEnabled}
+						onclick={toggleNotifications}
+					>
+						{notificationsEnabled ? 'On' : 'Off'}
+					</Button>
 					<span class="text-soft text-sm">{t('settings.notifications_label')}</span>
-				</label>
+				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.language')}</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						{t('settings.language')}
+					</h2>
 					<p class="text-soft text-sm">{t('settings.language_desc')}</p>
 				</div>
 				<div class="flex gap-2">
 					{#each ['en', 'de'] as loc}
 						{@const locale = loc as Locale}
-						<button
-							class="density-btn"
-							class:density-btn-active={currentLocale === locale}
+						<Button
+							variant={currentLocale === locale ? 'default' : 'outline'}
+							size="sm"
+							class="rounded-full"
 							onclick={() => changeLocale(locale)}
 						>
 							{localeName(locale)}
-						</button>
+						</Button>
 					{/each}
 				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.high_contrast')}</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						{t('settings.high_contrast')}
+					</h2>
 					<p class="text-soft text-sm">{t('settings.high_contrast_desc')}</p>
 				</div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input type="checkbox" checked={highContrast} onchange={toggleHighContrast} class="w-4 h-4 rounded border-outline" />
+				<div class="flex items-center gap-3">
+					<Button
+						variant={highContrast ? 'default' : 'outline'}
+						size="sm"
+						class="rounded-full"
+						role="switch"
+						aria-checked={highContrast}
+						onclick={toggleHighContrast}
+					>
+						{highContrast ? 'On' : 'Off'}
+					</Button>
 					<span class="text-soft text-sm">{t('settings.high_contrast_label')}</span>
-				</label>
+				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.services')}</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						{t('settings.services')}
+					</h2>
 					<p class="text-soft text-sm">{t('settings.services_desc')}</p>
 				</div>
 				<div class="overflow-x-auto">
-					<table class="w-full min-w-[920px] border-collapse">
-						<thead>
-							<tr>
-								<th class="border-b border-outline px-2 py-2 text-left align-top text-soft font-mono text-xs uppercase">Service</th>
-								<th class="border-b border-outline px-2 py-2 text-left align-top text-soft font-mono text-xs uppercase">State</th>
-								<th class="border-b border-outline px-2 py-2 text-left align-top text-soft font-mono text-xs uppercase">Auth</th>
-								<th class="border-b border-outline px-2 py-2 text-left align-top text-soft font-mono text-xs uppercase">Search</th>
-								<th class="border-b border-outline px-2 py-2 text-left align-top text-soft font-mono text-xs uppercase">Playlists</th>
-								<th class="border-b border-outline px-2 py-2 text-left align-top text-soft font-mono text-xs uppercase">Playback</th>
-								<th class="border-b border-outline px-2 py-2 text-left align-top text-soft font-mono text-xs uppercase">Scrobble</th>
-								<th class="border-b border-outline px-2 py-2 text-left align-top text-soft font-mono text-xs uppercase min-w-[260px]">Notes</th>
-							</tr>
-						</thead>
-						<tbody>
+					<Table.Root class="min-w-[920px]">
+						<Table.Header>
+							<Table.Row>
+								<Table.Head class="align-top text-soft font-mono text-xs uppercase"
+									>Service</Table.Head
+								>
+								<Table.Head class="align-top text-soft font-mono text-xs uppercase"
+									>State</Table.Head
+								>
+								<Table.Head class="align-top text-soft font-mono text-xs uppercase">Auth</Table.Head
+								>
+								<Table.Head class="align-top text-soft font-mono text-xs uppercase"
+									>Search</Table.Head
+								>
+								<Table.Head class="align-top text-soft font-mono text-xs uppercase"
+									>Playlists</Table.Head
+								>
+								<Table.Head class="align-top text-soft font-mono text-xs uppercase"
+									>Playback</Table.Head
+								>
+								<Table.Head class="align-top text-soft font-mono text-xs uppercase"
+									>Scrobble</Table.Head
+								>
+								<Table.Head class="min-w-[260px] align-top text-soft font-mono text-xs uppercase"
+									>Notes</Table.Head
+								>
+							</Table.Row>
+						</Table.Header>
+						<Table.Body>
 							{#each serviceCapabilities as provider}
-								<tr>
-									<td class="border-b border-outline px-2 py-2 align-top text-sm min-w-[130px]">
+								<Table.Row>
+									<Table.Cell class="min-w-[130px] align-top text-sm">
 										<strong>{provider.name}</strong>
 										{#if provider.documentation_url}
-											<a class="block mt-0.5 text-brand text-xs" href={provider.documentation_url} target="_blank" rel="noreferrer">Docs</a>
+											<a
+												class="block mt-0.5 text-brand text-xs"
+												href={provider.documentation_url}
+												target="_blank"
+												rel="noreferrer">Docs</a
+											>
 										{/if}
-									</td>
-									<td class="border-b border-outline px-2 py-2 align-top text-sm">
-										<span class="state-pill {provider.integration_state}">{stateLabel(provider.integration_state)}</span>
-									</td>
-									<td class="border-b border-outline px-2 py-2 align-top text-sm">{provider.auth_model}</td>
-									<td class="border-b border-outline px-2 py-2 align-top text-sm">{yesNo(provider.can_search)}</td>
-									<td class="border-b border-outline px-2 py-2 align-top text-sm">{yesNo(provider.can_list_playlists)}</td>
-									<td class="border-b border-outline px-2 py-2 align-top text-sm">{playbackLabel(provider)}</td>
-									<td class="border-b border-outline px-2 py-2 align-top text-sm">{yesNo(provider.can_scrobble)}</td>
-									<td class="border-b border-outline px-2 py-2 align-top text-sm text-soft">{notesPreview(provider)}</td>
-								</tr>
+									</Table.Cell>
+									<Table.Cell class="align-top text-sm">
+										<StatusBadge state={provider.integration_state} />
+									</Table.Cell>
+									<Table.Cell class="align-top text-sm">{provider.auth_model}</Table.Cell>
+									<Table.Cell class="align-top text-sm">{yesNo(provider.can_search)}</Table.Cell>
+									<Table.Cell class="align-top text-sm"
+										>{yesNo(provider.can_list_playlists)}</Table.Cell
+									>
+									<Table.Cell class="align-top text-sm">{playbackLabel(provider)}</Table.Cell>
+									<Table.Cell class="align-top text-sm">{yesNo(provider.can_scrobble)}</Table.Cell>
+									<Table.Cell class="align-top text-sm text-soft"
+										>{notesPreview(provider)}</Table.Cell
+									>
+								</Table.Row>
 							{/each}
-						</tbody>
-					</table>
+						</Table.Body>
+					</Table.Root>
 				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.replaygain')}</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						{t('settings.replaygain')}
+					</h2>
 					<p class="text-soft text-sm">{t('settings.replaygain_desc')}</p>
 				</div>
 				<label class="grid gap-2 text-soft text-sm">
@@ -797,119 +1167,324 @@
 				</label>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">About Cold Brew</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						About Cold Brew
+					</h2>
 					<p class="text-soft text-sm">Version 0.2.0 — A local-first music player</p>
 				</div>
 				<div class="flex flex-wrap gap-2">
-					<Button onclick={() => aboutOpen = true}>About</Button>
+					<Button onclick={() => (aboutOpen = true)}>About</Button>
 				</div>
 			</section>
 		</Tabs.Content>
 
 		<!-- ===== ACCOUNTS TAB ===== -->
-		<Tabs.Content value="accounts" class="settings-tab-content">
-			<section class="settings-panel">
+		<Tabs.Content value="accounts" class="mt-1 grid gap-4">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Jellyfin</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Jellyfin
+					</h2>
 					<p class="text-soft text-sm">
-						{#if account}Stored from {account.source}; password present: {account.has_password ? 'yes' : 'no'}
+						{#if account}Stored from {account.source}; password present: {account.has_password
+								? 'yes'
+								: 'no'}
 						{:else}No Jellyfin account saved
 						{/if}
 					</p>
 				</div>
-				<label class="grid gap-2 text-soft text-sm">Server URL <Input bind:value={baseUrl} placeholder="https://jellyfin.example" class="w-full" /></label>
-				<label class="grid gap-2 text-soft text-sm">Username <Input bind:value={userName} autocomplete="username" class="w-full" /></label>
-				<label class="grid gap-2 text-soft text-sm">Password <Input bind:value={password} type="password" autocomplete="current-password" class="w-full" /></label>
+				<label class="grid gap-2 text-soft text-sm"
+					>Server URL <Input
+						bind:value={baseUrl}
+						placeholder="https://jellyfin.example"
+						class="w-full"
+					/></label
+				>
+				<label class="grid gap-2 text-soft text-sm"
+					>Username <Input bind:value={userName} autocomplete="username" class="w-full" /></label
+				>
+				<label class="grid gap-2 text-soft text-sm"
+					>Password <Input
+						bind:value={password}
+						type="password"
+						autocomplete="current-password"
+						class="w-full"
+					/></label
+				>
 				<div class="flex flex-wrap gap-2">
 					<Button onclick={saveAccount}>Save</Button>
 					<Button variant="outline" onclick={clearAccount}>Clear</Button>
 				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">OAuth Connections</h2>
-					<p class="text-soft text-sm">Sign in with your streaming service accounts. Credentials are managed in the Dev tab or from .env defaults.</p>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						OAuth Connections
+					</h2>
+					<p class="text-soft text-sm">
+						Sign in with your streaming service accounts. Credentials are managed in the Dev tab or
+						from .env defaults.
+					</p>
 				</div>
 
 				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
-					<ProviderLoginPanel providerId="spotify" providerName="Spotify" description="OAuth PKCE" loginState={loginStateForProvider('spotify')}>
-						<div class="flex flex-wrap gap-2"><Button onclick={completeSpotifyLoginInBrowser}>Login in browser</Button><Button variant="secondary" onclick={startSpotifyLogin}>Manual login URL</Button><Button variant="secondary" onclick={refreshSpotifyToken}>Refresh token</Button></div>
+					<ProviderLoginPanel
+						providerId="spotify"
+						providerName="Spotify"
+						description="OAuth PKCE"
+						loginState={loginStateForProvider('spotify')}
+					>
+						<div class="flex flex-wrap gap-2">
+							<Button onclick={completeSpotifyLoginInBrowser}>Login in browser</Button><Button
+								variant="secondary"
+								onclick={startSpotifyLogin}>Manual login URL</Button
+							><Button variant="secondary" onclick={refreshSpotifyToken}>Refresh token</Button>
+						</div>
 						{#if spotifyAuthorizationUrl}
-							<a class="text-brand text-sm" href={spotifyAuthorizationUrl} target="_blank" rel="noreferrer">Open Spotify authorization</a>
-							<label class="grid gap-2 text-soft text-sm">Returned URL or code <Input bind:value={spotifyAuthorizationCode} autocomplete="off" class="w-full" /></label>
-							<label class="grid gap-2 text-soft text-sm">State <Input bind:value={spotifyAuthorizationState} autocomplete="off" class="w-full" /></label>
-							<div class="flex flex-wrap gap-2"><Button onclick={finishSpotifyLogin}>Finish Spotify login</Button></div>
+							<a
+								class="text-brand text-sm"
+								href={spotifyAuthorizationUrl}
+								target="_blank"
+								rel="noreferrer">Open Spotify authorization</a
+							>
+							<label class="grid gap-2 text-soft text-sm"
+								>Returned URL or code <Input
+									bind:value={spotifyAuthorizationCode}
+									autocomplete="off"
+									class="w-full"
+								/></label
+							>
+							<label class="grid gap-2 text-soft text-sm"
+								>State <Input
+									bind:value={spotifyAuthorizationState}
+									autocomplete="off"
+									class="w-full"
+								/></label
+							>
+							<div class="flex flex-wrap gap-2">
+								<Button onclick={finishSpotifyLogin}>Finish Spotify login</Button>
+							</div>
 						{/if}
 					</ProviderLoginPanel>
 
-					<ProviderLoginPanel providerId="tidal" providerName="TIDAL" description="OAuth PKCE" loginState={loginStateForProvider('tidal')}>
-						<div class="flex flex-wrap gap-2"><Button onclick={startTidalLogin}>Start TIDAL login</Button><Button variant="secondary" onclick={refreshTidalToken}>Refresh token</Button></div>
+					<ProviderLoginPanel
+						providerId="tidal"
+						providerName="TIDAL"
+						description="OAuth PKCE"
+						loginState={loginStateForProvider('tidal')}
+					>
+						<div class="flex flex-wrap gap-2">
+							<Button onclick={startTidalLogin}>Start TIDAL login</Button><Button
+								variant="secondary"
+								onclick={refreshTidalToken}>Refresh token</Button
+							>
+						</div>
 						{#if tidalAuthorizationUrl}
-							<a class="text-brand text-sm" href={tidalAuthorizationUrl} target="_blank" rel="noreferrer">Open TIDAL authorization</a>
-							<label class="grid gap-2 text-soft text-sm">Returned URL or code <Input bind:value={tidalAuthorizationCode} autocomplete="off" class="w-full" /></label>
-							<label class="grid gap-2 text-soft text-sm">State <Input bind:value={tidalAuthorizationState} autocomplete="off" class="w-full" /></label>
-							<div class="flex flex-wrap gap-2"><Button onclick={finishTidalLogin}>Finish TIDAL login</Button></div>
+							<a
+								class="text-brand text-sm"
+								href={tidalAuthorizationUrl}
+								target="_blank"
+								rel="noreferrer">Open TIDAL authorization</a
+							>
+							<label class="grid gap-2 text-soft text-sm"
+								>Returned URL or code <Input
+									bind:value={tidalAuthorizationCode}
+									autocomplete="off"
+									class="w-full"
+								/></label
+							>
+							<label class="grid gap-2 text-soft text-sm"
+								>State <Input
+									bind:value={tidalAuthorizationState}
+									autocomplete="off"
+									class="w-full"
+								/></label
+							>
+							<div class="flex flex-wrap gap-2">
+								<Button onclick={finishTidalLogin}>Finish TIDAL login</Button>
+							</div>
 						{/if}
 					</ProviderLoginPanel>
 
-					<ProviderLoginPanel providerId="youtube" providerName="YouTube" description="Google OAuth" loginState={loginStateForProvider('youtube')}>
-						<div class="flex flex-wrap gap-2"><Button onclick={startYoutubeLogin}>Start YouTube login</Button><Button variant="secondary" onclick={refreshYoutubeToken}>Refresh token</Button></div>
+					<ProviderLoginPanel
+						providerId="youtube"
+						providerName="YouTube"
+						description="Google OAuth"
+						loginState={loginStateForProvider('youtube')}
+					>
+						<div class="flex flex-wrap gap-2">
+							<Button onclick={startYoutubeLogin}>Start YouTube login</Button><Button
+								variant="secondary"
+								onclick={refreshYoutubeToken}>Refresh token</Button
+							>
+						</div>
 						{#if youtubeAuthorizationUrl}
-							<a class="text-brand text-sm" href={youtubeAuthorizationUrl} target="_blank" rel="noreferrer">Open Google authorization</a>
-							<label class="grid gap-2 text-soft text-sm">Returned URL or code <Input bind:value={youtubeAuthorizationCode} autocomplete="off" class="w-full" /></label>
-							<label class="grid gap-2 text-soft text-sm">State <Input bind:value={youtubeAuthorizationState} autocomplete="off" class="w-full" /></label>
-							<div class="flex flex-wrap gap-2"><Button onclick={finishYoutubeLogin}>Finish YouTube login</Button></div>
+							<a
+								class="text-brand text-sm"
+								href={youtubeAuthorizationUrl}
+								target="_blank"
+								rel="noreferrer">Open Google authorization</a
+							>
+							<label class="grid gap-2 text-soft text-sm"
+								>Returned URL or code <Input
+									bind:value={youtubeAuthorizationCode}
+									autocomplete="off"
+									class="w-full"
+								/></label
+							>
+							<label class="grid gap-2 text-soft text-sm"
+								>State <Input
+									bind:value={youtubeAuthorizationState}
+									autocomplete="off"
+									class="w-full"
+								/></label
+							>
+							<div class="flex flex-wrap gap-2">
+								<Button onclick={finishYoutubeLogin}>Finish YouTube login</Button>
+							</div>
 						{/if}
 					</ProviderLoginPanel>
 
-					<ProviderLoginPanel providerId="lastfm" providerName="Last.fm" description="Desktop session" loginState={loginStateForProvider('lastfm')}>
-						<div class="flex flex-wrap gap-2"><Button onclick={startLastFmLogin}>Start Last.fm login</Button></div>
+					<ProviderLoginPanel
+						providerId="lastfm"
+						providerName="Last.fm"
+						description="Desktop session"
+						loginState={loginStateForProvider('lastfm')}
+					>
+						<div class="flex flex-wrap gap-2">
+							<Button onclick={startLastFmLogin}>Start Last.fm login</Button>
+						</div>
 						{#if lastFmAuthorizationUrl}
-							<a class="text-brand text-sm" href={lastFmAuthorizationUrl} target="_blank" rel="noreferrer">Open Last.fm authorization</a>
-							<div class="flex flex-wrap gap-2"><Button onclick={finishLastFmLogin}>Finish Last.fm login</Button></div>
+							<a
+								class="text-brand text-sm"
+								href={lastFmAuthorizationUrl}
+								target="_blank"
+								rel="noreferrer">Open Last.fm authorization</a
+							>
+							<div class="flex flex-wrap gap-2">
+								<Button onclick={finishLastFmLogin}>Finish Last.fm login</Button>
+							</div>
 						{/if}
 					</ProviderLoginPanel>
 
-					<ProviderLoginPanel providerId="qobuz" providerName="Qobuz" description="App credentials" loginState={loginStateForProvider('qobuz')}>
+					<ProviderLoginPanel
+						providerId="qobuz"
+						providerName="Qobuz"
+						description="App credentials"
+						loginState={loginStateForProvider('qobuz')}
+					>
 						<p>{loginStateForProvider('qobuz')?.message ?? 'No Qobuz credentials saved'}</p>
 					</ProviderLoginPanel>
 
-					<ProviderLoginPanel providerId="bandcamp" providerName="Bandcamp" description="Link-out" loginState={loginStateForProvider('bandcamp')}>
-						<p>{loginStateForProvider('bandcamp')?.message ?? 'No Bandcamp login state available'}</p>
-						<a class="text-brand text-sm" href="https://bandcamp.com/developer" target="_blank" rel="noreferrer">Open Bandcamp developer docs</a>
+					<ProviderLoginPanel
+						providerId="bandcamp"
+						providerName="Bandcamp"
+						description="Link-out"
+						loginState={loginStateForProvider('bandcamp')}
+					>
+						<p>
+							{loginStateForProvider('bandcamp')?.message ?? 'No Bandcamp login state available'}
+						</p>
+						<a
+							class="text-brand text-sm"
+							href="https://bandcamp.com/developer"
+							target="_blank"
+							rel="noreferrer">Open Bandcamp developer docs</a
+						>
 					</ProviderLoginPanel>
 
-					<ProviderLoginPanel providerId="soundcloud" providerName="SoundCloud" description="Built-in API key" loginState={loginStateForProvider('soundcloud')}>
-						<p>{loginStateForProvider('soundcloud')?.message ?? 'SoundCloud search uses a built-in client ID. Register your own app for higher rate limits.'}</p>
-						<a class="text-brand text-sm" href="https://developers.soundcloud.com/" target="_blank" rel="noreferrer">Open SoundCloud for Developers</a>
+					<ProviderLoginPanel
+						providerId="soundcloud"
+						providerName="SoundCloud"
+						description="Built-in API key"
+						loginState={loginStateForProvider('soundcloud')}
+					>
+						<p>
+							{loginStateForProvider('soundcloud')?.message ??
+								'SoundCloud search uses a built-in client ID. Register your own app for higher rate limits.'}
+						</p>
+						<a
+							class="text-brand text-sm"
+							href="https://developers.soundcloud.com/"
+							target="_blank"
+							rel="noreferrer">Open SoundCloud for Developers</a
+						>
 					</ProviderLoginPanel>
 				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Last.fm Scrobbling</h2>
-					<p class="text-soft text-sm">{lastFmCredentialsReady() ? 'Last.fm scrobbling credentials are ready' : 'Save a Last.fm API key, API secret, and session key'}</p>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Last.fm Scrobbling
+					</h2>
+					<p class="text-soft text-sm">
+						{lastFmCredentialsReady()
+							? 'Last.fm scrobbling credentials are ready'
+							: 'Save a Last.fm API key, API secret, and session key'}
+					</p>
 				</div>
 				<div class="grid grid-cols-3 gap-2.5 max-md:grid-cols-1">
-					<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Pending</span><strong class="text-xl">{lastFmScrobbleStatus?.pending_count ?? 0}</strong></div>
-					<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Submitted</span><strong class="text-xl">{lastFmScrobbleStatus?.submitted_count ?? 0}</strong></div>
-					<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Failed</span><strong class="text-xl">{lastFmScrobbleStatus?.failed_count ?? 0}</strong></div>
+					<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+						<span class="text-soft font-mono text-xs uppercase">Pending</span><strong
+							class="text-xl">{lastFmScrobbleStatus?.pending_count ?? 0}</strong
+						>
+					</div>
+					<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+						<span class="text-soft font-mono text-xs uppercase">Submitted</span><strong
+							class="text-xl">{lastFmScrobbleStatus?.submitted_count ?? 0}</strong
+						>
+					</div>
+					<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+						<span class="text-soft font-mono text-xs uppercase">Failed</span><strong class="text-xl"
+							>{lastFmScrobbleStatus?.failed_count ?? 0}</strong
+						>
+					</div>
 				</div>
-				{#if lastFmScrobbleStatus?.last_error}<p class="text-red-600">{lastFmScrobbleStatus.last_error}</p>{/if}
-				<div class="flex flex-wrap gap-2"><Button onclick={retryLastFmScrobbles} disabled={!lastFmCredentialsReady()}>Retry pending scrobbles</Button><Button variant="secondary" onclick={loadLastFmScrobbleStatus}>Refresh status</Button></div>
+				{#if lastFmScrobbleStatus?.last_error}<p class="text-red-600">
+						{lastFmScrobbleStatus.last_error}
+					</p>{/if}
+				<div class="flex flex-wrap gap-2">
+					<Button onclick={retryLastFmScrobbles} disabled={!lastFmCredentialsReady()}
+						>Retry pending scrobbles</Button
+					><Button variant="secondary" onclick={loadLastFmScrobbleStatus}>Refresh status</Button>
+				</div>
 			</section>
 		</Tabs.Content>
 
 		<!-- ===== PROVIDERS TAB ===== -->
-		<Tabs.Content value="providers" class="settings-tab-content">
-			<section class="settings-panel">
+		<Tabs.Content value="providers" class="mt-1 grid gap-4">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Provider Status</h2>
-					<p class="text-soft text-sm">Credential and connection status for each streaming service</p>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Provider Status
+					</h2>
+					<p class="text-soft text-sm">
+						Credential and connection status for each streaming service
+					</p>
 				</div>
 				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
 					{#each ALL_PROVIDER_IDS as pid}
@@ -927,7 +1502,11 @@
 										</span>
 										{#if status}
 											<span class="text-soft">
-											{status.is_connected ? 'Status: Connected' : status.has_creds ? 'Status: Ready for OAuth' : 'Status: Not configured'}
+												{status.is_connected
+													? 'Status: Connected'
+													: status.has_creds
+														? 'Status: Ready for OAuth'
+														: 'Status: Not configured'}
 											</span>
 										{:else}
 											<span class="text-soft">Configure in Dev tab</span>
@@ -937,10 +1516,14 @@
 							</Card.Header>
 							<Card.Footer>
 								{#if status?.is_connected}
-									<Badge variant="outline" class="border-green-600/40 text-green-600">Connected</Badge>
+									<Badge variant="outline" class="border-green-600/40 text-green-600"
+										>Connected</Badge
+									>
 								{:else if status?.has_creds}
 									{#if pid === 'spotify'}
-										<Button size="sm" variant="outline" onclick={completeSpotifyLoginInBrowser}>Connect</Button>
+										<Button size="sm" variant="outline" onclick={completeSpotifyLoginInBrowser}
+											>Connect</Button
+										>
 									{:else if pid === 'tidal'}
 										<Button size="sm" variant="outline" onclick={startTidalLogin}>Connect</Button>
 									{:else if pid === 'youtube'}
@@ -964,18 +1547,25 @@
 		</Tabs.Content>
 
 		<!-- ===== DEV TAB ===== -->
-		<Tabs.Content value="dev" class="settings-tab-content">
+		<Tabs.Content value="dev" class="mt-1 grid gap-4">
 			<div class="mb-4 px-3 py-2 border border-warning/40 rounded-2xl bg-warning/10">
-			<p class="m-0 text-warning text-sm">
-			<strong>Developer Settings</strong> &mdash; changing credentials may break playback. Use the Providers tab for normal setup.
-			</p>
+				<p class="m-0 text-warning text-sm">
+					<strong>Developer Settings</strong> &mdash; changing credentials may break playback. Use the
+					Providers tab for normal setup.
+				</p>
 			</div>
 
 			{#each ALL_PROVIDER_IDS as pid}
 				{@const state = devProviderStates[pid]}
-				<section class="settings-panel">
+				<section
+					class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+				>
 					<div>
-						<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(20px,2vw,26px)] leading-[1.04]">{devProviderNames[pid] ?? providerName(pid)}</h2>
+						<h2
+							class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(20px,2vw,26px)] leading-[1.04]"
+						>
+							{devProviderNames[pid] ?? providerName(pid)}
+						</h2>
 						<p class="text-soft text-sm">
 							{#if state}
 								{#if state.is_default}
@@ -997,13 +1587,17 @@
 							{field.label}
 							<div class="flex gap-2">
 								<Input
-									type={fieldKey.includes('secret') || fieldKey.includes('key') ? 'password' : 'text'}
+									type={fieldKey.includes('secret') || fieldKey.includes('key')
+										? 'password'
+										: 'text'}
 									value={devFieldValues[pid]?.[fieldKey] ?? ''}
 									oninput={(e) => {
 										if (!devFieldValues[pid]) devFieldValues[pid] = {};
 										devFieldValues[pid][fieldKey] = (e.target as HTMLInputElement).value;
 									}}
-									placeholder={state?.is_default ? '•••••••• (using defaults)' : `Enter ${field.label}`}
+									placeholder={state?.is_default
+										? '•••••••• (using defaults)'
+										: `Enter ${field.label}`}
 									disabled={devUseDefault[pid] ?? true}
 									class="flex-1"
 									autocomplete="off"
@@ -1013,29 +1607,53 @@
 					{/each}
 
 					<div class="flex flex-wrap gap-2 items-center mt-3">
-						<label class="flex items-center gap-2 text-sm cursor-pointer">
-							<input type="checkbox" bind:checked={devUseDefault[pid]} class="w-4 h-4 rounded border-outline" />
+						<div class="flex items-center gap-2 text-sm">
+							<Button
+								variant={devUseDefault[pid] ? 'default' : 'outline'}
+								size="sm"
+								class="rounded-full"
+								role="switch"
+								aria-checked={devUseDefault[pid] ?? true}
+								onclick={() => (devUseDefault[pid] = !(devUseDefault[pid] ?? true))}
+							>
+								{(devUseDefault[pid] ?? true) ? 'On' : 'Off'}
+							</Button>
 							<span class="text-soft">Use Default</span>
-						</label>
+						</div>
 					</div>
 
 					<div class="flex flex-wrap gap-2 mt-2">
-						<Button size="sm" onclick={() => saveDevCredentials(pid)} disabled={devUseDefault[pid] ?? true}>Save</Button>
-						<Button size="sm" variant="outline" onclick={() => resetDevToDefaults(pid)}>Reset to Defaults</Button>
-						<Button size="sm" variant="secondary" onclick={() => loadDevProviderState(pid)}>Reload</Button>
+						<Button
+							size="sm"
+							onclick={() => saveDevCredentials(pid)}
+							disabled={devUseDefault[pid] ?? true}>Save</Button
+						>
+						<Button size="sm" variant="outline" onclick={() => resetDevToDefaults(pid)}
+							>Reset to Defaults</Button
+						>
+						<Button size="sm" variant="secondary" onclick={() => loadDevProviderState(pid)}
+							>Reload</Button
+						>
 					</div>
 				</section>
 			{/each}
 		</Tabs.Content>
 
 		<!-- ===== AUDIO TAB ===== -->
-		<Tabs.Content value="audio" class="settings-tab-content">
-			<section class="settings-panel">
+		<Tabs.Content value="audio" class="mt-1 grid gap-4">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Audio Output</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Audio Output
+					</h2>
 					<p class="text-soft text-sm">{selectedAudioOutputDescription()}</p>
 				</div>
-				<label class="grid gap-2 text-soft text-sm">Output device
+				<label class="grid gap-2 text-soft text-sm"
+					>Output device
 					<Select.Root bind:value={selectedAudioOutput} onValueChange={selectAudioOutput}>
 						<Select.Trigger class="w-full">
 							<SelectPrimitive.Value placeholder="Select output device" />
@@ -1047,17 +1665,34 @@
 						</Select.Content>
 					</Select.Root>
 				</label>
-				<div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={loadAudioOutputs}>Refresh devices</Button></div>
+				<div class="flex flex-wrap gap-2">
+					<Button variant="secondary" onclick={loadAudioOutputs}>Refresh devices</Button>
+				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Crossfeed</h2>
-					<p class="text-soft text-sm">Simulates speaker crosstalk for headphone listening. No DSP yet — level is stored for future use.</p>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Crossfeed
+					</h2>
+					<p class="text-soft text-sm">
+						Simulates speaker crosstalk for headphone listening. No DSP yet — level is stored for
+						future use.
+					</p>
 				</div>
 				<label class="grid gap-2 text-soft text-sm">
 					Level
-					<Select.Root value={$crossfeedState.level} onValueChange={async (v: string) => { crossfeedState.update(s => ({ ...s, level: v })); await setCrossfeedLevel(); }}>
+					<Select.Root
+						value={$crossfeedState.level}
+						onValueChange={async (v: string) => {
+							crossfeedState.update((s) => ({ ...s, level: v }));
+							await setCrossfeedLevel();
+						}}
+					>
 						<Select.Trigger class="w-[180px]">
 							<SelectPrimitive.Value placeholder="Select level" />
 						</Select.Trigger>
@@ -1072,15 +1707,33 @@
 
 			<Equalizer />
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Crossfade</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Crossfade
+					</h2>
 					<p class="text-soft text-sm">Smoothly transition between tracks</p>
 				</div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input type="checkbox" bind:checked={crossfadeEnabled} onchange={setCrossfade} class="w-4 h-4 rounded border-outline" />
+				<div class="flex items-center gap-3">
+					<Button
+						variant={crossfadeEnabled ? 'default' : 'outline'}
+						size="sm"
+						class="rounded-full"
+						role="switch"
+						aria-checked={crossfadeEnabled}
+						onclick={() => {
+							crossfadeEnabled = !crossfadeEnabled;
+							void setCrossfade();
+						}}
+					>
+						{crossfadeEnabled ? 'On' : 'Off'}
+					</Button>
 					<span class="text-soft text-sm">Enable crossfade</span>
-				</label>
+				</div>
 				{#if crossfadeEnabled}
 					<label class="grid gap-2 text-soft text-sm">
 						Duration: {crossfadeDuration}ms
@@ -1089,27 +1742,53 @@
 							min={500}
 							max={12000}
 							step={500}
-							onValueChange={(v: number[]) => { crossfadeDuration = v[0]; }}
+							onValueChange={(v: number[]) => {
+								crossfadeDuration = v[0];
+							}}
 							onValueCommit={() => setCrossfade()}
 						/>
 					</label>
 				{/if}
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Mono Downmix</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Mono Downmix
+					</h2>
 					<p class="text-soft text-sm">Convert stereo audio to mono</p>
 				</div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input type="checkbox" bind:checked={monoDownmix} onchange={setMonoDownmix} class="w-4 h-4 rounded border-outline" />
+				<div class="flex items-center gap-3">
+					<Button
+						variant={monoDownmix ? 'default' : 'outline'}
+						size="sm"
+						class="rounded-full"
+						role="switch"
+						aria-checked={monoDownmix}
+						onclick={() => {
+							monoDownmix = !monoDownmix;
+							void setMonoDownmix();
+						}}
+					>
+						{monoDownmix ? 'On' : 'Off'}
+					</Button>
 					<span class="text-soft text-sm">Enable mono output</span>
-				</label>
+				</div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Pre-amplifier</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Pre-amplifier
+					</h2>
 					<p class="text-soft text-sm">Boost or attenuate audio before output</p>
 				</div>
 				<label class="grid gap-2 text-soft text-sm">
@@ -1119,21 +1798,34 @@
 						min={-12}
 						max={12}
 						step={0.5}
-						onValueChange={(v: number[]) => { preampGainDb = v[0]; }}
+						onValueChange={(v: number[]) => {
+							preampGainDb = v[0];
+						}}
 						onValueCommit={() => setPreampGain()}
 					/>
 				</label>
 				<div class="flex flex-wrap gap-2"><Button onclick={setPreampGain}>Apply</Button></div>
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Playback Speed</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Playback Speed
+					</h2>
 					<p class="text-soft text-sm">Adjust playback speed (0.5× to 2.0×)</p>
 				</div>
 				<label class="grid gap-2 text-soft text-sm">
 					Speed: {playbackSpeed}&times;
-					<Select.Root bind:value={playbackSpeedValue} onValueChange={async () => { await setPlaybackSpeed(); }}>
+					<Select.Root
+						bind:value={playbackSpeedValue}
+						onValueChange={async () => {
+							await setPlaybackSpeed();
+						}}
+					>
 						<Select.Trigger class="w-[120px]">
 							<SelectPrimitive.Value placeholder={`${playbackSpeed}×`} />
 						</Select.Trigger>
@@ -1151,35 +1843,84 @@
 		</Tabs.Content>
 
 		<!-- ===== LIBRARY TAB ===== -->
-		<Tabs.Content value="library" class="settings-tab-content">
-			<section class="settings-panel">
+		<Tabs.Content value="library" class="mt-1 grid gap-4">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Library Scan</h2>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Library Scan
+					</h2>
 					<p class="text-soft text-sm">Index local music files for browsing and playback</p>
 				</div>
-				<div class="flex gap-2"><Input bind:value={libraryPath} placeholder="/path/to/music" aria-label="Music folder path" class="flex-1" /><Button onclick={scanLibrary} disabled={loadingLibrary}>Scan</Button></div>
+				<div class="flex gap-2">
+					<Input
+						bind:value={libraryPath}
+						placeholder="/path/to/music"
+						aria-label="Music folder path"
+						class="flex-1"
+					/><Button onclick={scanLibrary} disabled={loadingLibrary}>Scan</Button>
+				</div>
 				{#if scanSummary}
 					<div class="grid grid-cols-4 gap-2.5 max-xl:grid-cols-2">
-						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Scanned</span><strong class="text-xl break-words">{scanSummary.scanned_files}</strong></div>
-						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Indexed</span><strong class="text-xl break-words">{scanSummary.indexed_tracks}</strong></div>
-						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Skipped</span><strong class="text-xl break-words">{scanSummary.skipped_files}</strong></div>
-						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Root</span><strong class="font-mono text-xs break-words">{scanSummary.root}</strong></div>
+						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+							<span class="text-soft font-mono text-xs uppercase">Scanned</span><strong
+								class="text-xl break-words">{scanSummary.scanned_files}</strong
+							>
+						</div>
+						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+							<span class="text-soft font-mono text-xs uppercase">Indexed</span><strong
+								class="text-xl break-words">{scanSummary.indexed_tracks}</strong
+							>
+						</div>
+						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+							<span class="text-soft font-mono text-xs uppercase">Skipped</span><strong
+								class="text-xl break-words">{scanSummary.skipped_files}</strong
+							>
+						</div>
+						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+							<span class="text-soft font-mono text-xs uppercase">Root</span><strong
+								class="font-mono text-xs break-words">{scanSummary.root}</strong
+							>
+						</div>
 					</div>
 				{/if}
 			</section>
 
-			<section class="settings-panel">
+			<section
+				class="grid gap-3.5 rounded-3xl border border-outline bg-surface/90 p-[1.125rem] max-lg:p-3.5 [[data-density=compact]_&]:gap-2 [[data-density=compact]_&]:p-2.5 [[data-density=spacious]_&]:gap-5 [[data-density=spacious]_&]:p-6"
+			>
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Watch Folders</h2>
-					<p class="text-soft text-sm">Automatically scan for new audio files in the library root</p>
+					<h2
+						class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+					>
+						Watch Folders
+					</h2>
+					<p class="text-soft text-sm">
+						Automatically scan for new audio files in the library root
+					</p>
 				</div>
-				<label class="flex items-center gap-3 cursor-pointer">
-					<input type="checkbox" bind:checked={watchFolders} onchange={toggleWatchFolders} class="w-4 h-4 rounded border-outline" />
+				<div class="flex items-center gap-3">
+					<Button
+						variant={watchFolders ? 'default' : 'outline'}
+						size="sm"
+						class="rounded-full"
+						role="switch"
+						aria-checked={watchFolders}
+						onclick={() => {
+							watchFolders = !watchFolders;
+							void toggleWatchFolders();
+						}}
+					>
+						{watchFolders ? 'On' : 'Off'}
+					</Button>
 					<span class="text-soft text-sm">Watch folders for new files</span>
 					{#if watchingLabel}
 						<span class="text-xs font-mono text-soft ml-2">{watchingLabel}</span>
 					{/if}
-				</label>
+				</div>
 			</section>
 		</Tabs.Content>
 	</Tabs.Root>
@@ -1200,8 +1941,8 @@
 						<strong class="text-fg">Cold Brew</strong> v0.2.0
 					</p>
 					<p>
-						Play local music files, stream from Spotify, TIDAL, YouTube Music,
-						Jellyfin, and more. All from one unified queue.
+						Play local music files, stream from Spotify, TIDAL, YouTube Music, Jellyfin, and more.
+						All from one unified queue.
 					</p>
 					<p>
 						Made with <span class="text-brand">☕</span> and Rust
@@ -1216,12 +1957,10 @@
 							View on GitHub
 						</a>
 					</p>
-					<p>
-						Licensed under MIT
-					</p>
+					<p>Licensed under MIT</p>
 				</div>
 				<DialogComponents.Footer>
-				<Button variant="outline" onclick={() => aboutOpen = false}>Close</Button>
+					<Button variant="outline" onclick={() => (aboutOpen = false)}>Close</Button>
 				</DialogComponents.Footer>
 			</DialogComponents.Content>
 		</DialogComponents.Portal>

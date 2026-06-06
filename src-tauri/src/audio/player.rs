@@ -13,6 +13,9 @@ use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
 use serde::{Deserialize, Serialize};
 use tracing::instrument;
 
+use crate::audio::spectrum::AUDIO_RING;
+use crate::audio::spectrum_tap::SpectrumTap;
+
 static AUDIO_PLAYER: OnceLock<Mutex<AudioPlayer>> = OnceLock::new();
 
 #[derive(Clone, Debug, Serialize)]
@@ -979,6 +982,8 @@ fn prepare_local_track(
     if (settings.playback_speed - 1.0).abs() > f32::EPSILON {
         source = Box::new(source.speed(settings.playback_speed));
     }
+
+    let source = Box::new(SpectrumTap::new(source, AUDIO_RING.clone()));
 
     Ok((
         PreparedLocalTrack {

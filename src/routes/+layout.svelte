@@ -4,13 +4,30 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
 	import { toast, Toaster } from 'svelte-sonner';
-	import type { PlaybackSettings, PlaybackStatus, QueuePlaybackResult, QueueSnapshot, RestoredSession, LibraryStats, Song } from '$lib/types';
+	import type {
+		PlaybackSettings,
+		PlaybackStatus,
+		QueuePlaybackResult,
+		QueueSnapshot,
+		RestoredSession,
+		LibraryStats,
+		Song
+	} from '$lib/types';
 	import { playbackStatus, currentSong, volume, playbackSettings } from '$lib/stores';
-	import { toErrorMessage, playbackQualityLabel, formatSource, formatSampleRate, formatDb, titleFromPath, emptySong } from '$lib/playback';
+	import {
+		toErrorMessage,
+		playbackQualityLabel,
+		formatSource,
+		formatSampleRate,
+		formatDb,
+		titleFromPath,
+		emptySong
+	} from '$lib/playback';
 	import SideNav from '$lib/components/SideNav.svelte';
 	import QueuePanel from '$lib/components/QueuePanel.svelte';
 	import MiniPlayer from '$lib/components/MiniPlayer.svelte';
 	import KeyboardShortcuts from '$lib/components/KeyboardShortcuts.svelte';
+	import { Button } from '$lib/components/ui/button';
 	import { Library, Play, MousePointer2, Settings } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { t, initLocale } from '$lib/i18n';
@@ -33,10 +50,7 @@
 	let spotifyStateUpdatedAt = 0;
 	let spotifyLastQueueSyncId: string | null = null;
 
-	$effect(() => {
-		$page.url.pathname;
-		// re-routed – bottom tab highlights automatically via $page
-	});
+	let playerRouteActive = $derived($page.url.pathname.startsWith('/player'));
 
 	let queueSheetOpen = $state(false);
 	let showShortcuts = $state(false);
@@ -658,17 +672,8 @@
 	function restoreAccentColor() {
 		if (typeof localStorage === 'undefined') return;
 		const saved = localStorage.getItem('coldbrew.accentColor');
-		if (saved) {
-			const colors: Record<string, string> = {
-				'cold-blue': 'oklch(70% 0.13 205)',
-				caramel: 'oklch(68% 0.12 68)',
-				rose: 'oklch(65% 0.17 15)',
-				mint: 'oklch(70% 0.13 160)',
-				lavender: 'oklch(70% 0.11 290)',
-				amber: 'oklch(75% 0.14 82)'
-			};
-			const cssValue = colors[saved];
-			if (cssValue) document.documentElement.style.setProperty('--color-brand', cssValue);
+		if (saved && ['cold-blue', 'caramel', 'rose', 'mint', 'lavender', 'amber'].includes(saved)) {
+			document.documentElement.setAttribute('data-accent', saved);
 		}
 	}
 
@@ -697,68 +702,108 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="app-shell" data-od-id="app-shell">
-	<div class="sidebar-full" role="navigation" aria-label="{t('nav.primary')}">
+<div
+	class={`grid h-dvh grid-cols-[200px_minmax(0,1fr)_320px] gap-0 overflow-hidden pt-[env(safe-area-inset-top,0px)] pr-[env(safe-area-inset-right,0px)] pl-[env(safe-area-inset-left,0px)] max-xl:grid-cols-[48px_minmax(0,1fr)] max-md:grid-cols-1 max-md:grid-rows-[1fr_auto] ${playerRouteActive ? 'pb-[env(safe-area-inset-bottom,0px)] max-md:pb-[env(safe-area-inset-bottom,0px)]' : 'pb-[calc(96px+env(safe-area-inset-bottom,0px))] max-md:pb-[calc(56px+env(safe-area-inset-bottom,0px))]'}`}
+	data-od-id="app-shell"
+>
+	<div class="grid max-xl:hidden" role="navigation" aria-label={t('nav.primary')}>
 		<SideNav />
 	</div>
-	<nav class="sidebar-icon-rail" aria-label="{t('nav.primary')}">
-		<button onclick={() => goto('/')} aria-label="{t('nav.library')}">
+	<nav
+		class="hidden border-r border-outline bg-surface/92 py-3 md:max-xl:grid md:max-xl:grid-rows-[auto_1fr_auto] md:max-xl:items-start md:max-xl:justify-items-center md:max-xl:gap-5"
+		aria-label={t('nav.primary')}
+	>
+		<Button
+			variant="ghost"
+			size="icon"
+			class="min-h-11 min-w-11 rounded-[0.625rem] text-soft hover:bg-brand/10 hover:text-fg"
+			onclick={() => goto('/')}
+			aria-label={t('nav.library')}
+		>
 			<Library class="size-5" />
-		</button>
-		<button onclick={() => goto('/player')} aria-label="{t('nav.player')}">
+		</Button>
+		<Button
+			variant="ghost"
+			size="icon"
+			class="min-h-11 min-w-11 rounded-[0.625rem] text-soft hover:bg-brand/10 hover:text-fg"
+			onclick={() => goto('/player')}
+			aria-label={t('nav.player')}
+		>
 			<Play class="size-5" />
-		</button>
-		<button onclick={() => goto('/explore')} aria-label="{t('nav.explore')}">
+		</Button>
+		<Button
+			variant="ghost"
+			size="icon"
+			class="min-h-11 min-w-11 rounded-[0.625rem] text-soft hover:bg-brand/10 hover:text-fg"
+			onclick={() => goto('/explore')}
+			aria-label={t('nav.explore')}
+		>
 			<MousePointer2 class="size-5" />
-		</button>
-		<button onclick={() => goto('/settings')} aria-label="{t('nav.settings')}">
+		</Button>
+		<Button
+			variant="ghost"
+			size="icon"
+			class="min-h-11 min-w-11 rounded-[0.625rem] text-soft hover:bg-brand/10 hover:text-fg"
+			onclick={() => goto('/settings')}
+			aria-label={t('nav.settings')}
+		>
 			<Settings class="size-5" />
-		</button>
+		</Button>
 	</nav>
-	<main class="content" data-od-id="content" id="main-content">
+	<main
+		class={`min-h-0 min-w-0 overflow-x-hidden bg-transparent ${playerRouteActive ? 'h-full overflow-hidden p-4 max-md:p-0 [[data-density=compact]_&]:p-3 [[data-density=spacious]_&]:p-5' : 'overflow-y-auto p-6 max-md:p-4 [[data-density=compact]_&]:p-3 [[data-density=spacious]_&]:p-9'}`}
+		data-od-id="content"
+		id="main-content"
+	>
 		<slot />
 	</main>
-	<div class="queue-panel-desktop" data-od-id="queue-panel-desktop" role="complementary" aria-label="{t('common.queue')}">
-		<QueuePanel
-			{upcomingSongs}
-			{oldSongs}
-			onRemove={removeQueuedSong}
-			onMove={moveQueuedSong}
-		/>
+	<div
+		class="max-xl:hidden"
+		data-od-id="queue-panel-desktop"
+		role="complementary"
+		aria-label={t('common.queue')}
+	>
+		<QueuePanel {upcomingSongs} {oldSongs} onRemove={removeQueuedSong} onMove={moveQueuedSong} />
 	</div>
 </div>
 
-<!-- Mobile bottom tab bar -->
-<nav class="bottom-tab-bar" data-od-id="bottom-tab-bar" aria-label="{t('nav.bottom_nav')}">
-	{#each bottomTabs as tab}
-		<button
-			class="bottom-tab-button"
-			class:text-brand={isTabActive(tab.path)}
-			onclick={() => goto(tab.path)}
-			aria-label={t(tab.i18nKey)}
-			aria-current={isTabActive(tab.path) ? 'page' : undefined}
-		>
-			<tab.icon class="size-5" aria-hidden="true" />
-			<span>{t(tab.i18nKey)}</span>
-		</button>
-	{/each}
-</nav>
+{#if !playerRouteActive}
+	<!-- Mobile bottom tab bar -->
+	<nav
+		class="hidden border-t border-outline bg-surface/96 backdrop-blur max-md:grid max-md:h-14 max-md:grid-cols-4 max-md:pb-[env(safe-area-inset-bottom,0px)]"
+		data-od-id="bottom-tab-bar"
+		aria-label={t('nav.bottom_nav')}
+	>
+		{#each bottomTabs as tab}
+			<Button
+				variant="ghost"
+				class={`flex min-h-11 flex-col items-center justify-center gap-0.5 rounded-none border-0 bg-transparent p-0 text-[0.62rem] font-medium tracking-[0.04em] text-soft uppercase hover:text-brand ${isTabActive(tab.path) ? 'text-brand' : ''}`}
+				onclick={() => goto(tab.path)}
+				aria-label={t(tab.i18nKey)}
+				aria-current={isTabActive(tab.path) ? 'page' : undefined}
+			>
+				<tab.icon class="size-5" aria-hidden="true" />
+				<span>{t(tab.i18nKey)}</span>
+			</Button>
+		{/each}
+	</nav>
 
-<MiniPlayer
-	onPlayPrevious={playPreviousQueueSong}
-	onResume={resumePlayback}
-	onPause={pausePlayback}
-	onStop={stopPlayback}
-	onPlayNext={playNextQueueSong}
-	onVolumeChange={updateVolume}
-	onSpeedChange={setSpeed}
-	canPlay={canStartPlayback()}
-	isPlaying={Boolean($playbackStatus?.playing) || spotifyIsPlaying()}
-	isPauseEnabled={Boolean($playbackStatus?.playing) || spotifyIsPlaying()}
-	isStopEnabled={Boolean($playbackStatus?.current_path) || spotifyPlaybackActive}
-	canPrev={oldSongs.length > 0}
-	canNext={upcomingSongs.length > 0}
-/>
+	<MiniPlayer
+		onPlayPrevious={playPreviousQueueSong}
+		onResume={resumePlayback}
+		onPause={pausePlayback}
+		onStop={stopPlayback}
+		onPlayNext={playNextQueueSong}
+		onVolumeChange={updateVolume}
+		onSpeedChange={setSpeed}
+		canPlay={canStartPlayback()}
+		isPlaying={Boolean($playbackStatus?.playing) || spotifyIsPlaying()}
+		isPauseEnabled={Boolean($playbackStatus?.playing) || spotifyIsPlaying()}
+		isStopEnabled={Boolean($playbackStatus?.current_path) || spotifyPlaybackActive}
+		canPrev={oldSongs.length > 0}
+		canNext={upcomingSongs.length > 0}
+	/>
+{/if}
 
 <KeyboardShortcuts bind:open={showShortcuts} />
 

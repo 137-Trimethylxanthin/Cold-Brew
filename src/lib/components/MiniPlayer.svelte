@@ -1,13 +1,31 @@
 <script lang="ts">
-	import { playbackStatus, currentSong, volume, playbackSettings, sleepTimerState, abRepeatState } from '$lib/stores';
+	import {
+		playbackStatus,
+		currentSong,
+		volume,
+		playbackSettings,
+		sleepTimerState,
+		abRepeatState
+	} from '$lib/stores';
 	import { playbackQualityLabel } from '$lib/playback';
 	import type { AbRepeatState, SleepTimerState, Song } from '$lib/types';
-	import { SkipBack, Play, Pause, Square, SkipForward, Minimize2, Maximize2, Timer, RotateCcw } from '@lucide/svelte';
+	import {
+		SkipBack,
+		Play,
+		Pause,
+		Square,
+		SkipForward,
+		Minimize2,
+		Maximize2,
+		Timer,
+		RotateCcw
+	} from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Slider } from '$lib/components/ui/slider';
 	import { t } from '$lib/i18n';
 	import { invoke } from '@tauri-apps/api/core';
 	import VuMeter from '$lib/components/VuMeter.svelte';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 
 	let {
 		onPlayPrevious = () => {},
@@ -50,12 +68,14 @@
 		{ label: '45 min', value: 45 },
 		{ label: '60 min', value: 60 },
 		{ label: '90 min', value: 90 },
-		{ label: '120 min', value: 120 },
+		{ label: '120 min', value: 120 }
 	];
 
 	const COMPACT_KEY = 'coldbrew.miniplayer.compact';
 
-	let isCompact = $state(typeof localStorage !== 'undefined' ? localStorage.getItem(COMPACT_KEY) === 'true' : false);
+	let isCompact = $state(
+		typeof localStorage !== 'undefined' ? localStorage.getItem(COMPACT_KEY) === 'true' : false
+	);
 
 	function toggleCompact() {
 		isCompact = !isCompact;
@@ -154,11 +174,21 @@
 </script>
 
 {#if isCompact}
-	<div class="miniplayer compact" data-od-id="mini-player-compact">
+	<div
+		class="fixed right-5 bottom-4 left-5 z-10 flex items-center gap-3 overflow-hidden rounded-2xl border border-outline bg-surface p-2 pr-4"
+		data-od-id="mini-player-compact"
+	>
 		<div class="flex items-center gap-3 min-w-0 flex-1">
-			<div class="w-10 h-10 relative overflow-hidden border border-outline rounded-lg shrink-0" aria-hidden="true">
+			<div
+				class="w-10 h-10 relative overflow-hidden border border-outline rounded-lg shrink-0"
+				aria-hidden="true"
+			>
 				{#if $currentSong.cover_art}
-					<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={t('album.art', { title: $currentSong.title })} />
+					<img
+						class="object-cover w-full h-full"
+						src={$currentSong.cover_art}
+						alt={t('album.art', { title: $currentSong.title })}
+					/>
 				{:else}
 					<div class="cover-placeholder w-full h-full [&::before]:hidden"></div>
 				{/if}
@@ -170,25 +200,71 @@
 		</div>
 
 		<div class="flex items-center gap-1.5">
-			<Button size="icon-sm" variant="ghost" onclick={onPlayPrevious} disabled={!canPrev} aria-label={t('transport.previous')}><SkipBack class="size-4" /></Button>
-			<Button size="icon-sm" variant="ghost" onclick={onResume} disabled={!canPlay || isPlaying} aria-label={t('transport.play')}><Play class="size-4" /></Button>
-			<Button size="icon-sm" variant="ghost" onclick={onPause} disabled={!isPauseEnabled} aria-label={t('transport.pause')}><Pause class="size-4" /></Button>
-			<Button size="icon-sm" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label={t('transport.stop')}><Square class="size-4" /></Button>
-			<Button size="icon-sm" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label={t('transport.next')}><SkipForward class="size-4" /></Button>
+			<Button
+				size="icon-sm"
+				variant="ghost"
+				onclick={onPlayPrevious}
+				disabled={!canPrev}
+				aria-label={t('transport.previous')}><SkipBack class="size-4" /></Button
+			>
+			<Button
+				size="icon-sm"
+				variant="ghost"
+				onclick={onResume}
+				disabled={!canPlay || isPlaying}
+				aria-label={t('transport.play')}><Play class="size-4" /></Button
+			>
+			<Button
+				size="icon-sm"
+				variant="ghost"
+				onclick={onPause}
+				disabled={!isPauseEnabled}
+				aria-label={t('transport.pause')}><Pause class="size-4" /></Button
+			>
+			<Button
+				size="icon-sm"
+				variant="ghost"
+				onclick={onStop}
+				disabled={!isStopEnabled}
+				aria-label={t('transport.stop')}><Square class="size-4" /></Button
+			>
+			<Button
+				size="icon-sm"
+				variant="ghost"
+				onclick={onPlayNext}
+				disabled={!canNext}
+				aria-label={t('transport.next')}><SkipForward class="size-4" /></Button
+			>
 		</div>
 
-		<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
+		<ProgressBar value={playbackProgress()} class="min-w-[120px] flex-1" />
 
-		<Button size="icon-sm" variant="ghost" onclick={toggleCompact} aria-label={t('transport.expand')} title={t('transport.expand')}>
+		<Button
+			size="icon-sm"
+			variant="ghost"
+			onclick={toggleCompact}
+			aria-label={t('transport.expand')}
+			title={t('transport.expand')}
+		>
 			<Maximize2 class="size-4" />
 		</Button>
 	</div>
 {:else}
-	<div class="miniplayer" data-od-id="mini-player">
-		<div class="flex items-center gap-3 min-w-0">
-			<div class="w-12 h-12 relative overflow-hidden border border-outline rounded-xl" aria-hidden="true">
+	<div
+		class="fixed right-5 bottom-4 left-5 z-10 grid grid-cols-[minmax(220px,360px)_auto_minmax(160px,1fr)_auto_minmax(130px,180px)] items-center gap-[1.125rem] rounded-3xl border border-border bg-surface/94 p-3 shadow-2xl backdrop-blur max-xl:grid-cols-[minmax(190px,280px)_auto_minmax(120px,1fr)_auto] max-md:right-0 max-md:left-0 max-md:bottom-[calc(56px+env(safe-area-inset-bottom,0px))] max-md:grid-cols-[minmax(0,1fr)_auto] max-md:gap-2.5 max-md:rounded-none max-md:border-x-0"
+		data-od-id="mini-player"
+	>
+		<div class="flex items-center gap-3 min-w-0 max-md:col-span-full">
+			<div
+				class="w-12 h-12 relative overflow-hidden border border-outline rounded-xl"
+				aria-hidden="true"
+			>
 				{#if $currentSong.cover_art}
-					<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={t('album.art', { title: $currentSong.title })} />
+					<img
+						class="object-cover w-full h-full"
+						src={$currentSong.cover_art}
+						alt={t('album.art', { title: $currentSong.title })}
+					/>
 				{:else}
 					<div class="cover-placeholder w-full h-full [&::before]:hidden"></div>
 				{/if}
@@ -198,14 +274,46 @@
 				<span class="truncate text-soft text-sm">{nowPlayingDetail()}</span>
 			</div>
 		</div>
-		<span class="text-soft font-mono tabular-nums whitespace-nowrap">{playbackTimeLabel()}</span>
-		<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
-		<div class="flex justify-center items-center gap-2">
-			<Button size="icon" variant="ghost" onclick={onPlayPrevious} disabled={!canPrev} aria-label={t('transport.previous')}><SkipBack class="size-5" /></Button>
-			<Button size="icon" variant="ghost" onclick={onResume} disabled={!canPlay || isPlaying} aria-label={t('transport.play')}><Play class="size-5" /></Button>
-			<Button size="icon" variant="ghost" onclick={onPause} disabled={!isPauseEnabled} aria-label={t('transport.pause')}><Pause class="size-5" /></Button>
-			<Button size="icon" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label={t('transport.stop')}><Square class="size-5" /></Button>
-			<Button size="icon" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label={t('transport.next')}><SkipForward class="size-5" /></Button>
+		<span class="text-soft font-mono tabular-nums whitespace-nowrap max-md:hidden"
+			>{playbackTimeLabel()}</span
+		>
+		<ProgressBar value={playbackProgress()} class="max-md:hidden" />
+		<div class="flex justify-center items-center gap-2 max-md:col-span-full max-md:justify-between">
+			<Button
+				size="icon"
+				variant="ghost"
+				onclick={onPlayPrevious}
+				disabled={!canPrev}
+				aria-label={t('transport.previous')}><SkipBack class="size-5" /></Button
+			>
+			<Button
+				size="icon"
+				variant="ghost"
+				onclick={onResume}
+				disabled={!canPlay || isPlaying}
+				aria-label={t('transport.play')}><Play class="size-5" /></Button
+			>
+			<Button
+				size="icon"
+				variant="ghost"
+				onclick={onPause}
+				disabled={!isPauseEnabled}
+				aria-label={t('transport.pause')}><Pause class="size-5" /></Button
+			>
+			<Button
+				size="icon"
+				variant="ghost"
+				onclick={onStop}
+				disabled={!isStopEnabled}
+				aria-label={t('transport.stop')}><Square class="size-5" /></Button
+			>
+			<Button
+				size="icon"
+				variant="ghost"
+				onclick={onPlayNext}
+				disabled={!canNext}
+				aria-label={t('transport.next')}><SkipForward class="size-5" /></Button
+			>
 			<div class="relative">
 				<Button
 					size="icon"
@@ -217,17 +325,21 @@
 					{$playbackSettings.playback_speed}&times;
 				</Button>
 				{#if showSpeedMenu}
-					<div class="absolute bottom-full mb-2 right-0 bg-surface border border-outline rounded-xl shadow-xl p-1 z-50 min-w-[80px]">
+					<div
+						class="absolute bottom-full mb-2 right-0 bg-surface border border-outline rounded-xl shadow-xl p-1 z-50 min-w-[80px]"
+					>
 						{#each SPEED_OPTIONS as speed}
-							<button
-								class="block w-full text-left px-3 py-1.5 rounded-lg text-sm hover:bg-surface-2 transition-colors {$playbackSettings.playback_speed === speed ? 'text-primary font-semibold' : 'text-soft'}"
+							<Button
+								variant="ghost"
+								size="sm"
+								class={`h-7 w-full justify-start rounded-lg px-3 py-1.5 text-left text-sm ${$playbackSettings.playback_speed === speed ? 'text-primary font-semibold' : 'text-soft'}`}
 								onclick={() => {
 									onSpeedChange(speed);
 									showSpeedMenu = false;
 								}}
 							>
 								{speed}&times;
-							</button>
+							</Button>
 						{/each}
 					</div>
 				{/if}
@@ -236,21 +348,48 @@
 
 		<!-- AB Repeat buttons -->
 		<div class="flex items-center gap-1">
-			<Button size="icon" variant={$abRepeatState.loop_start_secs ? 'default' : 'ghost'} onclick={setAbRepeatA} aria-label="Set A marker" class="font-mono text-xs">A</Button>
-			<Button size="icon" variant={$abRepeatState.loop_end_secs ? 'default' : 'ghost'} onclick={setAbRepeatB} aria-label="Set B marker" class="font-mono text-xs">B</Button>
+			<Button
+				size="icon"
+				variant={$abRepeatState.loop_start_secs ? 'default' : 'ghost'}
+				onclick={setAbRepeatA}
+				aria-label="Set A marker"
+				class="font-mono text-xs">A</Button
+			>
+			<Button
+				size="icon"
+				variant={$abRepeatState.loop_end_secs ? 'default' : 'ghost'}
+				onclick={setAbRepeatB}
+				aria-label="Set B marker"
+				class="font-mono text-xs">B</Button
+			>
 			{#if $abRepeatState.active}
-				<Button size="icon" variant="ghost" onclick={clearAbRepeat} aria-label="Clear AB repeat"><RotateCcw class="size-4" /></Button>
+				<Button size="icon" variant="ghost" onclick={clearAbRepeat} aria-label="Clear AB repeat"
+					><RotateCcw class="size-4" /></Button
+				>
 			{/if}
 		</div>
 
-		<label class="grid gap-2 text-soft text-sm">
-		<span>{t('transport.volume')} {$volume}</span>
-		<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={(v: number[]) => volume.set(v[0] / 100)} />
+		<label class="grid gap-2 text-soft text-sm max-xl:hidden">
+			<span>{t('transport.volume')} {$volume}</span>
+			<Slider
+				value={[$volume * 100]}
+				min={0}
+				max={100}
+				step={1}
+				onValueChange={(v: number[]) => volume.set(v[0] / 100)}
+			/>
 		</label>
-	<div class="vu-meter-wrap">
-		<VuMeter />
-	</div>
-		<Button size="icon" variant="ghost" onclick={toggleCompact} aria-label={t('transport.compact')} title={t('transport.compact')} class="self-end">
+		<div class="flex items-end px-1">
+			<VuMeter />
+		</div>
+		<Button
+			size="icon"
+			variant="ghost"
+			onclick={toggleCompact}
+			aria-label={t('transport.compact')}
+			title={t('transport.compact')}
+			class="self-end"
+		>
 			<Minimize2 class="size-4" />
 		</Button>
 
@@ -270,38 +409,21 @@
 				{/if}
 			</Button>
 			{#if showSleepMenu}
-				<div class="absolute bottom-full mb-2 right-0 bg-surface border border-outline rounded-xl shadow-xl p-1 z-50 min-w-[100px]">
+				<div
+					class="absolute bottom-full mb-2 right-0 bg-surface border border-outline rounded-xl shadow-xl p-1 z-50 min-w-[100px]"
+				>
 					{#each SLEEP_OPTIONS as opt}
-						<button
-							class="block w-full text-left px-3 py-1.5 rounded-lg text-sm hover:bg-surface-2 transition-colors text-soft"
+						<Button
+							variant="ghost"
+							size="sm"
+							class="h-7 w-full justify-start rounded-lg px-3 py-1.5 text-left text-sm text-soft"
 							onclick={() => setSleepTimer(opt.value as number | null)}
 						>
 							{opt.label}
-						</button>
+						</Button>
 					{/each}
 				</div>
 			{/if}
 		</div>
 	</div>
 {/if}
-
-<style>
-	.miniplayer.compact {
-		display: flex;
-		flex-direction: row;
-		align-items: center;
-		gap: 0.75rem;
-		padding: 0.5rem 1rem;
-		border: 1px solid var(--color-outline, #e5e7eb);
-		border-radius: 1rem;
-		background: var(--color-surface, #fff);
-		position: relative;
-		overflow: hidden;
-	}
-
-	.vu-meter-wrap {
-		display: flex;
-		align-items: flex-end;
-		padding: 0 0.25rem;
-	}
-</style>

@@ -5,6 +5,7 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { Button } from '$lib/components/ui/button';
 	import SpectrumAnalyzer from '$lib/components/SpectrumAnalyzer.svelte';
+	import ProgressBar from '$lib/components/ProgressBar.svelte';
 	import { t } from '$lib/i18n';
 
 	let {
@@ -21,7 +22,6 @@
 
 	let draggedUpcomingIndex: number | null = $state(null);
 	let dragOverUpcomingIndex: number | null = $state(null);
-
 
 	function durationLabel(duration: number) {
 		if (!duration) return '0:00';
@@ -57,9 +57,7 @@
 		const status = $playbackStatus;
 		if (status?.current_path) return playbackQualityLabel(status);
 		const song = $currentSong;
-		return (
-			songDetailLabel(song) || song.artist || song.album || '\u2014'
-		);
+		return songDetailLabel(song) || song.artist || song.album || '\u2014';
 	}
 
 	function queuedSongDetail(song: Song) {
@@ -118,36 +116,56 @@
 	}
 </script>
 
-<aside class="grid content-start gap-3.5 min-w-0 border border-outline rounded-3xl p-4 overflow-auto bg-surface/92" data-od-id="queue-panel" aria-label="{t('common.queue')}">
-	<section class="grid gap-3.5 border border-outline rounded-3xl p-4 bg-surface-2/[0.42]" aria-label="{t('common.now_playing')}">
-		<div class="relative overflow-hidden aspect-square border border-outline/70 rounded-3xl shadow-lg" aria-hidden="true">
+<aside
+	class="grid content-start gap-3.5 min-w-0 border border-outline rounded-3xl p-4 overflow-auto bg-surface/92"
+	data-od-id="queue-panel"
+	aria-label={t('common.queue')}
+>
+	<section
+		class="grid gap-3.5 border border-outline rounded-3xl p-4 bg-surface-2/[0.42]"
+		aria-label={t('common.now_playing')}
+	>
+		<div
+			class="relative overflow-hidden aspect-square border border-outline/70 rounded-3xl shadow-lg"
+			aria-hidden="true"
+		>
 			{#if $currentSong.cover_art}
-				<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={t('album.art', { title: $currentSong.title })} />
+				<img
+					class="object-cover w-full h-full"
+					src={$currentSong.cover_art}
+					alt={t('album.art', { title: $currentSong.title })}
+				/>
 			{:else}
 				<div class="cover-placeholder w-full h-full"></div>
 			{/if}
 		</div>
 		<div class="grid gap-1.5 min-w-0" aria-live="polite">
-			<h2 class="overflow-hidden m-0 font-[family-name:var(--font-family-display)] text-[clamp(24px,3vw,34px)] leading-tight truncate">
+			<h2
+				class="overflow-hidden m-0 font-[family-name:var(--font-family-display)] text-[clamp(24px,3vw,34px)] leading-tight truncate"
+			>
 				{$currentSong.title}
 			</h2>
 			<p>{nowPlayingDetail()}</p>
 		</div>
 		<div class="flex flex-wrap gap-2">
-			<span class="inline-flex items-center min-h-7 border border-outline rounded-full px-2.5 text-soft font-mono text-xs uppercase bg-surface/72">
+			<span
+				class="inline-flex items-center min-h-7 border border-outline rounded-full px-2.5 text-soft font-mono text-xs uppercase bg-surface/72"
+			>
 				{formatSource($currentSong.source ?? 'local')}
 			</span>
 			{#if $currentSong.quality}
-				<span class="inline-flex items-center min-h-7 border border-outline rounded-full px-2.5 text-soft font-mono text-xs uppercase bg-surface/72">
+				<span
+					class="inline-flex items-center min-h-7 border border-outline rounded-full px-2.5 text-soft font-mono text-xs uppercase bg-surface/72"
+				>
 					{$currentSong.quality}
 				</span>
 			{/if}
 		</div>
 		<div aria-hidden="true">
-			<SpectrumAnalyzer />
+			<SpectrumAnalyzer class="h-16 min-h-16" />
 		</div>
 		<div class="grid gap-2">
-			<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
+			<ProgressBar value={playbackProgress()} />
 			<div class="flex justify-between font-mono text-xs text-soft">
 				<span>{playbackTimeLabel()}</span>
 				<span>{$playbackStatus?.state ?? 'idle'}</span>
@@ -155,38 +173,51 @@
 		</div>
 	</section>
 
-	<section class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]" aria-label="{t('common.up_next')}">
+	<section
+		class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]"
+		aria-label={t('common.up_next')}
+	>
 		<h3 class="m-0 mb-2.5 text-xs uppercase text-soft">{t('common.up_next')}</h3>
 		{#if upcomingSongs.length === 0}
 			<p>{t('common.empty')}</p>
 		{:else}
 			<ol class="m-0 p-0 list-none">
 				{#each upcomingSongs as song, index}
-				{@const isDragging = draggedUpcomingIndex === index}
-				{@const isDragOver = dragOverUpcomingIndex === index && draggedUpcomingIndex !== index}
-				<li
-				class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 mb-2 border rounded-2xl p-2.5 cursor-grab bg-surface/76 border-outline {isDragging ? 'opacity-55' : ''} {isDragOver ? 'border-brand bg-brand/14' : ''}"
-				draggable="true"
-				ondragstart={(event) => startQueueDrag(event, index)}
-				ondragover={(event) => allowQueueDrop(event, index)}
-				ondragleave={() => leaveQueueDrop(index)}
-				ondrop={(event) => dropQueuedSong(event, index)}
-				ondragend={endQueueDrag}
-				>
+					{@const isDragging = draggedUpcomingIndex === index}
+					{@const isDragOver = dragOverUpcomingIndex === index && draggedUpcomingIndex !== index}
+					<li
+						class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 mb-2 border rounded-2xl p-2.5 cursor-grab bg-surface/76 border-outline {isDragging
+							? 'opacity-55'
+							: ''} {isDragOver ? 'border-brand bg-brand/14' : ''}"
+						draggable="true"
+						ondragstart={(event) => startQueueDrag(event, index)}
+						ondragover={(event) => allowQueueDrop(event, index)}
+						ondragleave={() => leaveQueueDrop(index)}
+						ondrop={(event) => dropQueuedSong(event, index)}
+						ondragend={endQueueDrag}
+					>
 						<span class="grid gap-px min-w-0">
 							<strong class="truncate">{song.title}</strong>
 							{#if queuedSongDetail(song)}
-							<small class="truncate text-soft text-xs">{queuedSongDetail(song)}</small>
+								<small class="truncate text-soft text-xs">{queuedSongDetail(song)}</small>
 							{/if}
-							</span>
-							<Button variant="ghost" size="sm" onclick={() => onRemove(song)} aria-label="{t('common.remove')} {song.title}">{t('common.remove')}</Button>
-							</li>
+						</span>
+						<Button
+							variant="ghost"
+							size="sm"
+							onclick={() => onRemove(song)}
+							aria-label="{t('common.remove')} {song.title}">{t('common.remove')}</Button
+						>
+					</li>
 				{/each}
 			</ol>
 		{/if}
 	</section>
 
-	<section class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]" aria-label="{t('common.history')}">
+	<section
+		class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]"
+		aria-label={t('common.history')}
+	>
 		<h3 class="m-0 mb-2.5 text-xs uppercase text-soft">{t('common.history')}</h3>
 		<ol class="m-0 p-0 list-none">
 			{#each oldSongs.slice(-4).reverse() as song}

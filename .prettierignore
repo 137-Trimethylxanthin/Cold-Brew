@@ -2,3 +2,9 @@
 pnpm-lock.yaml
 package-lock.json
 yarn.lock
+
+# Generated output
+build
+.svelte-kit
+src-tauri/target
+src-tauri/gen/schemas

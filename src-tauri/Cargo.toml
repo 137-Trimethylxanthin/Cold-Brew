@@ -51,6 +51,8 @@ rodio = "0.22.2"
 md-5 = "0.10.6"
 base64 = "0.22.1"
 rand = "0.8.5"
+rustfft = "6.2"
+num-complex = "0.4"
 sha2 = "0.10.9"
 musicbrainz_rs = { version = "0.13", features = ["async"] }
 notify = { version = "7", default-features = false, features = [

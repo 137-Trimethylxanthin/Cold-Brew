@@ -6,7 +6,18 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Slider } from '$lib/components/ui/slider';
 
-	const EQ_BAND_LABELS = ['32 Hz', '64 Hz', '125 Hz', '250 Hz', '500 Hz', '1 kHz', '2 kHz', '4 kHz', '8 kHz', '16 kHz'];
+	const EQ_BAND_LABELS = [
+		'32 Hz',
+		'64 Hz',
+		'125 Hz',
+		'250 Hz',
+		'500 Hz',
+		'1 kHz',
+		'2 kHz',
+		'4 kHz',
+		'8 kHz',
+		'16 kHz'
+	];
 
 	let presets = $state<EqPreset[]>([]);
 	let message = $state('');
@@ -35,7 +46,8 @@
 	}
 
 	async function setBand(index: number, value: number) {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			const state = await invoke<EqState>('set_eq_band', { index, gainDb: value });
 			eqState.set(state);
@@ -45,7 +57,8 @@
 	}
 
 	async function applyPreset(name: string) {
-		error = ''; message = '';
+		error = '';
+		message = '';
 		try {
 			const state = await invoke<EqState>('set_eq_preset', { presetName: name });
 			eqState.set(state);
@@ -67,10 +80,16 @@
 	}
 </script>
 
-<div class="eq-panel">
+<div class="flex flex-col gap-3 rounded-2xl border border-outline bg-surface-2 p-5">
 	<div>
-		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Equalizer</h2>
-		<p class="text-soft text-sm">10-band graphic equalizer — EQ state is stored but DSP processing is not yet active</p>
+		<h2
+			class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+		>
+			Equalizer
+		</h2>
+		<p class="text-soft text-sm">
+			10-band graphic equalizer — EQ state is stored but DSP processing is not yet active
+		</p>
 	</div>
 
 	{#if error}<p class="text-danger text-sm">{error}</p>{/if}
@@ -88,12 +107,13 @@
 		{/each}
 	</div>
 
-	<div class="eq-bands">
+	<div class="flex h-[200px] justify-center gap-3 py-2">
 		{#each $eqState.bands as band, i}
-			<label class="eq-band">
-				<span class="eq-band-label">{EQ_BAND_LABELS[i]}</span>
-				<div class="eq-slider-container">
+			<label class="flex max-w-[60px] flex-1 flex-col items-center gap-1">
+				<span class="font-mono text-[0.625rem] text-soft uppercase">{EQ_BAND_LABELS[i]}</span>
+				<div class="flex w-full flex-1 items-center justify-center">
 					<Slider
+						class="h-full"
 						value={[band]}
 						min={-12}
 						max={12}
@@ -109,7 +129,7 @@
 						onValueCommit={(v: number[]) => setBand(i, v[0])}
 					/>
 				</div>
-				<span class="eq-band-value">{bandLabel(band)}</span>
+				<span class="whitespace-nowrap font-mono text-[0.625rem] text-soft">{bandLabel(band)}</span>
 			</label>
 		{/each}
 	</div>
@@ -118,58 +138,3 @@
 		<Button variant="secondary" size="sm" onclick={loadEqState}>Refresh</Button>
 	</div>
 </div>
-
-<style>
-	.eq-panel {
-		display: flex;
-		flex-direction: column;
-		gap: 0.75rem;
-		padding: 1.25rem;
-		border: 1px solid var(--color-outline, #e5e7eb);
-		border-radius: 1rem;
-		background: var(--color-surface-2);
-	}
-
-	.eq-bands {
-		display: flex;
-		justify-content: center;
-		gap: 0.75rem;
-		height: 200px;
-		padding: 0.5rem 0;
-	}
-
-	.eq-band {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 0.25rem;
-		flex: 1;
-		max-width: 60px;
-	}
-
-	.eq-band-label {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.625rem;
-		color: var(--color-soft);
-		text-transform: uppercase;
-	}
-
-	.eq-slider-container {
-		flex: 1;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 100%;
-	}
-
-	.eq-band-value {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.625rem;
-		color: var(--color-soft);
-		white-space: nowrap;
-	}
-
-	.eq-slider-container :global([data-orientation="vertical"]) {
-		height: 100%;
-	}
-</style>

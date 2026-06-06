@@ -6,3 +6,4 @@ pub mod metadata;
 pub mod player;
 pub mod sleep_timer;
 pub mod spectrum;
+pub mod spectrum_tap;

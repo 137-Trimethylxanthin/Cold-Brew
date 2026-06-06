@@ -1,19 +1,19 @@
 <script lang="ts">
-	import { Slider as SliderPrimitive } from "bits-ui";
-	import { cn } from "$lib/utils.js";
+	import { Slider as SliderPrimitive } from 'bits-ui';
+	import { cn } from '$lib/utils.js';
 
 	let {
 		ref = $bindable(null),
 		value = $bindable(),
-		type = "single",
-		orientation = "horizontal",
+		type = 'single',
+		orientation = 'horizontal',
 		class: className,
 		...restProps
 	}: Record<string, unknown> & {
 		ref?: any;
 		value?: any;
-		type?: "single" | "multiple";
-		orientation?: "horizontal" | "vertical";
+		type?: 'single' | 'multiple';
+		orientation?: 'horizontal' | 'vertical';
 		class?: string;
 	} = $props();
 </script>
@@ -26,10 +26,10 @@ get along, so we shut typescript up by casting `value` to `never`.
 	bind:ref
 	bind:value={value as never}
 	data-slot="slider"
-	type={type as "single" | "multiple"}
+	type={type as 'single' | 'multiple'}
 	{orientation}
 	class={cn(
-		"data-vertical:min-h-40 relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:w-auto data-vertical:flex-col",
+		'data-vertical:min-h-40 relative flex w-full touch-none items-center select-none data-disabled:opacity-50 data-vertical:h-full data-vertical:w-auto data-vertical:flex-col',
 		className
 	)}
 	{...restProps}
@@ -39,14 +39,12 @@ get along, so we shut typescript up by casting `value` to `never`.
 			data-slot="slider-track"
 			data-orientation={orientation}
 			class={cn(
-				"bg-muted rounded-full data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1 bg-muted relative grow overflow-hidden data-horizontal:w-full data-vertical:h-full"
+				'bg-muted rounded-full data-horizontal:h-1 data-horizontal:w-full data-vertical:h-full data-vertical:w-1 bg-muted relative grow overflow-hidden data-horizontal:w-full data-vertical:h-full'
 			)}
 		>
 			<SliderPrimitive.Range
 				data-slot="slider-range"
-				class={cn(
-					"bg-primary absolute select-none data-horizontal:h-full data-vertical:w-full"
-				)}
+				class={cn('bg-primary absolute select-none data-horizontal:h-full data-vertical:w-full')}
 			/>
 		</span>
 		{#each thumbItems as thumb (thumb.index)}

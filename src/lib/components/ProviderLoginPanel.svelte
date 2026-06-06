@@ -1,4 +1,5 @@
 <script lang="ts">
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import type { ProviderLoginState } from '$lib/types';
 
 	interface Props {
@@ -10,13 +11,6 @@
 	}
 
 	let { providerId, providerName, description, loginState, children }: Props = $props();
-
-	function stateLabel(value: string) {
-		return value
-			.split('_')
-			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-			.join(' ');
-	}
 </script>
 
 <section class="grid gap-2.5 border border-outline rounded-2xl p-3 bg-surface-2/[0.42]">
@@ -25,9 +19,7 @@
 			<h3 class="m-0 text-sm">{providerName}</h3>
 			<p class="mt-0.5">{description}</p>
 		</div>
-		<span class="state-pill {loginState?.status ?? 'missing'}">
-			{stateLabel(loginState?.status ?? 'missing')}
-		</span>
+		<StatusBadge state={loginState?.status ?? 'missing'} />
 	</div>
 
 	{@render children?.()}

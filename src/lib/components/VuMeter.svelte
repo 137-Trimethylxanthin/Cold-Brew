@@ -15,13 +15,19 @@
 	let leftPeakTimer = $state(0);
 	let rightPeakTimer = $state(0);
 	let unlisten: (() => void) | undefined;
+	const METER_SEGMENTS = 12;
+	const meterSegments = Array.from({ length: METER_SEGMENTS }, (_, index) => index);
 
 	let latest: LevelData = { left_peak: 0, right_peak: 0, left_rms: 0, right_rms: 0 };
 
 	onMount(async () => {
-		unlisten = await listen<LevelData>('level_data', (event) => {
-			latest = event.payload;
-		});
+		try {
+			unlisten = await listen<LevelData>('level_data', (event) => {
+				latest = event.payload;
+			});
+		} catch {
+			/* Tauri events are unavailable during browser-only visual review. */
+		}
 		drawLoop();
 	});
 
@@ -34,10 +40,29 @@
 		return a + (b - a) * t;
 	}
 
-	function barColor(value: number): string {
-		if (value > 0.85) return '#ef4444';
-		if (value > 0.7) return '#eab308';
-		return '#22c55e';
+	function segmentThreshold(index: number) {
+		return (METER_SEGMENTS - index) / METER_SEGMENTS;
+	}
+
+	function isSegmentActive(value: number, index: number) {
+		return value >= segmentThreshold(index);
+	}
+
+	function isPeakSegment(value: number, index: number) {
+		const clamped = Math.max(0, Math.min(0.999, value));
+		return index === METER_SEGMENTS - 1 - Math.floor(clamped * METER_SEGMENTS);
+	}
+
+	function segmentColor(index: number) {
+		const threshold = segmentThreshold(index);
+		if (threshold > 0.85) return 'bg-danger';
+		if (threshold > 0.7) return 'bg-accent-2';
+		return 'bg-success';
+	}
+
+	function segmentClass(value: number, peak: number, index: number) {
+		if (isPeakSegment(peak, index)) return 'bg-danger';
+		return isSegmentActive(value, index) ? segmentColor(index) : 'bg-surface-3/35';
 	}
 
 	function drawLoop() {
@@ -72,85 +97,27 @@
 
 		animFrameId = requestAnimationFrame(drawLoop);
 	}
-
-	function barStyle(channel: 'left' | 'right', type: 'rms' | 'peak') {
-		const value = channel === 'left'
-			? (type === 'rms' ? smoothLeftRms : leftPeakHold)
-			: (type === 'rms' ? smoothRightRms : rightPeakHold);
-		const heightPct = Math.max(1, value * 100);
-		const color = type === 'peak' ? '#ef4444' : barColor(value);
-		return `height: ${heightPct}%; background: ${color};`;
-	}
 </script>
 
-<div class="vu-meter" aria-label="VU meter" role="img">
-	<div class="vu-channel">
-		<span class="vu-label">L</span>
-		<div class="vu-bar-container">
-			<div class="vu-bar" style={barStyle('left', 'rms')}></div>
-			<div class="vu-peak-dot" style="bottom: {Math.max(0, leftPeakHold * 100)}%;"></div>
+<div class="flex h-10 items-end gap-[3px] py-0.5" aria-label="VU meter" role="img">
+	<div class="flex h-full max-w-3 flex-1 flex-col items-center gap-0.5">
+		<span class="font-mono text-[0.5rem] leading-none text-soft">L</span>
+		<div class="grid w-full flex-1 grid-rows-12 gap-px overflow-hidden rounded-[3px] bg-bg p-px">
+			{#each meterSegments as segment}
+				<span
+					class={`rounded-[1px] transition-colors duration-75 ${segmentClass(smoothLeftRms, leftPeakHold, segment)}`}
+				></span>
+			{/each}
 		</div>
 	</div>
-	<div class="vu-channel">
-		<span class="vu-label">R</span>
-		<div class="vu-bar-container">
-			<div class="vu-bar" style={barStyle('right', 'rms')}></div>
-			<div class="vu-peak-dot" style="bottom: {Math.max(0, rightPeakHold * 100)}%;"></div>
+	<div class="flex h-full max-w-3 flex-1 flex-col items-center gap-0.5">
+		<span class="font-mono text-[0.5rem] leading-none text-soft">R</span>
+		<div class="grid w-full flex-1 grid-rows-12 gap-px overflow-hidden rounded-[3px] bg-bg p-px">
+			{#each meterSegments as segment}
+				<span
+					class={`rounded-[1px] transition-colors duration-75 ${segmentClass(smoothRightRms, rightPeakHold, segment)}`}
+				></span>
+			{/each}
 		</div>
 	</div>
 </div>
-
-<style>
-	.vu-meter {
-		display: flex;
-		gap: 3px;
-		align-items: flex-end;
-		height: 40px;
-		padding: 2px 0;
-	}
-
-	.vu-channel {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 2px;
-		height: 100%;
-		flex: 1;
-		max-width: 12px;
-	}
-
-	.vu-label {
-		font-family: var(--font-mono, monospace);
-		font-size: 0.5rem;
-		color: var(--color-soft);
-		line-height: 1;
-	}
-
-	.vu-bar-container {
-		flex: 1;
-		width: 100%;
-		background: oklch(15% 0.015 60);
-		border-radius: 3px;
-		position: relative;
-		overflow: hidden;
-	}
-
-	.vu-bar {
-		position: absolute;
-		bottom: 0;
-		left: 0;
-		right: 0;
-		border-radius: 3px;
-		transition: height 0.05s linear;
-	}
-
-	.vu-peak-dot {
-		position: absolute;
-		left: 0;
-		right: 0;
-		height: 3px;
-		background: #ef4444;
-		border-radius: 1px;
-		transition: bottom 0.08s ease-out;
-	}
-</style>

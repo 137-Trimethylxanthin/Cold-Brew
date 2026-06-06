@@ -5,6 +5,7 @@
 	import * as Table from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
+	import { Textarea } from '$lib/components/ui/textarea';
 	import * as Select from '$lib/components/ui/select';
 	import { Play, ListPlus, Plus, Info, Radio, LayoutGrid, List } from '@lucide/svelte';
 	import * as Card from '$lib/components/ui/card';
@@ -133,7 +134,9 @@
 				const [album, artist] = key.split('|||');
 				return { key, album, artist, tracks, count: tracks.length };
 			})
-			.sort((a, b) => a.album.localeCompare(b.album, undefined, { sensitivity: 'base', numeric: true }))
+			.sort((a, b) =>
+				a.album.localeCompare(b.album, undefined, { sensitivity: 'base', numeric: true })
+			)
 	);
 
 	function openAlbumSheet(key: string, album: string, artist: string, tracks: LibraryTrack[]) {
@@ -178,10 +181,7 @@
 		if (loadingMore || !hasMoreTracks()) return;
 		loadingMore = true;
 		await new Promise((r) => setTimeout(r, 0));
-		displayedTrackCount = Math.min(
-			displayedTrackCount + PER_PAGE,
-			localTracks.length
-		);
+		displayedTrackCount = Math.min(displayedTrackCount + PER_PAGE, localTracks.length);
 		loadingMore = false;
 	}
 
@@ -344,15 +344,21 @@
 	}
 
 	async function createPlaylist() {
-		if (!playlistName.trim()) { error = 'Enter a playlist name.'; return; }
-		error = ''; message = '';
+		if (!playlistName.trim()) {
+			error = 'Enter a playlist name.';
+			return;
+		}
+		error = '';
+		message = '';
 		try {
 			selectedPlaylist = await invoke<PlaylistDetail>('create_playlist', { name: playlistName });
 			selectedPlaylistId = selectedPlaylist.id;
 			playlistName = '';
 			await loadPlaylists();
 			message = `Created playlist ${selectedPlaylist.name}.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function selectPlaylist(playlistId: number) {
@@ -360,11 +366,16 @@
 		try {
 			selectedPlaylistId = playlistId;
 			selectedPlaylist = await invoke<PlaylistDetail>('get_playlist', { playlist_id: playlistId });
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function addLocalToPlaylist(track: LibraryTrack) {
-		if (selectedPlaylistId === null) { error = 'Select or create a playlist first.'; return; }
+		if (selectedPlaylistId === null) {
+			error = 'Select or create a playlist first.';
+			return;
+		}
 		error = '';
 		try {
 			selectedPlaylist = await invoke<PlaylistDetail>('add_song_to_playlist', {
@@ -373,31 +384,52 @@
 			});
 			await loadPlaylists();
 			message = `Added ${track.title} to ${selectedPlaylist.name}.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function importPlaylist() {
-		if (!playlistImportPath.trim()) { error = 'Enter an M3U or M3U8 path to import.'; return; }
-		error = ''; message = '';
+		if (!playlistImportPath.trim()) {
+			error = 'Enter an M3U or M3U8 path to import.';
+			return;
+		}
+		error = '';
+		message = '';
 		try {
 			selectedPlaylist = await invoke<PlaylistDetail>('import_m3u_playlist', {
-				path: playlistImportPath, name: playlistName || null
+				path: playlistImportPath,
+				name: playlistName || null
 			});
 			selectedPlaylistId = selectedPlaylist.id;
 			playlistName = '';
 			await loadPlaylists();
 			message = `Imported ${selectedPlaylist.tracks.length} tracks into ${selectedPlaylist.name}.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function exportPlaylist() {
-		if (selectedPlaylistId === null) { error = 'Select a playlist to export.'; return; }
-		if (!playlistExportPath.trim()) { error = 'Enter an export path.'; return; }
-		error = ''; message = '';
+		if (selectedPlaylistId === null) {
+			error = 'Select a playlist to export.';
+			return;
+		}
+		if (!playlistExportPath.trim()) {
+			error = 'Enter an export path.';
+			return;
+		}
+		error = '';
+		message = '';
 		try {
-			await invoke('export_m3u_playlist', { playlist_id: selectedPlaylistId, path: playlistExportPath });
+			await invoke('export_m3u_playlist', {
+				playlist_id: selectedPlaylistId,
+				path: playlistExportPath
+			});
 			message = 'Playlist exported.';
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function queueSong(song: Song) {
@@ -405,10 +437,14 @@
 		try {
 			await invoke<QueueSnapshot>('queue_song', { song });
 			message = `Queued ${song.title}.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
-	function queueLocal(track: LibraryTrack) { void queueSong(localTrackToSong(track)); }
+	function queueLocal(track: LibraryTrack) {
+		void queueSong(localTrackToSong(track));
+	}
 
 	function trackDisplayArtist(track: LibraryTrack) {
 		return track.artist || 'Unknown Artist';
@@ -421,30 +457,54 @@
 	async function inspectTrack(track: LibraryTrack) {
 		selectedTrack = track;
 		trackInspectorOpen = true;
-		selectedLyrics = null; metadataSuggestions = []; loadingLyrics = true;
+		selectedLyrics = null;
+		metadataSuggestions = [];
+		loadingLyrics = true;
 		try {
 			selectedLyrics = await invoke<LyricsResult | null>('get_track_lyrics', {
-				path: track.path, title: track.title, artist: track.artist,
-				album: track.album, duration_ms: track.duration_ms
+				path: track.path,
+				title: track.title,
+				artist: track.artist,
+				album: track.album,
+				duration_ms: track.duration_ms
 			});
-		} catch { selectedLyrics = null; }
-		finally { loadingLyrics = false; }
+		} catch {
+			selectedLyrics = null;
+		} finally {
+			loadingLyrics = false;
+		}
 	}
 
 	async function lookupMetadata(track: LibraryTrack) {
-		loadingMetadata = true; error = '';
+		loadingMetadata = true;
+		error = '';
 		try {
 			metadataSuggestions = await invoke<MetadataSuggestion[]>('search_metadata_suggestions', {
-				title: track.title, artist: track.artist, album: track.album, duration_ms: track.duration_ms
+				title: track.title,
+				artist: track.artist,
+				album: track.album,
+				duration_ms: track.duration_ms
 			});
-		} catch (err) { error = toErrorMessage(err); metadataSuggestions = []; }
-		finally { loadingMetadata = false; }
+		} catch (err) {
+			error = toErrorMessage(err);
+			metadataSuggestions = [];
+		} finally {
+			loadingMetadata = false;
+		}
 	}
 
-	function playSelectedTrack() { if (selectedTrack) void playLocal(selectedTrack); }
-	function queueSelectedTrack() { if (selectedTrack) queueLocal(selectedTrack); }
-	function addSelectedTrackToPlaylist() { if (selectedTrack) void addLocalToPlaylist(selectedTrack); }
-	function lookupSelectedTrackMetadata() { if (selectedTrack) void lookupMetadata(selectedTrack); }
+	function playSelectedTrack() {
+		if (selectedTrack) void playLocal(selectedTrack);
+	}
+	function queueSelectedTrack() {
+		if (selectedTrack) queueLocal(selectedTrack);
+	}
+	function addSelectedTrackToPlaylist() {
+		if (selectedTrack) void addLocalToPlaylist(selectedTrack);
+	}
+	function lookupSelectedTrackMetadata() {
+		if (selectedTrack) void lookupMetadata(selectedTrack);
+	}
 
 	async function playLocal(track: LibraryTrack) {
 		error = '';
@@ -452,40 +512,55 @@
 			await invoke('play_track_now', { song: localTrackToSong(track) });
 			await loadListeningHistory();
 			message = `Playing ${track.title}.`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	function toJellyfinSong(element: any): Song {
 		return {
 			title: element.Name ?? 'Untitled',
 			artist: element.Artists ? element.Artists.join(', ') : (element.Artist ?? 'Unknown artist'),
-			album: element.Album ?? '', duration: element.RunTimeTicks ?? 0,
-			id: element.Id ?? '', source: 'jellyfin', quality: 'remote library'
+			album: element.Album ?? '',
+			duration: element.RunTimeTicks ?? 0,
+			id: element.Id ?? '',
+			source: 'jellyfin',
+			quality: 'remote library'
 		};
 	}
 
 	function localTrackToSong(track: LibraryTrack): Song {
 		return {
-			id: track.path, title: track.title,
-			artist: track.artist ?? 'Unknown artist', album: track.album ?? '',
+			id: track.path,
+			title: track.title,
+			artist: track.artist ?? 'Unknown artist',
+			album: track.album ?? '',
 			duration: Math.round((track.duration_ms ?? 0) * 10000),
-			source: 'local', uri: track.path,
-			quality: formatQuality(track) || track.extension.toUpperCase(), playable: true
+			source: 'local',
+			uri: track.path,
+			quality: formatQuality(track) || track.extension.toUpperCase(),
+			playable: true
 		};
 	}
 
 	function remoteTrackToSong(track: RemoteTrack): Song {
 		return {
-			id: `${track.source}:${track.id}`, title: track.title,
-			artist: track.artist || track.source, album: track.album ?? '',
+			id: `${track.source}:${track.id}`,
+			title: track.title,
+			artist: track.artist || track.source,
+			album: track.album ?? '',
 			duration: Math.round((track.duration_ms ?? 0) * 10000),
-			source: track.source, uri: track.uri, external_url: track.external_url,
+			source: track.source,
+			uri: track.uri,
+			external_url: track.external_url,
 			quality: track.quality ?? (track.playable ? 'remote playable' : 'metadata only'),
 			playable: track.playable
 		};
 	}
 
-	function queueRemote(track: RemoteTrack) { void queueSong(remoteTrackToSong(track)); }
+	function queueRemote(track: RemoteTrack) {
+		void queueSong(remoteTrackToSong(track));
+	}
 
 	function remoteSearchCommand(provider: RemoteProvider) {
 		if (provider === 'spotify') return 'search_spotify_tracks';
@@ -500,12 +575,19 @@
 	}
 
 	function changeRemoteProvider() {
-		remoteResults = []; remotePlaylists = []; selectedRemotePlaylistId = null;
-		message = ''; error = '';
+		remoteResults = [];
+		remotePlaylists = [];
+		selectedRemotePlaylistId = null;
+		message = '';
+		error = '';
 	}
 
 	function remotePlaylistsSupported() {
-		return selectedRemoteProvider === 'spotify' || selectedRemoteProvider === 'tidal' || selectedRemoteProvider === 'youtube';
+		return (
+			selectedRemoteProvider === 'spotify' ||
+			selectedRemoteProvider === 'tidal' ||
+			selectedRemoteProvider === 'youtube'
+		);
 	}
 
 	function remotePlaylistCountLabel(playlist: RemotePlaylist) {
@@ -513,8 +595,12 @@
 	}
 
 	function sortLocalTracks(key: SortKey) {
-		if (sortKey === key) { sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'; return; }
-		sortKey = key; sortDirection = 'asc';
+		if (sortKey === key) {
+			sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+			return;
+		}
+		sortKey = key;
+		sortDirection = 'asc';
 	}
 
 	function toggleColumn(column: LocalColumn) {
@@ -531,7 +617,10 @@
 	function compareTrackValues(a: LibraryTrack, b: LibraryTrack, key: SortKey) {
 		if (key === 'quality') return qualityScore(a) - qualityScore(b);
 		if (key === 'duration') return (a.duration_ms ?? 0) - (b.duration_ms ?? 0);
-		return textSortValue(a, key).localeCompare(textSortValue(b, key), undefined, { sensitivity: 'base', numeric: true });
+		return textSortValue(a, key).localeCompare(textSortValue(b, key), undefined, {
+			sensitivity: 'base',
+			numeric: true
+		});
 	}
 
 	function textSortValue(track: LibraryTrack, key: Exclude<SortKey, 'quality' | 'duration'>) {
@@ -597,38 +686,54 @@
 
 	// M18: Library Stats
 	async function loadLibraryStats() {
-		loadingStats = true; error = '';
+		loadingStats = true;
+		error = '';
 		try {
 			libraryStats = await invoke<LibraryStats>('get_library_stats');
-		} catch (err) { error = toErrorMessage(err); }
-		finally { loadingStats = false; }
+		} catch (err) {
+			error = toErrorMessage(err);
+		} finally {
+			loadingStats = false;
+		}
 	}
 
 	// M18: MusicBrainz lookup
 	async function lookupMusicBrainz(track: LibraryTrack) {
-		loadingMusicBrainz = true; error = '';
+		loadingMusicBrainz = true;
+		error = '';
 		try {
 			musicbrainzReleases = await invoke<MusicBrainzRelease[]>('search_musicbrainz_releases', {
-				artist: track.artist ?? '', title: track.title
+				artist: track.artist ?? '',
+				title: track.title
 			});
-		} catch (err) { error = toErrorMessage(err); musicbrainzReleases = []; }
-		finally { loadingMusicBrainz = false; }
+		} catch (err) {
+			error = toErrorMessage(err);
+			musicbrainzReleases = [];
+		} finally {
+			loadingMusicBrainz = false;
+		}
 	}
 
 	async function fetchMusicBrainzCover(mbid: string) {
 		try {
 			return await invoke<string | null>('fetch_cover_art', { mbid });
-		} catch { return null; }
+		} catch {
+			return null;
+		}
 	}
 
 	// M18: Duplicates
 	async function findDuplicates() {
-		loadingDuplicates = true; error = '';
+		loadingDuplicates = true;
+		error = '';
 		try {
 			duplicateGroups = await invoke<LibraryTrack[][]>('find_duplicates');
 			showDuplicates = true;
-		} catch (err) { error = toErrorMessage(err); }
-		finally { loadingDuplicates = false; }
+		} catch (err) {
+			error = toErrorMessage(err);
+		} finally {
+			loadingDuplicates = false;
+		}
 	}
 
 	// M19: Smart Playlists
@@ -636,29 +741,45 @@
 		error = '';
 		try {
 			smartPlaylists = await invoke<SmartPlaylistSummary[]>('list_smart_playlists');
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function createSmartPlaylist() {
-		if (!smartPlaylistName.trim()) { error = 'Enter a smart playlist name.'; return; }
-		if (!smartPlaylistRulesJson.trim()) { error = 'Enter rules JSON.'; return; }
-		error = ''; message = '';
+		if (!smartPlaylistName.trim()) {
+			error = 'Enter a smart playlist name.';
+			return;
+		}
+		if (!smartPlaylistRulesJson.trim()) {
+			error = 'Enter rules JSON.';
+			return;
+		}
+		error = '';
+		message = '';
 		try {
 			const result = await invoke<SmartPlaylistSummary>('create_smart_playlist', {
-				name: smartPlaylistName, rules_json: smartPlaylistRulesJson
+				name: smartPlaylistName,
+				rules_json: smartPlaylistRulesJson
 			});
 			smartPlaylistName = '';
 			await loadSmartPlaylists();
 			message = `Created smart playlist: ${result.name} (${result.track_count} tracks)`;
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function openSmartPlaylist(id: number) {
 		error = '';
 		try {
 			selectedSmartPlaylistId = id;
-			smartPlaylistTracks = await invoke<LibraryTrack[]>('get_smart_playlist_tracks', { playlist_id: id });
-		} catch (err) { error = toErrorMessage(err); }
+			smartPlaylistTracks = await invoke<LibraryTrack[]>('get_smart_playlist_tracks', {
+				playlist_id: id
+			});
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function deleteSmartPlaylist(id: number) {
@@ -669,28 +790,39 @@
 			smartPlaylistTracks = [];
 			await loadSmartPlaylists();
 			message = 'Smart playlist deleted.';
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	// M19: Discovery Dashboard
 	async function loadDiscovery() {
-		loadingDiscovery = true; error = '';
+		loadingDiscovery = true;
+		error = '';
 		try {
 			discovery = await invoke<DiscoveryResult>('get_discovery_dashboard');
-		} catch (err) { error = toErrorMessage(err); }
-		finally { loadingDiscovery = false; }
+		} catch (err) {
+			error = toErrorMessage(err);
+		} finally {
+			loadingDiscovery = false;
+		}
 	}
 
 	// M19: Genre Radio
 	async function startRadio(track: LibraryTrack) {
 		const genre = track.genre;
-		if (!genre) { error = 'This track has no genre tag - cannot start radio.'; return; }
+		if (!genre) {
+			error = 'This track has no genre tag - cannot start radio.';
+			return;
+		}
 		error = '';
 		try {
 			const result = await invoke('start_genre_radio', { genre });
 			message = `Starting radio for ${genre}`;
 			await loadListeningHistory();
-		} catch (err) { error = toErrorMessage(err); }
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	function formatDurationSecs(secs: number) {
@@ -711,7 +843,9 @@
 				error = 'Connect Spotify in Settings → Accounts first.';
 				return false;
 			}
-			nativeSpotifyStatus = await invoke<SpotifyNativeStatus>('connect_spotify_native', { accessToken: token });
+			nativeSpotifyStatus = await invoke<SpotifyNativeStatus>('connect_spotify_native', {
+				accessToken: token
+			});
 			if (nativeSpotifyStatus.connected) {
 				message = `Spotify connected as ${nativeSpotifyStatus.device_name ?? 'Cold-Brew'}.`;
 				return true;
@@ -761,46 +895,89 @@
 	}
 </script>
 
-<section class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-4 pt-10 pb-10 min-h-[210px]"
-	data-od-id="library-hero">
+<section
+	class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-4 pt-10 pb-10 min-h-[210px]"
+	data-od-id="library-hero"
+>
 	<div class="relative z-[1]">
-		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]">Library</h1>
-		<p class="text-soft text-sm">{localTracks.length} local tracks indexed — scan new paths in Settings</p>
+		<h1
+			class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]"
+		>
+			Library
+		</h1>
+		<p class="text-soft text-sm">
+			{localTracks.length} local tracks indexed — scan new paths in Settings
+		</p>
 		{#if isOffline}
 			<p class="text-warning text-sm mt-1">Offline — showing local files only</p>
 		{/if}
 	</div>
 	<div class="flex gap-2 relative z-[1]">
-		<Button variant="secondary" size="sm" onclick={loadLocalLibrary} disabled={loadingLibrary}>Refresh</Button>
+		<Button variant="secondary" size="sm" onclick={loadLocalLibrary} disabled={loadingLibrary}
+			>Refresh</Button
+		>
 	</div>
-	<div class="hero-blob absolute right-[clamp(18px,5vw,64px)] bottom-[clamp(18px,5vw,54px)] w-[min(28vw,250px)] aspect-square rounded-3xl opacity-[0.22] pointer-events-none"></div>
+	<div
+		class="hero-blob absolute right-[clamp(18px,5vw,64px)] bottom-[clamp(18px,5vw,54px)] w-[min(28vw,250px)] aspect-square rounded-3xl opacity-[0.22] pointer-events-none"
+	></div>
 </section>
 
 <!-- M18: Library Stats Dashboard -->
-<section data-od-id="library-stats" class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
+<section
+	data-od-id="library-stats"
+	class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90"
+>
 	<div class="flex items-center justify-between gap-3 flex-wrap">
-		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Library Stats</h2>
-		<Button variant="secondary" size="sm" onclick={loadLibraryStats} disabled={loadingStats}>Refresh</Button>
+		<h2
+			class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+		>
+			Library Stats
+		</h2>
+		<Button variant="secondary" size="sm" onclick={loadLibraryStats} disabled={loadingStats}
+			>Refresh</Button
+		>
 	</div>
 	{#if libraryStats}
 		<div class="grid grid-cols-4 gap-2.5 mt-2.5 max-xl:grid-cols-2">
-			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Tracks</span><strong class="text-xl">{libraryStats.total_tracks}</strong></div>
-			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Albums</span><strong class="text-xl">{libraryStats.total_albums}</strong></div>
-			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Artists</span><strong class="text-xl">{libraryStats.total_artists}</strong></div>
-			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Duration</span><strong class="text-xl">{formatDurationSecs(libraryStats.total_duration_secs)}</strong></div>
+			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+				<span class="text-soft font-mono text-xs uppercase">Tracks</span><strong class="text-xl"
+					>{libraryStats.total_tracks}</strong
+				>
+			</div>
+			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+				<span class="text-soft font-mono text-xs uppercase">Albums</span><strong class="text-xl"
+					>{libraryStats.total_albums}</strong
+				>
+			</div>
+			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+				<span class="text-soft font-mono text-xs uppercase">Artists</span><strong class="text-xl"
+					>{libraryStats.total_artists}</strong
+				>
+			</div>
+			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+				<span class="text-soft font-mono text-xs uppercase">Duration</span><strong class="text-xl"
+					>{formatDurationSecs(libraryStats.total_duration_secs)}</strong
+				>
+			</div>
 		</div>
-		<div class="grid gap-2.5 mt-2.5" style="grid-template-columns: 1fr 1fr 1fr;">
+		<div class="mt-2.5 grid grid-cols-1 gap-2.5 lg:grid-cols-3">
 			<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
 				<span class="text-soft font-mono text-xs uppercase block mb-1.5">Formats</span>
 				{#each Object.entries(libraryStats.format_breakdown) as [fmt, count]}
-					<div class="flex justify-between text-sm py-0.5"><span class="font-mono">{fmt}</span><span>{count}</span></div>
+					<div class="flex justify-between text-sm py-0.5">
+						<span class="font-mono">{fmt}</span><span>{count}</span>
+					</div>
 				{/each}
 			</div>
 			<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
 				<span class="text-soft font-mono text-xs uppercase block mb-1.5">Top Artists</span>
 				{#if libraryStats.top_artists.length > 0}
 					{#each libraryStats.top_artists as a}
-						<div class="flex justify-between text-sm py-0.5"><span class="truncate">{a.name}</span><span class="text-soft ml-2">{a.play_count}</span></div>
+						<div class="flex justify-between text-sm py-0.5">
+							<span class="truncate">{a.name}</span><span class="text-soft ml-2"
+								>{a.play_count}</span
+							>
+						</div>
 					{/each}
 				{:else}
 					<p class="text-sm text-soft">No play data yet</p>
@@ -810,7 +987,11 @@
 				<span class="text-soft font-mono text-xs uppercase block mb-1.5">Top Albums</span>
 				{#if libraryStats.top_albums.length > 0}
 					{#each libraryStats.top_albums as a}
-						<div class="flex justify-between text-sm py-0.5"><span class="truncate">{a.name}</span><span class="text-soft ml-2">{a.play_count}</span></div>
+						<div class="flex justify-between text-sm py-0.5">
+							<span class="truncate">{a.name}</span><span class="text-soft ml-2"
+								>{a.play_count}</span
+							>
+						</div>
 					{/each}
 				{:else}
 					<p class="text-sm text-soft">No play data yet</p>
@@ -819,7 +1000,9 @@
 		</div>
 		{#if libraryStats.forgotten_count > 0}
 			<div class="mt-2.5 px-3 py-2 border border-warning/40 rounded-2xl bg-warning/10">
-				<p class="m-0 text-warning text-sm">{libraryStats.forgotten_count} tracks haven't been played in 30+ days</p>
+				<p class="m-0 text-warning text-sm">
+					{libraryStats.forgotten_count} tracks haven't been played in 30+ days
+				</p>
 			</div>
 		{/if}
 	{:else if !loadingStats}
@@ -827,119 +1010,238 @@
 	{/if}
 </section>
 
-{#if error}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-danger/20 text-danger">{error}</p>{/if}
-{#if message}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-success/20 text-success">{message}</p>{/if}
+{#if error}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-danger/20 text-danger">
+		{error}
+	</p>{/if}
+{#if message}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-success/20 text-success">
+		{message}
+	</p>{/if}
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90" data-od-id="local-files">
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
-		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Local Files</h2>
+		<h2
+			class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+		>
+			Local Files
+		</h2>
 		<div class="flex items-center gap-2 flex-wrap">
-		<div class="flex items-center gap-1 border border-outline rounded-full p-0.5">
-			<Button size="sm" class={viewMode === 'list' ? 'rounded-full' : 'rounded-full bg-transparent border-0'} variant={viewMode === 'list' ? 'default' : 'ghost'} onclick={() => viewMode = 'list'}><List class="size-3.5" /> List</Button>
-			<Button size="sm" class={viewMode === 'grid' ? 'rounded-full' : 'rounded-full bg-transparent border-0'} variant={viewMode === 'grid' ? 'default' : 'ghost'} onclick={() => viewMode = 'grid'}><LayoutGrid class="size-3.5" /> Grid</Button>
-		</div>
-		<Button variant="outline" size="sm" onclick={findDuplicates} disabled={loadingDuplicates}>Find Duplicates</Button>
-		{#if viewMode === 'list'}
-		<div class="flex justify-center items-center gap-1.5">
-			{#each localColumnOptions as column}
-				<Button variant={visibleColumns[column.id] ? 'default' : 'outline'} size="sm" onclick={() => toggleColumn(column.id)}>
-					{column.label}
-				</Button>
-			{/each}
-		</div>
-		{/if}
+			<div class="flex items-center gap-1 border border-outline rounded-full p-0.5">
+				<Button
+					size="sm"
+					class={viewMode === 'list' ? 'rounded-full' : 'rounded-full bg-transparent border-0'}
+					variant={viewMode === 'list' ? 'default' : 'ghost'}
+					onclick={() => (viewMode = 'list')}><List class="size-3.5" /> List</Button
+				>
+				<Button
+					size="sm"
+					class={viewMode === 'grid' ? 'rounded-full' : 'rounded-full bg-transparent border-0'}
+					variant={viewMode === 'grid' ? 'default' : 'ghost'}
+					onclick={() => (viewMode = 'grid')}><LayoutGrid class="size-3.5" /> Grid</Button
+				>
+			</div>
+			<Button variant="outline" size="sm" onclick={findDuplicates} disabled={loadingDuplicates}
+				>Find Duplicates</Button
+			>
+			{#if viewMode === 'list'}
+				<div class="flex justify-center items-center gap-1.5">
+					{#each localColumnOptions as column}
+						<Button
+							variant={visibleColumns[column.id] ? 'default' : 'outline'}
+							size="sm"
+							onclick={() => toggleColumn(column.id)}
+						>
+							{column.label}
+						</Button>
+					{/each}
+				</div>
+			{/if}
 		</div>
 	</div>
 	{#if viewMode === 'list'}
-	<div class="overflow-auto rounded-2xl border border-outline">
-	<Table.Root class="w-full table-fixed">
-		<Table.Header>
-			<Table.Row>
-				<Table.Head class="w-2/5 h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">
-					<Button variant="ghost" size="sm" class="-mx-2 truncate max-w-full" onclick={() => sortLocalTracks('title')}>
-						Title {sortIndicator('title')}
-					</Button>
-				</Table.Head>
-				{#if visibleColumns.artist}
-					<Table.Head class="w-1/5 h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">
-						<Button variant="ghost" size="sm" class="-mx-2 truncate max-w-full" onclick={() => sortLocalTracks('artist')}>
-							Artist {sortIndicator('artist')}
-						</Button>
-					</Table.Head>
-				{/if}
-				{#if visibleColumns.album}
-					<Table.Head class="w-1/5 h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">
-						<Button variant="ghost" size="sm" class="-mx-2 truncate max-w-full" onclick={() => sortLocalTracks('album')}>
-							Album {sortIndicator('album')}
-						</Button>
-					</Table.Head>
-				{/if}
-				{#if visibleColumns.quality}
-					<Table.Head class="w-[90px] h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">
-						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('quality')}>
-							Quality {sortIndicator('quality')}
-						</Button>
-					</Table.Head>
-				{/if}
-				{#if visibleColumns.duration}
-					<Table.Head class="w-[70px] h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">
-						<Button variant="ghost" size="sm" class="-mx-2" onclick={() => sortLocalTracks('duration')}>
-							Time {sortIndicator('duration')}
-						</Button>
-					</Table.Head>
-				{/if}
-				<Table.Head class="w-[140px] h-10 px-2 text-center align-middle text-soft font-mono text-xs uppercase tracking-wider">Actions</Table.Head>
-			</Table.Row>
-		</Table.Header>
-		<Table.Body>
-			{#each displayedTracks() as track}
-				<Table.Row class="border-b border-outline/60 hover:bg-surface/50 transition-colors">
-					<Table.Cell class="px-3 py-2 align-middle min-w-0">
-						<div class="truncate">
-							<strong class="text-sm truncate block" title={track.title}>{track.title}</strong>
-							<span class="text-soft text-xs ml-1.5">{track.extension.toUpperCase()}{track.has_artwork ? ' · Art' : ''}</span>
-						</div>
-					</Table.Cell>
-					{#if visibleColumns.artist}<Table.Cell class="px-3 py-2 align-middle min-w-0"><span class="truncate block text-sm" title={trackDisplayArtist(track)}>{trackDisplayArtist(track)}</span></Table.Cell>{/if}
-					{#if visibleColumns.album}<Table.Cell class="px-3 py-2 align-middle min-w-0"><span class="truncate block text-sm" title={trackDisplayAlbum(track)}>{trackDisplayAlbum(track)}</span></Table.Cell>{/if}
-					{#if visibleColumns.quality}<Table.Cell class="px-3 py-2 align-middle text-sm text-soft font-mono">{formatQuality(track)}</Table.Cell>{/if}
-					{#if visibleColumns.duration}<Table.Cell class="px-3 py-2 align-middle text-sm text-soft font-mono tabular-nums">{formatDuration(track.duration_ms)}</Table.Cell>{/if}
-					<Table.Cell class="px-1.5 py-1.5 align-middle">
-						<div class="flex justify-center gap-1">
-							<Button size="sm" class="h-7 w-7 p-0" onclick={() => playLocal(track)} aria-label="Play"><Play class="size-3.5" /></Button>
-							<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => queueLocal(track)} aria-label="Queue"><ListPlus class="size-3.5" /></Button>
-							<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => startRadio(track)} aria-label="Start radio"><Radio class="size-3.5" /></Button>
-							<Button variant="secondary" size="sm" class="h-7 w-7 p-0" onclick={() => addLocalToPlaylist(track)} aria-label="Add to playlist"><Plus class="size-3.5" /></Button>
-							<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => inspectTrack(track)} aria-label="Track info"><Info class="size-3.5" /></Button>
-						</div>
-					</Table.Cell>
-				</Table.Row>
-			{/each}
-		</Table.Body>
-	</Table.Root>
-	</div>
-	{#if hasMoreTracks()}
-		<div class="flex justify-center mt-3">
-			<Button variant="outline" size="sm" onclick={loadMoreTracks} disabled={loadingMore}>
-				{loadingMore ? 'Loading...' : `Load ${Math.min(PER_PAGE, localTracks.length - displayedTrackCount)} more (${displayedTrackCount}/${localTracks.length} shown)`}
-			</Button>
+		<div class="overflow-auto rounded-2xl border border-outline">
+			<Table.Root class="w-full table-fixed">
+				<Table.Header>
+					<Table.Row>
+						<Table.Head
+							class="w-2/5 h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+						>
+							<Button
+								variant="ghost"
+								size="sm"
+								class="-mx-2 truncate max-w-full"
+								onclick={() => sortLocalTracks('title')}
+							>
+								Title {sortIndicator('title')}
+							</Button>
+						</Table.Head>
+						{#if visibleColumns.artist}
+							<Table.Head
+								class="w-1/5 h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>
+								<Button
+									variant="ghost"
+									size="sm"
+									class="-mx-2 truncate max-w-full"
+									onclick={() => sortLocalTracks('artist')}
+								>
+									Artist {sortIndicator('artist')}
+								</Button>
+							</Table.Head>
+						{/if}
+						{#if visibleColumns.album}
+							<Table.Head
+								class="w-1/5 h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>
+								<Button
+									variant="ghost"
+									size="sm"
+									class="-mx-2 truncate max-w-full"
+									onclick={() => sortLocalTracks('album')}
+								>
+									Album {sortIndicator('album')}
+								</Button>
+							</Table.Head>
+						{/if}
+						{#if visibleColumns.quality}
+							<Table.Head
+								class="w-[90px] h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>
+								<Button
+									variant="ghost"
+									size="sm"
+									class="-mx-2"
+									onclick={() => sortLocalTracks('quality')}
+								>
+									Quality {sortIndicator('quality')}
+								</Button>
+							</Table.Head>
+						{/if}
+						{#if visibleColumns.duration}
+							<Table.Head
+								class="w-[70px] h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>
+								<Button
+									variant="ghost"
+									size="sm"
+									class="-mx-2"
+									onclick={() => sortLocalTracks('duration')}
+								>
+									Time {sortIndicator('duration')}
+								</Button>
+							</Table.Head>
+						{/if}
+						<Table.Head
+							class="w-[140px] h-10 px-2 text-center align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>Actions</Table.Head
+						>
+					</Table.Row>
+				</Table.Header>
+				<Table.Body>
+					{#each displayedTracks() as track}
+						<Table.Row class="border-b border-outline/60 hover:bg-surface/50 transition-colors">
+							<Table.Cell class="px-3 py-2 align-middle min-w-0">
+								<div class="truncate">
+									<strong class="text-sm truncate block" title={track.title}>{track.title}</strong>
+									<span class="text-soft text-xs ml-1.5"
+										>{track.extension.toUpperCase()}{track.has_artwork ? ' · Art' : ''}</span
+									>
+								</div>
+							</Table.Cell>
+							{#if visibleColumns.artist}<Table.Cell class="px-3 py-2 align-middle min-w-0"
+									><span class="truncate block text-sm" title={trackDisplayArtist(track)}
+										>{trackDisplayArtist(track)}</span
+									></Table.Cell
+								>{/if}
+							{#if visibleColumns.album}<Table.Cell class="px-3 py-2 align-middle min-w-0"
+									><span class="truncate block text-sm" title={trackDisplayAlbum(track)}
+										>{trackDisplayAlbum(track)}</span
+									></Table.Cell
+								>{/if}
+							{#if visibleColumns.quality}<Table.Cell
+									class="px-3 py-2 align-middle text-sm text-soft font-mono"
+									>{formatQuality(track)}</Table.Cell
+								>{/if}
+							{#if visibleColumns.duration}<Table.Cell
+									class="px-3 py-2 align-middle text-sm text-soft font-mono tabular-nums"
+									>{formatDuration(track.duration_ms)}</Table.Cell
+								>{/if}
+							<Table.Cell class="px-1.5 py-1.5 align-middle">
+								<div class="flex justify-center gap-1">
+									<Button
+										size="sm"
+										class="h-7 w-7 p-0"
+										onclick={() => playLocal(track)}
+										aria-label="Play"><Play class="size-3.5" /></Button
+									>
+									<Button
+										variant="outline"
+										size="sm"
+										class="h-7 w-7 p-0"
+										onclick={() => queueLocal(track)}
+										aria-label="Queue"><ListPlus class="size-3.5" /></Button
+									>
+									<Button
+										variant="outline"
+										size="sm"
+										class="h-7 w-7 p-0"
+										onclick={() => startRadio(track)}
+										aria-label="Start radio"><Radio class="size-3.5" /></Button
+									>
+									<Button
+										variant="secondary"
+										size="sm"
+										class="h-7 w-7 p-0"
+										onclick={() => addLocalToPlaylist(track)}
+										aria-label="Add to playlist"><Plus class="size-3.5" /></Button
+									>
+									<Button
+										variant="outline"
+										size="sm"
+										class="h-7 w-7 p-0"
+										onclick={() => inspectTrack(track)}
+										aria-label="Track info"><Info class="size-3.5" /></Button
+									>
+								</div>
+							</Table.Cell>
+						</Table.Row>
+					{/each}
+				</Table.Body>
+			</Table.Root>
 		</div>
-	{/if}
+		{#if hasMoreTracks()}
+			<div class="flex justify-center mt-3">
+				<Button variant="outline" size="sm" onclick={loadMoreTracks} disabled={loadingMore}>
+					{loadingMore
+						? 'Loading...'
+						: `Load ${Math.min(PER_PAGE, localTracks.length - displayedTrackCount)} more (${displayedTrackCount}/${localTracks.length} shown)`}
+				</Button>
+			</div>
+		{/if}
 	{/if}
 
 	{#if viewMode === 'grid'}
 		<div class="album-grid grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
 			{#each albumGroups as group}
-				<button class="album-card text-left bg-transparent border-0 p-0 cursor-pointer group" onclick={() => openAlbumSheet(group.key, group.album, group.artist, group.tracks)}>
-					<Card.Root class="overflow-hidden border border-outline rounded-2xl bg-surface/70 hover:bg-surface transition-colors h-full">
+				<Button
+					variant="ghost"
+					class="group h-auto min-h-0 w-full justify-start rounded-none border-0 bg-transparent p-0 text-left hover:bg-transparent"
+					onclick={() => openAlbumSheet(group.key, group.album, group.artist, group.tracks)}
+				>
+					<Card.Root
+						class="overflow-hidden border border-outline rounded-2xl bg-surface/70 hover:bg-surface transition-colors h-full"
+					>
 						<div class="aspect-square w-full relative overflow-hidden">
 							{#if group.tracks[0]?.has_artwork}
 								<div class="hero-cover-placeholder w-full h-full"></div>
 							{:else}
 								<div class="cover-placeholder w-full h-full [&::before]:hidden"></div>
 							{/if}
-							<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
-								<span class="text-white font-mono text-xs px-2 py-1 bg-black/60 rounded-full">{group.count} {group.count === 1 ? 'track' : 'tracks'}</span>
+							<div
+								class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40"
+							>
+								<span class="text-white font-mono text-xs px-2 py-1 bg-black/60 rounded-full"
+									>{group.count} {group.count === 1 ? 'track' : 'tracks'}</span
+								>
 							</div>
 						</div>
 						<Card.Content class="p-2.5">
@@ -947,50 +1249,79 @@
 							<p class="text-xs text-soft truncate">{group.artist}</p>
 						</Card.Content>
 					</Card.Root>
-				</button>
+				</Button>
 			{/each}
 		</div>
 	{/if}
-
 </section>
 
 <!-- M18: Duplicate Results -->
 {#if showDuplicates}
 	<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
 		<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
-			<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Duplicate Tracks</h2>
-			<Button variant="outline" size="sm" onclick={() => showDuplicates = false}>Close</Button>
+			<h2
+				class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+			>
+				Duplicate Tracks
+			</h2>
+			<Button variant="outline" size="sm" onclick={() => (showDuplicates = false)}>Close</Button>
 		</div>
 		{#if duplicateGroups.length === 0}
 			<p class="text-soft text-sm">No duplicate tracks found</p>
 		{:else}
-			<p class="text-soft text-sm mb-2">{duplicateGroups.length} groups of potential duplicates found</p>
+			<p class="text-soft text-sm mb-2">
+				{duplicateGroups.length} groups of potential duplicates found
+			</p>
 			{#each duplicateGroups as group, gIdx}
 				<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42] mb-2.5">
 					<span class="text-soft font-mono text-xs uppercase block mb-1.5">
-						Group {gIdx + 1}: {group[0].artist ?? 'Unknown'} — {group[0].album ?? 'Unknown Album'} — {group[0].title} ({group.length} files)
+						Group {gIdx + 1}: {group[0].artist ?? 'Unknown'} — {group[0].album ?? 'Unknown Album'} — {group[0]
+							.title} ({group.length} files)
 					</span>
 					<div class="overflow-auto rounded-xl border border-outline">
-					<Table.Root class="w-full table-fixed">
-						<Table.Header>
-							<Table.Row>
-								<Table.Head class="h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase">Path</Table.Head>
-								<Table.Head class="w-[80px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase">Quality</Table.Head>
-								<Table.Head class="w-[80px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase">Size</Table.Head>
-								<Table.Head class="w-[70px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase">Time</Table.Head>
-							</Table.Row>
-						</Table.Header>
-						<Table.Body>
-							{#each group as dup}
-								<Table.Row class="border-b border-outline/60 hover:bg-surface/50 transition-colors">
-									<Table.Cell class="px-2 py-1.5 align-middle"><span class="text-xs truncate block max-w-[420px]">{dup.path}</span></Table.Cell>
-									<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono">{formatQuality(dup)}</Table.Cell>
-									<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono">{formatFileSize(dup.file_size)}</Table.Cell>
-									<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono">{formatDuration(dup.duration_ms)}</Table.Cell>
+						<Table.Root class="w-full table-fixed">
+							<Table.Header>
+								<Table.Row>
+									<Table.Head
+										class="h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase"
+										>Path</Table.Head
+									>
+									<Table.Head
+										class="w-[80px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase"
+										>Quality</Table.Head
+									>
+									<Table.Head
+										class="w-[80px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase"
+										>Size</Table.Head
+									>
+									<Table.Head
+										class="w-[70px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase"
+										>Time</Table.Head
+									>
 								</Table.Row>
-							{/each}
-						</Table.Body>
-					</Table.Root>
+							</Table.Header>
+							<Table.Body>
+								{#each group as dup}
+									<Table.Row
+										class="border-b border-outline/60 hover:bg-surface/50 transition-colors"
+									>
+										<Table.Cell class="px-2 py-1.5 align-middle"
+											><span class="text-xs truncate block max-w-[420px]">{dup.path}</span
+											></Table.Cell
+										>
+										<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono"
+											>{formatQuality(dup)}</Table.Cell
+										>
+										<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono"
+											>{formatFileSize(dup.file_size)}</Table.Cell
+										>
+										<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono"
+											>{formatDuration(dup.duration_ms)}</Table.Cell
+										>
+									</Table.Row>
+								{/each}
+							</Table.Body>
+						</Table.Root>
 					</div>
 				</div>
 			{/each}
@@ -1011,21 +1342,71 @@
 			<div class="mt-2.5">
 				<div class="flex flex-wrap gap-1.5 whitespace-nowrap">
 					<Button size="sm" class="h-7 px-2.5 text-xs" onclick={playSelectedTrack}>Play</Button>
-					<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={queueSelectedTrack}>Queue</Button>
-					<Button variant="secondary" size="sm" class="h-7 px-2.5 text-xs" onclick={addSelectedTrackToPlaylist}>Add</Button>
-					<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={lookupSelectedTrackMetadata} disabled={loadingMetadata}>Metadata</Button>
-					<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => selectedTrack && lookupMusicBrainz(selectedTrack)} disabled={loadingMusicBrainz}>Lookup MB</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						class="h-7 px-2.5 text-xs"
+						onclick={queueSelectedTrack}>Queue</Button
+					>
+					<Button
+						variant="secondary"
+						size="sm"
+						class="h-7 px-2.5 text-xs"
+						onclick={addSelectedTrackToPlaylist}>Add</Button
+					>
+					<Button
+						variant="outline"
+						size="sm"
+						class="h-7 px-2.5 text-xs"
+						onclick={lookupSelectedTrackMetadata}
+						disabled={loadingMetadata}>Metadata</Button
+					>
+					<Button
+						variant="outline"
+						size="sm"
+						class="h-7 px-2.5 text-xs"
+						onclick={() => selectedTrack && lookupMusicBrainz(selectedTrack)}
+						disabled={loadingMusicBrainz}>Lookup MB</Button
+					>
 				</div>
 
-				<dl class="track-inspector-dl">
-					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Album</dt><dd class="mt-1 break-words">{selectedTrack.album ?? ''}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Genre</dt><dd class="mt-1 break-words">{selectedTrack.genre ?? ''}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Track</dt><dd class="mt-1 break-words">{selectedTrack.track_number ?? ''}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Quality</dt><dd class="mt-1 break-words">{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Duration</dt><dd class="mt-1 break-words">{formatDuration(selectedTrack.duration_ms)}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">File size</dt><dd class="mt-1 break-words">{formatFileSize(selectedTrack.file_size)}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Modified</dt><dd class="mt-1 break-words">{formatDate(selectedTrack.modified_secs)}</dd></div>
-					<div class="col-span-full min-w-0"><dt class="text-soft font-mono text-xs uppercase">Path</dt><dd class="mt-1 break-words">{selectedTrack.path}</dd></div>
+				<dl
+					class="mt-3.5 grid grid-cols-4 gap-x-4 gap-y-3 max-xl:grid-cols-2 max-md:grid-cols-2 max-sm:grid-cols-1"
+				>
+					<div class="min-w-0">
+						<dt class="text-soft font-mono text-xs uppercase">Album</dt>
+						<dd class="mt-1 break-words">{selectedTrack.album ?? ''}</dd>
+					</div>
+					<div class="min-w-0">
+						<dt class="text-soft font-mono text-xs uppercase">Genre</dt>
+						<dd class="mt-1 break-words">{selectedTrack.genre ?? ''}</dd>
+					</div>
+					<div class="min-w-0">
+						<dt class="text-soft font-mono text-xs uppercase">Track</dt>
+						<dd class="mt-1 break-words">{selectedTrack.track_number ?? ''}</dd>
+					</div>
+					<div class="min-w-0">
+						<dt class="text-soft font-mono text-xs uppercase">Quality</dt>
+						<dd class="mt-1 break-words">
+							{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}
+						</dd>
+					</div>
+					<div class="min-w-0">
+						<dt class="text-soft font-mono text-xs uppercase">Duration</dt>
+						<dd class="mt-1 break-words">{formatDuration(selectedTrack.duration_ms)}</dd>
+					</div>
+					<div class="min-w-0">
+						<dt class="text-soft font-mono text-xs uppercase">File size</dt>
+						<dd class="mt-1 break-words">{formatFileSize(selectedTrack.file_size)}</dd>
+					</div>
+					<div class="min-w-0">
+						<dt class="text-soft font-mono text-xs uppercase">Modified</dt>
+						<dd class="mt-1 break-words">{formatDate(selectedTrack.modified_secs)}</dd>
+					</div>
+					<div class="col-span-full min-w-0">
+						<dt class="text-soft font-mono text-xs uppercase">Path</dt>
+						<dd class="mt-1 break-words">{selectedTrack.path}</dd>
+					</div>
 				</dl>
 
 				<div class="grid gap-2 mt-3.5 pt-3 border-t border-outline">
@@ -1034,7 +1415,8 @@
 						<p>Loading lyrics</p>
 					{:else if selectedLyrics}
 						<p>{selectedLyrics.synced ? 'Synced' : 'Plain'} from {selectedLyrics.source}</p>
-						<pre class="max-h-[220px] overflow-auto m-0 whitespace-pre-wrap text-sm font-mono">{selectedLyrics.content}</pre>
+						<pre
+							class="max-h-[220px] overflow-auto m-0 whitespace-pre-wrap text-sm font-mono">{selectedLyrics.content}</pre>
 					{:else}
 						<p>No local lyrics found</p>
 					{/if}
@@ -1048,24 +1430,47 @@
 						<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-2.5">
 							<Table.Header>
 								<Table.Row>
-									<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Title</Table.Head>
-									<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Artist</Table.Head>
-									<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Album</Table.Head>
-									<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Date</Table.Head>
-									<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Score</Table.Head>
+									<Table.Head
+										class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+										>Title</Table.Head
+									>
+									<Table.Head
+										class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+										>Artist</Table.Head
+									>
+									<Table.Head
+										class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+										>Album</Table.Head
+									>
+									<Table.Head
+										class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+										>Date</Table.Head
+									>
+									<Table.Head
+										class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+										>Score</Table.Head
+									>
 								</Table.Row>
 							</Table.Header>
 							<Table.Body>
 								{#each metadataSuggestions as suggestion}
-									<Table.Row class="border-b border-outline/60 hover:bg-surface/50 transition-colors">
+									<Table.Row
+										class="border-b border-outline/60 hover:bg-surface/50 transition-colors"
+									>
 										<Table.Cell class="px-3 py-2.5 align-middle">
 											<strong>{suggestion.title}</strong>
 											<span class="text-soft text-sm block">{suggestion.recording_mbid}</span>
 										</Table.Cell>
 										<Table.Cell class="px-3 py-2.5 align-middle">{suggestion.artist}</Table.Cell>
-										<Table.Cell class="px-3 py-2.5 align-middle">{suggestion.album ?? ''}</Table.Cell>
-										<Table.Cell class="px-3 py-2.5 align-middle">{suggestion.first_release_date ?? ''}</Table.Cell>
-										<Table.Cell class="px-3 py-2.5 align-middle">{suggestion.score ?? ''}</Table.Cell>
+										<Table.Cell class="px-3 py-2.5 align-middle"
+											>{suggestion.album ?? ''}</Table.Cell
+										>
+										<Table.Cell class="px-3 py-2.5 align-middle"
+											>{suggestion.first_release_date ?? ''}</Table.Cell
+										>
+										<Table.Cell class="px-3 py-2.5 align-middle"
+											>{suggestion.score ?? ''}</Table.Cell
+										>
 									</Table.Row>
 								{/each}
 							</Table.Body>
@@ -1087,7 +1492,8 @@
 									<strong>{release.title}</strong>
 									<span class="text-soft block">{release.artist}</span>
 									{#if release.date}<span class="text-soft">{release.date}</span>{/if}
-									{#if release.format}<span class="ml-1 text-soft font-mono">{release.format}</span>{/if}
+									{#if release.format}<span class="ml-1 text-soft font-mono">{release.format}</span
+										>{/if}
 									<span class="text-soft text-[10px] block mt-0.5 font-mono">{release.mbid}</span>
 								</div>
 							{/each}
@@ -1106,7 +1512,10 @@
 	<Sheet.SheetContent side="right" class="w-[480px] sm:max-w-[480px]">
 		<Sheet.SheetHeader>
 			<Sheet.SheetTitle>{selectedAlbumTitle}</Sheet.SheetTitle>
-			<Sheet.SheetDescription>{selectedAlbumArtist} &middot; {selectedAlbumTracks.length} {selectedAlbumTracks.length === 1 ? 'track' : 'tracks'}</Sheet.SheetDescription>
+			<Sheet.SheetDescription
+				>{selectedAlbumArtist} &middot; {selectedAlbumTracks.length}
+				{selectedAlbumTracks.length === 1 ? 'track' : 'tracks'}</Sheet.SheetDescription
+			>
 		</Sheet.SheetHeader>
 
 		{#if selectedAlbumTracks.length > 0}
@@ -1115,15 +1524,30 @@
 					<Table.Body>
 						{#each selectedAlbumTracks as track, idx}
 							<Table.Row class="border-b border-outline/60 hover:bg-surface/50 transition-colors">
-								<Table.Cell class="px-2 py-1.5 w-8 text-center text-soft font-mono text-xs">{idx + 1}</Table.Cell>
+								<Table.Cell class="px-2 py-1.5 w-8 text-center text-soft font-mono text-xs"
+									>{idx + 1}</Table.Cell
+								>
 								<Table.Cell class="px-2 py-1.5 align-middle min-w-0">
 									<strong class="text-sm truncate block" title={track.title}>{track.title}</strong>
-									<span class="text-soft text-xs">{formatDuration(track.duration_ms)} &middot; {formatQuality(track)}</span>
+									<span class="text-soft text-xs"
+										>{formatDuration(track.duration_ms)} &middot; {formatQuality(track)}</span
+									>
 								</Table.Cell>
 								<Table.Cell class="px-1.5 py-1.5 w-[90px] align-middle">
 									<div class="flex gap-1">
-										<Button size="sm" class="h-7 w-7 p-0" onclick={() => playLocal(track)} aria-label="Play"><Play class="size-3.5" /></Button>
-										<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => queueLocal(track)} aria-label="Queue"><ListPlus class="size-3.5" /></Button>
+										<Button
+											size="sm"
+											class="h-7 w-7 p-0"
+											onclick={() => playLocal(track)}
+											aria-label="Play"><Play class="size-3.5" /></Button
+										>
+										<Button
+											variant="outline"
+											size="sm"
+											class="h-7 w-7 p-0"
+											onclick={() => queueLocal(track)}
+											aria-label="Queue"><ListPlus class="size-3.5" /></Button
+										>
 									</div>
 								</Table.Cell>
 							</Table.Row>
@@ -1136,18 +1560,33 @@
 </Sheet.Sheet>
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
-	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Smart Playlists</h2>
-	<div class="library-playlist-grid">
-		<div class="grid content-start gap-1.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+	<h2
+		class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+	>
+		Smart Playlists
+	</h2>
+	<div
+		class="mt-2.5 grid grid-cols-[minmax(180px,260px)_minmax(0,1fr)] gap-3.5 max-xl:grid-cols-[minmax(210px,0.42fr)_minmax(0,1fr)] max-md:grid-cols-1"
+	>
+		<div
+			class="grid content-start gap-1.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"
+		>
 			<div class="flex gap-2">
 				<Input bind:value={smartPlaylistName} placeholder="Smart playlist name" class="flex-1" />
 				<Button variant="default" size="sm" onclick={createSmartPlaylist}>Create</Button>
 			</div>
 			<div>
-				<textarea bind:value={smartPlaylistRulesJson} placeholder={JSON_PLACEHOLDER}
-					class="w-full mt-1.5 bg-surface border border-outline rounded-xl p-1.5 text-sm font-mono" rows="3"></textarea>
+				<Textarea
+					bind:value={smartPlaylistRulesJson}
+					placeholder={JSON_PLACEHOLDER}
+					class="mt-1.5 min-h-[76px] rounded-xl bg-surface font-mono"
+					rows={3}
+				/>
 			</div>
-			<p class="text-soft text-xs mt-0.5">Fields: genre, artist, album, title, year, play_count, last_played, duration, format, added_at | Ops: equals, contains, gt, lt, gte, lte, between</p>
+			<p class="text-soft text-xs mt-0.5">
+				Fields: genre, artist, album, title, year, play_count, last_played, duration, format,
+				added_at | Ops: equals, contains, gt, lt, gte, lte, between
+			</p>
 			{#if smartPlaylists.length === 0}
 				<p class="text-soft text-sm mt-1.5">No smart playlists yet</p>
 			{:else}
@@ -1157,12 +1596,18 @@
 							variant={sp.id === selectedSmartPlaylistId ? 'default' : 'outline'}
 							size="sm"
 							class="flex-1 justify-between text-left"
-							onclick={() => openSmartPlaylist(sp.id)}>
+							onclick={() => openSmartPlaylist(sp.id)}
+						>
 							<span>{sp.name}{sp.is_template ? ' ⚡' : ''}</span>
 							<small class="text-soft whitespace-nowrap">{sp.track_count} tracks</small>
 						</Button>
 						{#if !sp.is_template}
-							<Button variant="outline" size="sm" class="h-7 px-2 text-xs" onclick={() => deleteSmartPlaylist(sp.id)}>✕</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								class="h-7 px-2 text-xs"
+								onclick={() => deleteSmartPlaylist(sp.id)}>✕</Button
+							>
 						{/if}
 					</div>
 				{/each}
@@ -1175,23 +1620,52 @@
 					<Table.Root class="w-full table-fixed">
 						<Table.Header>
 							<Table.Row>
-								<Table.Head class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Title</Table.Head>
-								<Table.Head class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Artist</Table.Head>
-								<Table.Head class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Album</Table.Head>
-								<Table.Head class="w-[70px] h-8 px-2 text-center align-middle text-soft font-mono text-[10px] uppercase"></Table.Head>
+								<Table.Head
+									class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase"
+									>Title</Table.Head
+								>
+								<Table.Head
+									class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase"
+									>Artist</Table.Head
+								>
+								<Table.Head
+									class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase"
+									>Album</Table.Head
+								>
+								<Table.Head
+									class="w-[70px] h-8 px-2 text-center align-middle text-soft font-mono text-[10px] uppercase"
+								></Table.Head>
 							</Table.Row>
 						</Table.Header>
 						<Table.Body>
 							{#each smartPlaylistTracks as track}
 								<Table.Row class="border-b border-outline/60 hover:bg-surface/50">
-									<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.title}</span></Table.Cell>
-									<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.artist ?? ''}</span></Table.Cell>
-									<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.album ?? ''}</span></Table.Cell>
+									<Table.Cell class="px-2 py-1 align-middle"
+										><span class="text-xs truncate block">{track.title}</span></Table.Cell
+									>
+									<Table.Cell class="px-2 py-1 align-middle"
+										><span class="text-xs truncate block">{track.artist ?? ''}</span></Table.Cell
+									>
+									<Table.Cell class="px-2 py-1 align-middle"
+										><span class="text-xs truncate block">{track.album ?? ''}</span></Table.Cell
+									>
 									<Table.Cell class="px-1 py-1 align-middle">
 										<div class="flex justify-center gap-1">
-											<Button size="sm" class="h-6 w-6 p-0" onclick={() => playLocal(track)}><Play class="size-3" /></Button>
-											<Button variant="outline" size="sm" class="h-6 w-6 p-0" onclick={() => queueLocal(track)}><ListPlus class="size-3" /></Button>
-											<Button variant="secondary" size="sm" class="h-6 w-6 p-0" onclick={() => startRadio(track)}><Radio class="size-3" /></Button>
+											<Button size="sm" class="h-6 w-6 p-0" onclick={() => playLocal(track)}
+												><Play class="size-3" /></Button
+											>
+											<Button
+												variant="outline"
+												size="sm"
+												class="h-6 w-6 p-0"
+												onclick={() => queueLocal(track)}><ListPlus class="size-3" /></Button
+											>
+											<Button
+												variant="secondary"
+												size="sm"
+												class="h-6 w-6 p-0"
+												onclick={() => startRadio(track)}><Radio class="size-3" /></Button
+											>
 										</div>
 									</Table.Cell>
 								</Table.Row>
@@ -1207,33 +1681,60 @@
 </section>
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
-	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Discover</h2>
+	<h2
+		class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+	>
+		Discover
+	</h2>
 	<div class="flex items-center gap-3 flex-wrap mb-2">
-		<Button variant="secondary" size="sm" onclick={loadDiscovery} disabled={loadingDiscovery}>Refresh</Button>
+		<Button variant="secondary" size="sm" onclick={loadDiscovery} disabled={loadingDiscovery}
+			>Refresh</Button
+		>
 	</div>
 	{#if discovery}
-		<div class="grid gap-2.5" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+		<div class="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-2.5">
 			{#each [discovery.you_might_like, discovery.deep_cuts, discovery.new_additions] as section}
 				<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
-					<h3 class="m-0 mb-1.5 text-sm font-[family-name:var(--font-family-display)]">{section.label} ({section.tracks.length})</h3>
+					<h3 class="m-0 mb-1.5 text-sm font-[family-name:var(--font-family-display)]">
+						{section.label} ({section.tracks.length})
+					</h3>
 					<div class="overflow-auto max-h-[280px] rounded-xl border border-outline">
 						<Table.Root class="w-full table-fixed">
 							<Table.Header>
 								<Table.Row>
-									<Table.Head class="h-7 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Title</Table.Head>
-									<Table.Head class="h-7 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Artist</Table.Head>
-									<Table.Head class="w-[60px] h-7 px-2 text-center align-middle text-soft font-mono text-[10px] uppercase"></Table.Head>
+									<Table.Head
+										class="h-7 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase"
+										>Title</Table.Head
+									>
+									<Table.Head
+										class="h-7 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase"
+										>Artist</Table.Head
+									>
+									<Table.Head
+										class="w-[60px] h-7 px-2 text-center align-middle text-soft font-mono text-[10px] uppercase"
+									></Table.Head>
 								</Table.Row>
 							</Table.Header>
 							<Table.Body>
 								{#each section.tracks as track}
 									<Table.Row class="border-b border-outline/60 hover:bg-surface/50">
-										<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.title}</span></Table.Cell>
-										<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.artist ?? ''}</span></Table.Cell>
+										<Table.Cell class="px-2 py-1 align-middle"
+											><span class="text-xs truncate block">{track.title}</span></Table.Cell
+										>
+										<Table.Cell class="px-2 py-1 align-middle"
+											><span class="text-xs truncate block">{track.artist ?? ''}</span></Table.Cell
+										>
 										<Table.Cell class="px-1 py-1 align-middle">
 											<div class="flex justify-center gap-1">
-												<Button size="sm" class="h-6 w-6 p-0" onclick={() => playLocal(track)}><Play class="size-3" /></Button>
-												<Button variant="secondary" size="sm" class="h-6 w-6 p-0" onclick={() => startRadio(track)}><Radio class="size-3" /></Button>
+												<Button size="sm" class="h-6 w-6 p-0" onclick={() => playLocal(track)}
+													><Play class="size-3" /></Button
+												>
+												<Button
+													variant="secondary"
+													size="sm"
+													class="h-6 w-6 p-0"
+													onclick={() => startRadio(track)}><Radio class="size-3" /></Button
+												>
 											</div>
 										</Table.Cell>
 									</Table.Row>
@@ -1250,37 +1751,66 @@
 </section>
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
-	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Playlists</h2>
-	<div class="library-playlist-grid">
-		<div class="grid content-start gap-1.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+	<h2
+		class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+	>
+		Playlists
+	</h2>
+	<div
+		class="mt-2.5 grid grid-cols-[minmax(180px,260px)_minmax(0,1fr)] gap-3.5 max-xl:grid-cols-[minmax(210px,0.42fr)_minmax(0,1fr)] max-md:grid-cols-1"
+	>
+		<div
+			class="grid content-start gap-1.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"
+		>
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
-			<Input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" class="flex-1 min-w-[min(100%,160px)]" />
-			<Button variant="default" size="sm" onclick={createPlaylist}>Create</Button>
+				<Input
+					bind:value={playlistName}
+					placeholder="Playlist name"
+					aria-label="Playlist name"
+					class="flex-1 min-w-[min(100%,160px)]"
+				/>
+				<Button variant="default" size="sm" onclick={createPlaylist}>Create</Button>
 			</div>
 			{#if playlists.length === 0}
 				<p>No playlists yet</p>
 			{:else}
 				{#each playlists as playlist}
-				<Button
-				variant={playlist.id === selectedPlaylistId ? 'default' : 'outline'}
-				size="sm"
-				class="flex justify-between gap-2 text-left w-full"
-				onclick={() => selectPlaylist(playlist.id)}>
-				 <span>{playlist.name}</span>
-					<small class="text-soft whitespace-nowrap">{playlist.track_count} tracks</small>
-				</Button>
+					<Button
+						variant={playlist.id === selectedPlaylistId ? 'default' : 'outline'}
+						size="sm"
+						class="flex justify-between gap-2 text-left w-full"
+						onclick={() => selectPlaylist(playlist.id)}
+					>
+						<span>{playlist.name}</span>
+						<small class="text-soft whitespace-nowrap">{playlist.track_count} tracks</small>
+					</Button>
 				{/each}
 			{/if}
 		</div>
 
 		<div class="grid gap-2.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
-			<Input bind:value={playlistImportPath} placeholder="/path/list.m3u" aria-label="M3U import path" class="flex-1 min-w-[min(100%,160px)]" />
-			<Button variant="default" size="sm" onclick={importPlaylist}>Import</Button>
+				<Input
+					bind:value={playlistImportPath}
+					placeholder="/path/list.m3u"
+					aria-label="M3U import path"
+					class="flex-1 min-w-[min(100%,160px)]"
+				/>
+				<Button variant="default" size="sm" onclick={importPlaylist}>Import</Button>
 			</div>
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
-			<Input bind:value={playlistExportPath} placeholder="/path/export.m3u8" aria-label="M3U export path" class="flex-1 min-w-[min(100%,160px)]" />
-			<Button variant="default" size="sm" onclick={exportPlaylist} disabled={selectedPlaylistId === null}>Export</Button>
+				<Input
+					bind:value={playlistExportPath}
+					placeholder="/path/export.m3u8"
+					aria-label="M3U export path"
+					class="flex-1 min-w-[min(100%,160px)]"
+				/>
+				<Button
+					variant="default"
+					size="sm"
+					onclick={exportPlaylist}
+					disabled={selectedPlaylistId === null}>Export</Button
+				>
 			</div>
 
 			{#if selectedPlaylist}
@@ -1288,7 +1818,12 @@
 					{#each selectedPlaylist.tracks as song}
 						<li class="flex items-center justify-between gap-2 py-[5px]">
 							<span>{song.title}</span>
-							<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueSong(song)}>Queue</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								class="h-7 px-2.5 text-xs"
+								onclick={() => queueSong(song)}>Queue</Button
+							>
 						</li>
 					{/each}
 				</ol>
@@ -1300,7 +1835,11 @@
 </section>
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
-	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Recent Listening</h2>
+	<h2
+		class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+	>
+		Recent Listening
+	</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<span class="text-soft text-sm">{listeningHistory.length} entries</span>
 		<Button variant="secondary" size="sm" onclick={loadListeningHistory}>Refresh</Button>
@@ -1312,12 +1851,30 @@
 			<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-3">
 				<Table.Header>
 					<Table.Row>
-						<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Track</Table.Head>
-						<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Plays</Table.Head>
-						<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Completed</Table.Head>
-						<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Skipped</Table.Head>
-						<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Listened</Table.Head>
-						<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Last played</Table.Head>
+						<Table.Head
+							class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>Track</Table.Head
+						>
+						<Table.Head
+							class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>Plays</Table.Head
+						>
+						<Table.Head
+							class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>Completed</Table.Head
+						>
+						<Table.Head
+							class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>Skipped</Table.Head
+						>
+						<Table.Head
+							class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>Listened</Table.Head
+						>
+						<Table.Head
+							class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+							>Last played</Table.Head
+						>
 					</Table.Row>
 				</Table.Header>
 				<Table.Body>
@@ -1330,7 +1887,9 @@
 							<Table.Cell class="px-3 py-2.5 align-middle">{summary.play_count}</Table.Cell>
 							<Table.Cell class="px-3 py-2.5 align-middle">{summary.completion_count}</Table.Cell>
 							<Table.Cell class="px-3 py-2.5 align-middle">{summary.skip_count}</Table.Cell>
-							<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(summary.total_listened_ms)}</Table.Cell>
+							<Table.Cell class="px-3 py-2.5 align-middle"
+								>{formatDuration(summary.total_listened_ms)}</Table.Cell
+							>
 							<Table.Cell class="px-3 py-2.5 align-middle">{summary.last_played_at}</Table.Cell>
 						</Table.Row>
 					{/each}
@@ -1340,12 +1899,30 @@
 		<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-3">
 			<Table.Header>
 				<Table.Row>
-					<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Track</Table.Head>
-					<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Event</Table.Head>
-					<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Class</Table.Head>
-					<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Position</Table.Head>
-					<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Listened</Table.Head>
-					<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Time</Table.Head>
+					<Table.Head
+						class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+						>Track</Table.Head
+					>
+					<Table.Head
+						class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+						>Event</Table.Head
+					>
+					<Table.Head
+						class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+						>Class</Table.Head
+					>
+					<Table.Head
+						class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+						>Position</Table.Head
+					>
+					<Table.Head
+						class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+						>Listened</Table.Head
+					>
+					<Table.Head
+						class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+						>Time</Table.Head
+					>
 				</Table.Row>
 			</Table.Header>
 			<Table.Body>
@@ -1355,10 +1932,18 @@
 							<strong>{entry.title ?? entry.path}</strong>
 							<span class="text-soft text-sm block">{entry.source}</span>
 						</Table.Cell>
-						<Table.Cell class="px-3 py-2.5 align-middle">{formatHistoryLabel(entry.event)}</Table.Cell>
-						<Table.Cell class="px-3 py-2.5 align-middle">{formatHistoryLabel(entry.classification)}</Table.Cell>
-						<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(entry.position_ms)}</Table.Cell>
-						<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(entry.listened_ms)}</Table.Cell>
+						<Table.Cell class="px-3 py-2.5 align-middle"
+							>{formatHistoryLabel(entry.event)}</Table.Cell
+						>
+						<Table.Cell class="px-3 py-2.5 align-middle"
+							>{formatHistoryLabel(entry.classification)}</Table.Cell
+						>
+						<Table.Cell class="px-3 py-2.5 align-middle"
+							>{formatDuration(entry.position_ms)}</Table.Cell
+						>
+						<Table.Cell class="px-3 py-2.5 align-middle"
+							>{formatDuration(entry.listened_ms)}</Table.Cell
+						>
 						<Table.Cell class="px-3 py-2.5 align-middle">{entry.created_at}</Table.Cell>
 					</Table.Row>
 				{/each}
@@ -1368,27 +1953,44 @@
 </section>
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
-	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Remote Search</h2>
+	<h2
+		class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+	>
+		Remote Search
+	</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
-		<span class="text-soft text-sm">{loadingRemote ? 'Loading...' : `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span>
+		<span class="text-soft text-sm"
+			>{loadingRemote
+				? 'Loading...'
+				: `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span
+		>
 		{#if selectedRemoteProvider === 'spotify'}
 			<span class="text-xs font-mono">{spotifyStatusLabel()}</span>
 		{/if}
 	</div>
 	{#if selectedRemoteProvider === 'spotify'}
 		<div class="flex items-center gap-2 mb-2">
-			<Button variant={nativeSpotifyStatus?.connected ? 'secondary' : 'default'} size="sm"
-				onclick={nativeSpotifyStatus?.connected ? disconnectSpotifyNative : ensureSpotifyNativeConnected}
-				disabled={connectingSpotify}>
+			<Button
+				variant={nativeSpotifyStatus?.connected ? 'secondary' : 'default'}
+				size="sm"
+				onclick={nativeSpotifyStatus?.connected
+					? disconnectSpotifyNative
+					: ensureSpotifyNativeConnected}
+				disabled={connectingSpotify}
+			>
 				<Radio class="size-3.5" />
-				{nativeSpotifyStatus?.connected ? 'Disconnect' : connectingSpotify ? 'Connecting...' : 'Connect Native'}
+				{nativeSpotifyStatus?.connected
+					? 'Disconnect'
+					: connectingSpotify
+						? 'Connecting...'
+						: 'Connect Native'}
 			</Button>
 			{#if nativeSpotifyStatus?.username}
 				<span class="text-xs text-soft">as {nativeSpotifyStatus.username}</span>
 			{/if}
 		</div>
 	{/if}
-	<div class="library-scan-row">
+	<div class="mb-2 flex flex-wrap items-center gap-2">
 		<Select.Root bind:value={selectedRemoteProvider} onValueChange={() => changeRemoteProvider()}>
 			<Select.Trigger class="flex-1 min-w-[min(100%,160px)]">
 				{remoteProviderLabel(selectedRemoteProvider)}
@@ -1399,12 +2001,29 @@
 				{/each}
 			</Select.Content>
 		</Select.Root>
-		<Input bind:value={remoteQuery} placeholder="Track, artist, album" aria-label="Remote search" class="flex-1 min-w-[min(100%,160px)]" />
+		<Input
+			bind:value={remoteQuery}
+			placeholder="Track, artist, album"
+			aria-label="Remote search"
+			class="flex-1 min-w-[min(100%,160px)]"
+		/>
 		{#if selectedRemoteProvider === 'tidal'}
-			<Input bind:value={remoteCountryCode} placeholder="US" aria-label="TIDAL country code" class="flex-[0_0_72px] min-w-[72px] uppercase" />
+			<Input
+				bind:value={remoteCountryCode}
+				placeholder="US"
+				aria-label="TIDAL country code"
+				class="flex-[0_0_72px] min-w-[72px] uppercase"
+			/>
 		{/if}
-		<Button variant="default" size="sm" onclick={searchRemote} disabled={loadingRemote}>Search</Button>
-		<Button variant="outline" size="sm" onclick={loadRemotePlaylists} disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}>Playlists</Button>
+		<Button variant="default" size="sm" onclick={searchRemote} disabled={loadingRemote}
+			>Search</Button
+		>
+		<Button
+			variant="outline"
+			size="sm"
+			onclick={loadRemotePlaylists}
+			disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}>Playlists</Button
+		>
 	</div>
 	{#if remotePlaylists.length > 0}
 		<div class="flex flex-wrap gap-2 mb-2">
@@ -1413,7 +2032,8 @@
 					variant={playlist.id === selectedRemotePlaylistId ? 'default' : 'outline'}
 					size="sm"
 					class="grid gap-0.5 min-w-[150px] text-left h-auto py-2"
-					onclick={() => loadRemotePlaylistTracks(playlist)}>
+					onclick={() => loadRemotePlaylistTracks(playlist)}
+				>
 					<span>{playlist.name}</span>
 					<small class="text-soft">{remotePlaylistCountLabel(playlist)}</small>
 				</Button>
@@ -1423,13 +2043,33 @@
 	<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-3">
 		<Table.Header>
 			<Table.Row>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Source</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Title</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Artist</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Album</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Quality</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Time</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"></Table.Head>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Source</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Title</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Artist</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Album</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Quality</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Time</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+				></Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -1442,18 +2082,31 @@
 					</Table.Cell>
 					<Table.Cell class="px-3 py-2.5 align-middle">{track.artist}</Table.Cell>
 					<Table.Cell class="px-3 py-2.5 align-middle">{track.album ?? ''}</Table.Cell>
-					<Table.Cell class="px-3 py-2.5 align-middle">{track.quality ?? (track.playable ? 'Remote playable' : 'Metadata only')}</Table.Cell>
-					<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(track.duration_ms)}</Table.Cell>
+					<Table.Cell class="px-3 py-2.5 align-middle"
+						>{track.quality ?? (track.playable ? 'Remote playable' : 'Metadata only')}</Table.Cell
+					>
+					<Table.Cell class="px-3 py-2.5 align-middle"
+						>{formatDuration(track.duration_ms)}</Table.Cell
+					>
 					<Table.Cell class="px-3 py-2 align-middle">
 						<div class="flex gap-1">
 							{#if track.source === 'spotify' && track.playable}
-								<Button variant="default" size="sm" class="h-7 px-2 text-xs"
+								<Button
+									variant="default"
+									size="sm"
+									class="h-7 px-2 text-xs"
 									onclick={() => playSpotifyNative(track)}
-									disabled={connectingSpotify}>
+									disabled={connectingSpotify}
+								>
 									<Play class="size-3" />
 								</Button>
 							{/if}
-							<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueRemote(track)}>Queue</Button>
+							<Button
+								variant="outline"
+								size="sm"
+								class="h-7 px-2.5 text-xs"
+								onclick={() => queueRemote(track)}>Queue</Button
+							>
 						</div>
 					</Table.Cell>
 				</Table.Row>
@@ -1463,18 +2116,35 @@
 </section>
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
-	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Jellyfin</h2>
+	<h2
+		class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]"
+	>
+		Jellyfin
+	</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<span class="text-soft text-sm">Remote media server</span>
-		<Button variant="default" size="sm" onclick={loadJellyfin} disabled={loadingJellyfin}>Load songs</Button>
+		<Button variant="default" size="sm" onclick={loadJellyfin} disabled={loadingJellyfin}
+			>Load songs</Button
+		>
 	</div>
 	<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-3">
 		<Table.Header>
 			<Table.Row>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Title</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Artist</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Album</Table.Head>
-				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"></Table.Head>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Title</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Artist</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+					>Album</Table.Head
+				>
+				<Table.Head
+					class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider"
+				></Table.Head>
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
@@ -1483,11 +2153,16 @@
 					<Table.Cell class="px-3 py-2.5 align-middle"><strong>{song.title}</strong></Table.Cell>
 					<Table.Cell class="px-3 py-2.5 align-middle">{song.artist}</Table.Cell>
 					<Table.Cell class="px-3 py-2.5 align-middle">{song.album}</Table.Cell>
-					<Table.Cell class="px-3 py-2 align-middle"><Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueSong(song)}>Queue</Button></Table.Cell>
+					<Table.Cell class="px-3 py-2 align-middle"
+						><Button
+							variant="outline"
+							size="sm"
+							class="h-7 px-2.5 text-xs"
+							onclick={() => queueSong(song)}>Queue</Button
+						></Table.Cell
+					>
 				</Table.Row>
 			{/each}
 		</Table.Body>
 	</Table.Root>
 </section>
-
-

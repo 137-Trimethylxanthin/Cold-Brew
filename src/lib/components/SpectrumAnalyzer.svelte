@@ -9,8 +9,7 @@
 
 	let { bars = 28, height: defaultH = 54 }: Props = $props();
 
-	const SMOOTH = 0.18;
-	const NOISE_FLOOR = 0.008;
+	const NOISE_FLOOR = 0.012;
 
 	let canvasEl: HTMLCanvasElement;
 	let animFrameId: number;
@@ -20,11 +19,26 @@
 	let ctx: CanvasRenderingContext2D | null;
 	let bufW = 0;
 	let bufH = 0;
+	let time = 0;
+
+	// ── Per-bar reactivity profile ──
+	// Each bar has its own smoothing speed, boost, and phase offset
+	// so bars move at different rates → organic "funky" look
+	const profiles = Array.from({ length: bars }, (_, i) => {
+		const t = i / (bars - 1);
+		// Bass bars (left): fast response, high boost, big movement
+		// Treble bars (right): slower response, less boost, shimmer
+		const speed = 0.08 + t * 0.32;          // 0.08 (fast bass) → 0.40 (slow treble)
+		const boost = 2.8 - t * 2.0;             // 2.8× (bass) → 0.8× (treble)
+		const phase = (i / bars) * Math.PI * 1.7; // phase offset for staggered movement
+		return { speed, boost, phase };
+	});
 
 	function buildFreqMap(totalBins: number, displayBars: number): number[] {
 		const map = new Array<number>(displayBars);
 		for (let i = 0; i < displayBars; i++) {
-			map[i] = Math.round(Math.pow(i / (displayBars - 1), 0.48) * (totalBins - 1));
+			// Aggressive exponential — first 8 bars cover bass alone
+			map[i] = Math.round(Math.pow(i / (displayBars - 1), 0.35) * (totalBins - 1));
 		}
 		return map;
 	}
@@ -67,7 +81,10 @@
 			for (let j = lastStart; j < raw.length; j++) lastSum += raw[j] ?? 0;
 			arr[bars - 1] = (raw.length - lastStart) > 0 ? lastSum / (raw.length - lastStart) : 0;
 
-			for (let i = 0; i < bars; i++) arr[i] = Math.pow(arr[i], 0.62);
+			// Apply per-bar boost + heavy compression
+			for (let i = 0; i < bars; i++) {
+				arr[i] = Math.pow(arr[i] * profiles[i].boost, 0.55);
+			}
 			target = arr;
 		}).then((fn) => { unlisten = fn; });
 
@@ -98,8 +115,19 @@
 			return;
 		}
 
+		time += 0.016;
+
 		const c = new Float32Array(bars);
-		for (let i = 0; i < bars; i++) c[i] = lerp(current[i], target[i], SMOOTH);
+		const anyActive = target.some((v) => v > 0.005);
+
+		for (let i = 0; i < bars; i++) {
+			let t = target[i];
+			// When silent, add subtle ambient drift so bars don't sit dead
+			if (!anyActive) {
+				t = 0.03 + 0.04 * Math.abs(Math.sin(time * 1.3 + profiles[i].phase));
+			}
+			c[i] = lerp(current[i], t, profiles[i].speed);
+		}
 		current = c;
 
 		const w = bufW;
@@ -108,23 +136,24 @@
 
 		ctx.clearRect(0, 0, w, h);
 
-		const barW = (w / bars) * 0.72;
-		const gap = (w / bars) * 0.28;
+		const barW = (w / bars) * 0.7;
+		const gap = (w / bars) * 0.3;
 		const radius = Math.min(barW * 0.5, dpr * 4);
 		const maxH = h * 0.94;
 
+		// Vivid gradient: brand blue → bright cyan → warm cream peaks
 		const grad = ctx.createLinearGradient(0, h, 0, 0);
-		grad.addColorStop(0.0, 'oklch(70% 0.13 205 / 0.36)');
-		grad.addColorStop(0.3, 'oklch(70% 0.13 205 / 0.58)');
-		grad.addColorStop(0.6, 'oklch(70% 0.13 205 / 0.74)');
-		grad.addColorStop(0.85, 'oklch(70% 0.13 205 / 0.88)');
-		grad.addColorStop(1.0, 'oklch(93% 0.013 80 / 0.9)');
+		grad.addColorStop(0.0, 'oklch(70% 0.13 205 / 0.30)');
+		grad.addColorStop(0.25, 'oklch(70% 0.13 205 / 0.50)');
+		grad.addColorStop(0.5, 'oklch(70% 0.13 205 / 0.72)');
+		grad.addColorStop(0.75, 'oklch(72% 0.10 195 / 0.88)');
+		grad.addColorStop(0.92, 'oklch(93% 0.013 80 / 0.95)');
 		ctx.fillStyle = grad;
 
 		for (let i = 0; i < bars; i++) {
 			const val = c[i];
-			if (val < NOISE_FLOOR) continue;
-			const barH = Math.max(dpr * 2, val * maxH);
+			if (val < NOISE_FLOOR && anyActive) continue;
+			const barH = Math.max(dpr * 2.5, val * maxH);
 			const x = i * (w / bars) + gap / 2;
 			const y = h - barH;
 

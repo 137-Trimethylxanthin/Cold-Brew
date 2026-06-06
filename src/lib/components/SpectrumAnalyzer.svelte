@@ -15,10 +15,11 @@
 
 	onMount(async () => {
 		unlisten = await listen<SpectrumData>('spectrum_data', (event) => {
-			const bins = event.payload;
+			const data = event.payload as { bins: number[] } | number[];
+			const bins = Array.isArray(data) ? data : data.bins;
 			if (Array.isArray(bins)) {
 				targetBins = new Float32Array(bins);
-				isActive = targetBins.some((v) => v > 0.01);
+				isActive = bins.some((v: number) => v > 0.01);
 			}
 		});
 		drawLoop();

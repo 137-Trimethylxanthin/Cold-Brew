@@ -4,6 +4,7 @@
 	import type { Song } from '$lib/types';
 	import { invoke } from '@tauri-apps/api/core';
 	import { Button } from '$lib/components/ui/button';
+	import { t } from '$lib/i18n';
 
 	let {
 		upcomingSongs = [],
@@ -120,16 +121,16 @@
 	}
 </script>
 
-<aside class="grid content-start gap-3.5 min-w-0 border border-outline rounded-3xl p-4 overflow-auto bg-surface/92" data-od-id="queue-panel">
-	<section class="grid gap-3.5 border border-outline rounded-3xl p-4 bg-surface-2/[0.42]">
+<aside class="grid content-start gap-3.5 min-w-0 border border-outline rounded-3xl p-4 overflow-auto bg-surface/92" data-od-id="queue-panel" aria-label="{t('common.queue')}">
+	<section class="grid gap-3.5 border border-outline rounded-3xl p-4 bg-surface-2/[0.42]" aria-label="{t('common.now_playing')}">
 		<div class="relative overflow-hidden aspect-square border border-outline/70 rounded-3xl shadow-lg" aria-hidden="true">
 			{#if $currentSong.cover_art}
-				<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={`${$currentSong.title} album art`} />
+				<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={t('album.art', { title: $currentSong.title })} />
 			{:else}
 				<div class="cover-placeholder w-full h-full"></div>
 			{/if}
 		</div>
-		<div class="grid gap-1.5 min-w-0">
+		<div class="grid gap-1.5 min-w-0" aria-live="polite">
 			<h2 class="overflow-hidden m-0 font-[family-name:var(--font-family-display)] text-[clamp(24px,3vw,34px)] leading-tight truncate">
 				{$currentSong.title}
 			</h2>
@@ -159,10 +160,10 @@
 		</div>
 	</section>
 
-	<section class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]">
-		<h3 class="m-0 mb-2.5 text-xs uppercase text-soft">Up next</h3>
+	<section class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]" aria-label="{t('common.up_next')}">
+		<h3 class="m-0 mb-2.5 text-xs uppercase text-soft">{t('common.up_next')}</h3>
 		{#if upcomingSongs.length === 0}
-			<p>Queue is empty</p>
+			<p>{t('common.empty')}</p>
 		{:else}
 			<ol class="m-0 p-0 list-none">
 				{#each upcomingSongs as song, index}
@@ -183,15 +184,15 @@
 							<small class="truncate text-soft text-xs">{queuedSongDetail(song)}</small>
 							{/if}
 							</span>
-							<Button variant="ghost" size="sm" onclick={() => onRemove(song)}>Remove</Button>
+							<Button variant="ghost" size="sm" onclick={() => onRemove(song)} aria-label="{t('common.remove')} {song.title}">{t('common.remove')}</Button>
 							</li>
 				{/each}
 			</ol>
 		{/if}
 	</section>
 
-	<section class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]">
-		<h3 class="m-0 mb-2.5 text-xs uppercase text-soft">History</h3>
+	<section class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]" aria-label="{t('common.history')}">
+		<h3 class="m-0 mb-2.5 text-xs uppercase text-soft">{t('common.history')}</h3>
 		<ol class="m-0 p-0 list-none">
 			{#each oldSongs.slice(-4).reverse() as song}
 				<li class="mb-2 min-w-0">

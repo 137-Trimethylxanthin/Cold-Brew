@@ -22,7 +22,7 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
-        .setup(|_app| {
+        .setup(|_app: &mut tauri::App| {
             crate::storage::keyring::init_default_credentials();
             tauri::async_runtime::spawn(async move {
                 crate::audio::player::run().await;

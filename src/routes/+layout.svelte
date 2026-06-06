@@ -4,7 +4,7 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
 	import { toast, Toaster } from 'svelte-sonner';
-	import type { PlaybackSettings, PlaybackStatus, QueuePlaybackResult, QueueSnapshot, RestoredSession, Song } from '$lib/types';
+	import type { PlaybackSettings, PlaybackStatus, QueuePlaybackResult, QueueSnapshot, RestoredSession, LibraryStats, Song } from '$lib/types';
 	import { playbackStatus, currentSong, volume, playbackSettings } from '$lib/stores';
 	import { toErrorMessage, playbackQualityLabel, formatSource, formatSampleRate, formatDb, titleFromPath, emptySong } from '$lib/playback';
 	import SideNav from '$lib/components/SideNav.svelte';
@@ -12,6 +12,7 @@
 	import MiniPlayer from '$lib/components/MiniPlayer.svelte';
 	import { Library, Play, MousePointer2, Settings } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
+	import { t, initLocale } from '$lib/i18n';
 
 	let oldSongs: Song[] = [];
 	let upcomingSongs: Song[] = [];
@@ -39,10 +40,10 @@
 	let queueSheetOpen = $state(false);
 
 	const bottomTabs = [
-		{ id: 'library', icon: Library, label: 'Library', path: '/' },
-		{ id: 'player', icon: Play, label: 'Player', path: '/player' },
-		{ id: 'explore', icon: MousePointer2, label: 'Explore', path: '/explore' },
-		{ id: 'settings', icon: Settings, label: 'Settings', path: '/settings' }
+		{ id: 'library', icon: Library, i18nKey: 'nav.library' as const, path: '/' },
+		{ id: 'player', icon: Play, i18nKey: 'nav.player' as const, path: '/player' },
+		{ id: 'explore', icon: MousePointer2, i18nKey: 'nav.explore' as const, path: '/explore' },
+		{ id: 'settings', icon: Settings, i18nKey: 'nav.settings' as const, path: '/settings' }
 	];
 
 	function isTabActive(path: string) {
@@ -52,15 +53,17 @@
 
 	let sessionSaveInterval: number | null = null;
 	let offlineToastShown = $state(false);
+	let onboardingShown = $state(false);
 
 	onMount(() => {
+		initLocale();
 		const updateOnline = () => {
 			if (!navigator.onLine && !offlineToastShown) {
 				offlineToastShown = true;
-				toast.warning('Offline — showing local files only');
+				toast.warning(t('common.offline'));
 			} else if (navigator.onLine && offlineToastShown) {
 				offlineToastShown = false;
-				toast.success('Back online');
+				toast.success(t('common.back_online'));
 			}
 		};
 		window.addEventListener('online', updateOnline);
@@ -70,10 +73,12 @@
 		void restoreSession();
 		void refreshQueue();
 		void refreshPlaybackStatus();
+		void checkOnboarding();
 
 		// M20: Restore accent color and density from localStorage
 		restoreAccentColor();
 		restoreDensity();
+		restoreHighContrast();
 		const refreshTimer = window.setInterval(() => {
 			void refreshQueue();
 			void refreshPlaybackStatus();
@@ -625,7 +630,25 @@
 		);
 	}
 
-	// M20: Restore accent color from localStorage
+	async function checkOnboarding() {
+		if (onboardingShown) return;
+		try {
+			const stats = await invoke<LibraryStats>('get_library_stats');
+			if (stats.total_tracks === 0) {
+				onboardingShown = true;
+				toast('Welcome to Cold Brew', {
+					description: 'Scan your music library to get started.',
+					action: {
+						label: 'Open Settings',
+						onClick: () => goto('/settings')
+					},
+					duration: 8000
+				});
+			}
+		} catch {
+			// library check is best-effort
+		}
+	}
 	function restoreAccentColor() {
 		if (typeof localStorage === 'undefined') return;
 		const saved = localStorage.getItem('coldbrew.accentColor');
@@ -652,6 +675,15 @@
 		}
 	}
 
+	// M22: Restore high contrast from localStorage
+	function restoreHighContrast() {
+		if (typeof localStorage === 'undefined') return;
+		const saved = localStorage.getItem('coldbrew.highContrast');
+		if (saved === 'true') {
+			document.body.setAttribute('data-high-contrast', 'true');
+		}
+	}
+
 	function isTypingTarget(target: EventTarget | null) {
 		if (!(target instanceof HTMLElement)) return false;
 		return ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable;
@@ -659,26 +691,28 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="app-shell" data-od-id="app-shell" role="application">
-	<SideNav />
-	<div class="sidebar-icon-rail">
-		<button onclick={() => goto('/')} aria-label="Library">
+<div class="app-shell" data-od-id="app-shell">
+	<div class="sidebar-full" role="navigation" aria-label="{t('nav.primary')}">
+		<SideNav />
+	</div>
+	<nav class="sidebar-icon-rail" aria-label="{t('nav.primary')}">
+		<button onclick={() => goto('/')} aria-label="{t('nav.library')}">
 			<Library class="size-5" />
 		</button>
-		<button onclick={() => goto('/player')} aria-label="Player">
+		<button onclick={() => goto('/player')} aria-label="{t('nav.player')}">
 			<Play class="size-5" />
 		</button>
-		<button onclick={() => goto('/explore')} aria-label="Explore">
+		<button onclick={() => goto('/explore')} aria-label="{t('nav.explore')}">
 			<MousePointer2 class="size-5" />
 		</button>
-		<button onclick={() => goto('/settings')} aria-label="Settings">
+		<button onclick={() => goto('/settings')} aria-label="{t('nav.settings')}">
 			<Settings class="size-5" />
 		</button>
-	</div>
+	</nav>
 	<main class="content" data-od-id="content" id="main-content">
 		<slot />
 	</main>
-	<div class="queue-panel-desktop" data-od-id="queue-panel-desktop">
+	<div class="queue-panel-desktop" data-od-id="queue-panel-desktop" role="complementary" aria-label="{t('common.queue')}">
 		<QueuePanel
 			{upcomingSongs}
 			{oldSongs}
@@ -689,17 +723,17 @@
 </div>
 
 <!-- Mobile bottom tab bar -->
-<nav class="bottom-tab-bar" data-od-id="bottom-tab-bar" aria-label="Bottom navigation">
+<nav class="bottom-tab-bar" data-od-id="bottom-tab-bar" aria-label="{t('nav.bottom_nav')}">
 	{#each bottomTabs as tab}
 		<button
 			class="bottom-tab-button"
 			class:text-brand={isTabActive(tab.path)}
 			onclick={() => goto(tab.path)}
-			aria-label={tab.label}
+			aria-label={t(tab.i18nKey)}
 			aria-current={isTabActive(tab.path) ? 'page' : undefined}
 		>
-			<tab.icon class="size-5" />
-			<span>{tab.label}</span>
+			<tab.icon class="size-5" aria-hidden="true" />
+			<span>{t(tab.i18nKey)}</span>
 		</button>
 	{/each}
 </nav>

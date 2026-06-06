@@ -614,6 +614,19 @@
 	.text-danger { color: var(--color-danger); }
 	.text-success { color: var(--color-success); }
 
+	/* Accessibility */
+	.sr-only {
+		position: absolute;
+		width: 1px;
+		height: 1px;
+		padding: 0;
+		margin: -1px;
+		overflow: hidden;
+		clip: rect(0, 0, 0, 0);
+		white-space: nowrap;
+		border: 0;
+	}
+
 	/* ── M20: Color swatches ── */
 	.color-swatch {
 		width: 44px;
@@ -708,6 +721,46 @@
 		line-height: 1.45;
 		text-rendering: optimizeLegibility;
 		-webkit-font-smoothing: antialiased;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
+	}
+
+	/* High contrast mode */
+	[data-high-contrast='true'] {
+		--color-bg: oklch(5% 0 0);
+		--color-surface: oklch(12% 0 0);
+		--color-surface-2: oklch(18% 0 0);
+		--color-surface-3: oklch(24% 0 0);
+		--color-fg: oklch(98% 0 0);
+		--color-soft: oklch(82% 0 0);
+		--color-outline: oklch(60% 0 0);
+		--color-brand: oklch(85% 0.15 205);
+		--color-accent-2: oklch(85% 0.15 78);
+		--color-success: oklch(80% 0.15 150);
+		--color-danger: oklch(80% 0.15 30);
+	}
+
+	[data-high-contrast='true'] button {
+		border-width: 2px;
+	}
+
+	[data-high-contrast='true'] .bottom-tab-button:hover,
+	[data-high-contrast='true'] .bottom-tab-button:focus-visible {
+		outline: 2px solid var(--color-fg);
+		outline-offset: 2px;
+	}
+
+	[data-high-contrast='true'] .color-swatch {
+		border-width: 3px;
 	}
 
 	* {

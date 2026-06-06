@@ -5,6 +5,7 @@
 		AudioOutputDevice,
 		JellyfinAccount,
 		LastFmScrobbleStatus,
+		LibraryStats,
 		PlaybackSettings,
 		PlaybackStatus,
 		ProviderAccount,
@@ -16,6 +17,7 @@
 		ScanSummary
 	} from '$lib/types';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import * as DialogComponents from '$lib/components/ui/dialog';
 	import * as Select from '$lib/components/ui/select';
 	import { Select as SelectPrimitive } from 'bits-ui';
 	import * as Card from '$lib/components/ui/card';
@@ -24,6 +26,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Slider } from '$lib/components/ui/slider';
 	import ProviderLoginPanel from '$lib/components/ProviderLoginPanel.svelte';
+	import { t, setLocale, type Locale, localeName, initLocale } from '$lib/i18n';
 
 	let account: JellyfinAccount | null = null;
 	let audioOutputs: AudioOutputDevice[] = [];
@@ -126,9 +129,40 @@
 		}
 	}
 
+	// M22: i18n & accessibility
+	let currentLocale = $state<Locale>('en');
+	let highContrast = $state(false);
+
+	function toggleHighContrast() {
+		highContrast = !highContrast;
+		if (highContrast) {
+			document.body.setAttribute('data-high-contrast', 'true');
+		} else {
+			document.body.removeAttribute('data-high-contrast');
+		}
+		if (typeof localStorage !== 'undefined') {
+			localStorage.setItem('coldbrew.highContrast', String(highContrast));
+		}
+	}
+
+	function changeLocale(locale: Locale) {
+		currentLocale = locale;
+		setLocale(locale);
+	}
+
+	function restoreLocaleAndContrast() {
+		currentLocale = initLocale();
+		if (typeof localStorage !== 'undefined') {
+			highContrast = localStorage.getItem('coldbrew.highContrast') === 'true';
+		}
+	}
+
 	// Watch folders
 	let watchFolders = $state(false);
 	let watchingLabel = $state('');
+
+	// About dialog
+	let aboutOpen = $state(false);
 
 	// Dev tab state
 	let devProviderStates: Record<string, ProviderCredentialState> = {};
@@ -143,6 +177,7 @@
 	void loadProviderStatuses();
 	void loadAllDevStates();
 	restoreAccentAndDensity();
+	restoreLocaleAndContrast();
 	});
 
 	function providerBaseFields(providerId: string): { key: string; label: string }[] {
@@ -585,20 +620,20 @@
 
 	<Tabs.Root value="general" class="tabs-root">
 		<Tabs.List>
-			<Tabs.Trigger value="general">General</Tabs.Trigger>
-			<Tabs.Trigger value="accounts">Accounts</Tabs.Trigger>
-			<Tabs.Trigger value="providers">Providers</Tabs.Trigger>
-			<Tabs.Trigger value="dev">Dev</Tabs.Trigger>
-			<Tabs.Trigger value="audio">Audio</Tabs.Trigger>
-			<Tabs.Trigger value="library">Library</Tabs.Trigger>
+			<Tabs.Trigger value="general">{t('settings.general')}</Tabs.Trigger>
+			<Tabs.Trigger value="accounts">{t('settings.accounts')}</Tabs.Trigger>
+			<Tabs.Trigger value="providers">{t('settings.providers')}</Tabs.Trigger>
+			<Tabs.Trigger value="dev">{t('settings.dev')}</Tabs.Trigger>
+			<Tabs.Trigger value="audio">{t('settings.audio')}</Tabs.Trigger>
+			<Tabs.Trigger value="library">{t('settings.library')}</Tabs.Trigger>
 		</Tabs.List>
 
 		<!-- ===== GENERAL TAB ===== -->
 		<Tabs.Content value="general" class="settings-tab-content">
 			<section class="settings-panel">
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Accent Color</h2>
-					<p class="text-soft text-sm">Choose an accent color for the interface</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.accent_color')}</h2>
+					<p class="text-soft text-sm">{t('settings.accent_color_desc')}</p>
 				</div>
 				<div class="flex flex-wrap gap-3">
 					{#each accentColors as color}
@@ -607,8 +642,8 @@
 							class:color-swatch-active={selectedAccent === color.id}
 							style="--swatch-color: {color.cssValue}"
 							onclick={() => selectAccentColor(color.id)}
-							aria-label={`${color.label} accent`}
-							title={color.label}
+							aria-label={t(`color.${color.id.replace(/-/g, '_')}` as any)}
+							title={t(`color.${color.id.replace(/-/g, '_')}` as any)}
 						></button>
 					{/each}
 				</div>
@@ -616,8 +651,8 @@
 
 			<section class="settings-panel">
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Layout Density</h2>
-					<p class="text-soft text-sm">Control spacing throughout the interface</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.layout_density')}</h2>
+					<p class="text-soft text-sm">{t('settings.layout_density_desc')}</p>
 				</div>
 				<div class="flex gap-2">
 					{#each densityOptions as option}
@@ -626,7 +661,7 @@
 							class:density-btn-active={density === option.id}
 							onclick={() => selectDensity(option.id)}
 						>
-							{option.label}
+							{t(`${option.id}_label` as any)}
 						</button>
 					{/each}
 				</div>
@@ -634,19 +669,49 @@
 
 			<section class="settings-panel">
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Notifications</h2>
-					<p class="text-soft text-sm">Show "Now Playing" notification when tracks change</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.notifications')}</h2>
+					<p class="text-soft text-sm">{t('settings.notifications_desc')}</p>
 				</div>
 				<label class="flex items-center gap-3 cursor-pointer">
 					<input type="checkbox" checked={notificationsEnabled} onchange={toggleNotifications} class="w-4 h-4 rounded border-outline" />
-					<span class="text-soft text-sm">Enable now-playing notifications</span>
+					<span class="text-soft text-sm">{t('settings.notifications_label')}</span>
 				</label>
 			</section>
 
 			<section class="settings-panel">
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Services</h2>
-					<p class="text-soft text-sm">Provider capabilities and current implementation state</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.language')}</h2>
+					<p class="text-soft text-sm">{t('settings.language_desc')}</p>
+				</div>
+				<div class="flex gap-2">
+					{#each ['en', 'de'] as loc}
+						{@const locale = loc as Locale}
+						<button
+							class="density-btn"
+							class:density-btn-active={currentLocale === locale}
+							onclick={() => changeLocale(locale)}
+						>
+							{localeName(locale)}
+						</button>
+					{/each}
+				</div>
+			</section>
+
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.high_contrast')}</h2>
+					<p class="text-soft text-sm">{t('settings.high_contrast_desc')}</p>
+				</div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input type="checkbox" checked={highContrast} onchange={toggleHighContrast} class="w-4 h-4 rounded border-outline" />
+					<span class="text-soft text-sm">{t('settings.high_contrast_label')}</span>
+				</label>
+			</section>
+
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.services')}</h2>
+					<p class="text-soft text-sm">{t('settings.services_desc')}</p>
 				</div>
 				<div class="overflow-x-auto">
 					<table class="w-full min-w-[920px] border-collapse">
@@ -689,8 +754,8 @@
 
 			<section class="settings-panel">
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">ReplayGain</h2>
-					<p class="text-soft text-sm">Applied during local playback when matching ReplayGain tags are present</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{t('settings.replaygain')}</h2>
+					<p class="text-soft text-sm">{t('settings.replaygain_desc')}</p>
 				</div>
 				<label class="grid gap-2 text-soft text-sm">
 					Mode
@@ -705,6 +770,16 @@
 						</Select.Content>
 					</Select.Root>
 				</label>
+			</section>
+
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">About Cold Brew</h2>
+					<p class="text-soft text-sm">Version 0.2.0 — A local-first music player</p>
+				</div>
+				<div class="flex flex-wrap gap-2">
+					<Button onclick={() => aboutOpen = true}>About</Button>
+				</div>
 			</section>
 		</Tabs.Content>
 
@@ -1061,4 +1136,47 @@
 			</section>
 		</Tabs.Content>
 	</Tabs.Root>
+
+	<!-- About Dialog -->
+	<DialogComponents.Root bind:open={aboutOpen}>
+		<DialogComponents.Portal>
+			<DialogComponents.Overlay />
+			<DialogComponents.Content class="max-w-md">
+				<DialogComponents.Header>
+					<DialogComponents.Title>About Cold Brew</DialogComponents.Title>
+					<DialogComponents.Description>
+						A local-first music player and streaming aggregator
+					</DialogComponents.Description>
+				</DialogComponents.Header>
+				<div class="px-6 py-4 space-y-3 text-sm text-soft">
+					<p>
+						<strong class="text-fg">Cold Brew</strong> v0.2.0
+					</p>
+					<p>
+						Play local music files, stream from Spotify, TIDAL, YouTube Music,
+						Jellyfin, and more. All from one unified queue.
+					</p>
+					<p>
+						Made with <span class="text-brand">☕</span> and Rust
+					</p>
+					<p>
+						<a
+							href="https://github.com/maxisitter/cold-brew"
+							target="_blank"
+							rel="noreferrer"
+							class="text-brand underline"
+						>
+							View on GitHub
+						</a>
+					</p>
+					<p>
+						Licensed under MIT
+					</p>
+				</div>
+				<DialogComponents.Footer>
+				<Button variant="outline" onclick={() => aboutOpen = false}>Close</Button>
+				</DialogComponents.Footer>
+			</DialogComponents.Content>
+		</DialogComponents.Portal>
+	</DialogComponents.Root>
 </section>

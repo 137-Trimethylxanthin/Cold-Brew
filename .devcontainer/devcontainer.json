@@ -1,0 +1,21 @@
+{
+  "name": "Cold-Brew",
+  "image": "mcr.microsoft.com/devcontainers/rust:1",
+  "features": {
+    "ghcr.io/prulloac/devcontainer-features/bun:1": {}
+  },
+  "postCreateCommand": "bun install && cd src-tauri && cargo build",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "rust-lang.rust-analyzer",
+        "svelte.svelte-vscode",
+        "bradlc.vscode-tailwindcss",
+        "tamasfe.even-better-toml",
+        "fill-labs.dependi",
+        "github.vscode-github-actions"
+      ]
+    }
+  },
+  "remoteUser": "vscode"
+}

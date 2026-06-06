@@ -6,6 +6,7 @@
 	import { formatSource, formatSampleRate, emptySong } from '$lib/playback';
 	import NowPlaying from '$lib/components/NowPlaying.svelte';
 	import { SkipBack, Play, Pause, Square, SkipForward } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 	import { Button } from '$lib/components/ui/button';
 	import { Slider } from '$lib/components/ui/slider';
 
@@ -116,21 +117,21 @@
 		<NowPlaying song={$currentSong} status={$playbackStatus}>
 			{#snippet children()}
 				<div class="player-transport" aria-label="Playback controls">
-				<Button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0}>
-				<SkipBack class="size-4" /> Prev
+				<Button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0} aria-label={t('transport.previous')}>
+				<SkipBack class="size-4" aria-hidden="true" /> {t('transport.previous')}
 				</Button>
 				<Button class="player-transport-main" onclick={playRouteSelection}
-				disabled={$currentSong.id === '' && upcomingSongs.length === 0}>
-				<Play class="size-4" /> Play
+				disabled={$currentSong.id === '' && upcomingSongs.length === 0} aria-label={t('transport.play')}>
+				<Play class="size-4" aria-hidden="true" /> {t('transport.play')}
 				</Button>
-				<Button onclick={() => runPlayerCommand('playback_pause')} disabled={!$playbackStatus?.playing}>
-				<Pause class="size-4" /> Pause
+				<Button onclick={() => runPlayerCommand('playback_pause')} disabled={!$playbackStatus?.playing} aria-label={t('transport.pause')}>
+				<Pause class="size-4" aria-hidden="true" /> {t('transport.pause')}
 				</Button>
-				<Button onclick={() => runPlayerCommand('playback_stop')} disabled={!$playbackStatus?.current_path}>
-				<Square class="size-4" /> Stop
+				<Button onclick={() => runPlayerCommand('playback_stop')} disabled={!$playbackStatus?.current_path} aria-label={t('transport.stop')}>
+				<Square class="size-4" aria-hidden="true" /> {t('transport.stop')}
 				</Button>
-				<Button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0}>
-				<SkipForward class="size-4" /> Next
+				<Button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0} aria-label={t('transport.next')}>
+				<SkipForward class="size-4" aria-hidden="true" /> {t('transport.next')}
 				</Button>
 				</div>
 			{/snippet}
@@ -163,26 +164,26 @@
 			</div>
 
 			<div class="player-transport" aria-label="Playback controls">
-			<Button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0}>
-			<SkipBack class="size-4" /> Prev
+			<Button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0} aria-label={t('transport.previous')}>
+			<SkipBack class="size-4" aria-hidden="true" /> {t('transport.previous')}
 			</Button>
 			<Button class="player-transport-main" onclick={playRouteSelection}
-			disabled={$currentSong.id === '' && upcomingSongs.length === 0}>
-			<Play class="size-4" /> Play
+			disabled={$currentSong.id === '' && upcomingSongs.length === 0} aria-label={t('transport.play')}>
+			<Play class="size-4" aria-hidden="true" /> {t('transport.play')}
 			</Button>
-			<Button onclick={() => runPlayerCommand('playback_pause')} disabled={!$playbackStatus?.playing}>
-			<Pause class="size-4" /> Pause
+			<Button onclick={() => runPlayerCommand('playback_pause')} disabled={!$playbackStatus?.playing} aria-label={t('transport.pause')}>
+			<Pause class="size-4" aria-hidden="true" /> {t('transport.pause')}
 			</Button>
-			<Button onclick={() => runPlayerCommand('playback_stop')} disabled={!$playbackStatus?.current_path}>
-			<Square class="size-4" /> Stop
+			<Button onclick={() => runPlayerCommand('playback_stop')} disabled={!$playbackStatus?.current_path} aria-label={t('transport.stop')}>
+			<Square class="size-4" aria-hidden="true" /> {t('transport.stop')}
 			</Button>
-			<Button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0}>
-			<SkipForward class="size-4" /> Next
+			<Button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0} aria-label={t('transport.next')}>
+			<SkipForward class="size-4" aria-hidden="true" /> {t('transport.next')}
 			</Button>
 			</div>
 
 			<label class="grid gap-2 text-soft text-sm">
-			<span>Volume {$volume}</span>
+			<span>{t('transport.volume')} {$volume}</span>
 			<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={async (v: number[]) => { const val = v[0] / 100; $volume = val; try { await invoke('set_playback_volume', { volume: val }); } catch { /* Browser-only dev */ } }} />
 			</label>
 		</div>

@@ -2,6 +2,7 @@
 	import { formatSource, playbackQualityLabel } from '$lib/playback';
 	import type { PlaybackStatus, Song } from '$lib/types';
 	import { Maximize, X } from '@lucide/svelte';
+	import { t } from '$lib/i18n';
 
 	let { song, status, children }: { song: Song; status: PlaybackStatus | null; children?: import('svelte').Snippet } = $props();
 
@@ -60,11 +61,11 @@
 	});
 </script>
 
-<div class="grid gap-4" data-od-id="now-playing">
+<div class="grid gap-4" data-od-id="now-playing" aria-label="{t('common.now_playing')}">
 	<div class="flex items-start justify-between gap-2">
 		<div class="w-full max-w-[380px] aspect-square relative overflow-hidden border border-outline/70 rounded-3xl shadow-xl" aria-hidden="true">
 			{#if song.cover_art}
-				<img class="object-cover w-full h-full rounded-3xl" src={song.cover_art} alt={`${song.title} album art`} />
+				<img class="object-cover w-full h-full rounded-3xl" src={song.cover_art} alt={t('album.art', { title: song.title })} />
 			{:else}
 				<div class="hero-cover-placeholder w-full h-full"></div>
 			{/if}
@@ -72,10 +73,10 @@
 		<button
 			class="fullscreen-toggle"
 			onclick={toggleFullscreen}
-			aria-label="Toggle fullscreen now-playing"
-			title="Fullscreen mode"
+			aria-label="{t('common.fullscreen')}"
+			title="{t('common.fullscreen')}"
 		>
-			<Maximize class="size-5" />
+			<Maximize class="size-5" aria-hidden="true" />
 		</button>
 	</div>
 	<div class="grid gap-1.5">
@@ -101,17 +102,18 @@
 		class:fullscreen-controls-hidden={!showControls}
 		onmousemove={resetHideTimer}
 		role="dialog"
-		aria-label="Fullscreen now playing"
+		aria-label="{t('common.now_playing')}"
+		aria-modal="true"
 	>
 		<div class="fullscreen-np-gradient"></div>
 		<div class="fullscreen-np-content">
-			<button class="fullscreen-np-exit" onclick={toggleFullscreen} aria-label="Exit fullscreen">
-				<X class="size-6" />
+			<button class="fullscreen-np-exit" onclick={toggleFullscreen} aria-label="{t('common.exit_fullscreen')}">
+				<X class="size-6" aria-hidden="true" />
 			</button>
 			<div class="fullscreen-np-center">
 				<div class="fullscreen-np-cover">
 					{#if song.cover_art}
-						<img class="object-cover w-full h-full rounded-3xl shadow-2xl" src={song.cover_art} alt={`${song.title} album art`} />
+						<img class="object-cover w-full h-full rounded-3xl shadow-2xl" src={song.cover_art} alt={t('album.art', { title: song.title })} />
 					{:else}
 						<div class="hero-cover-placeholder w-full h-full rounded-3xl"></div>
 					{/if}

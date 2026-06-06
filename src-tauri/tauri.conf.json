@@ -1,7 +1,7 @@
 {
-	"productName": "Cold-Brew",
-	"version": "0.1.0",
-	"identifier": "at.maxsitter.coldbrew",
+	"productName": "Cold Brew",
+	"version": "0.2.0",
+	"identifier": "com.coldbrew.app",
 	"build": {
 		"frontendDist": "../build",
 		"devUrl": "http://localhost:5173",
@@ -17,7 +17,10 @@
 				"minWidth": 800,
 				"minHeight": 500,
 				"resizable": true,
-				"fullscreen": false
+				"fullscreen": false,
+				"decorations": true,
+				"transparent": false,
+				"alwaysOnTop": false
 			}
 		],
 		"security": {

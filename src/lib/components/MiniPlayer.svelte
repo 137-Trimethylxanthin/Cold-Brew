@@ -5,6 +5,7 @@
 	import { SkipBack, Play, Pause, Square, SkipForward, Minimize2, Maximize2 } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Slider } from '$lib/components/ui/slider';
+	import { t } from '$lib/i18n';
 
 	let {
 		onPlayPrevious = () => {},
@@ -91,28 +92,28 @@
 		<div class="flex items-center gap-3 min-w-0 flex-1">
 			<div class="w-10 h-10 relative overflow-hidden border border-outline rounded-lg shrink-0" aria-hidden="true">
 				{#if $currentSong.cover_art}
-					<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={`{$currentSong.title} album art`} />
+					<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={t('album.art', { title: $currentSong.title })} />
 				{:else}
 					<div class="cover-placeholder w-full h-full [&::before]:hidden"></div>
 				{/if}
 			</div>
-			<div class="grid gap-0.5 min-w-0">
+			<div class="grid gap-0.5 min-w-0" aria-live="polite" aria-atomic="true">
 				<strong class="truncate text-sm">{$currentSong.title}</strong>
 				<span class="truncate text-soft text-xs">{nowPlayingDetail()}</span>
 			</div>
 		</div>
 
 		<div class="flex items-center gap-1.5">
-			<Button size="icon-sm" variant="ghost" onclick={onPlayPrevious} disabled={!canPrev} aria-label="Previous track"><SkipBack class="size-4" /></Button>
-			<Button size="icon-sm" variant="ghost" onclick={onResume} disabled={!canPlay || isPlaying} aria-label="Play"><Play class="size-4" /></Button>
-			<Button size="icon-sm" variant="ghost" onclick={onPause} disabled={!isPauseEnabled} aria-label="Pause"><Pause class="size-4" /></Button>
-			<Button size="icon-sm" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label="Stop"><Square class="size-4" /></Button>
-			<Button size="icon-sm" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label="Next track"><SkipForward class="size-4" /></Button>
+			<Button size="icon-sm" variant="ghost" onclick={onPlayPrevious} disabled={!canPrev} aria-label={t('transport.previous')}><SkipBack class="size-4" /></Button>
+			<Button size="icon-sm" variant="ghost" onclick={onResume} disabled={!canPlay || isPlaying} aria-label={t('transport.play')}><Play class="size-4" /></Button>
+			<Button size="icon-sm" variant="ghost" onclick={onPause} disabled={!isPauseEnabled} aria-label={t('transport.pause')}><Pause class="size-4" /></Button>
+			<Button size="icon-sm" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label={t('transport.stop')}><Square class="size-4" /></Button>
+			<Button size="icon-sm" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label={t('transport.next')}><SkipForward class="size-4" /></Button>
 		</div>
 
 		<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
 
-		<Button size="icon-sm" variant="ghost" onclick={toggleCompact} aria-label="Expand player" title="Expand">
+		<Button size="icon-sm" variant="ghost" onclick={toggleCompact} aria-label={t('transport.expand')} title={t('transport.expand')}>
 			<Maximize2 class="size-4" />
 		</Button>
 	</div>
@@ -121,12 +122,12 @@
 		<div class="flex items-center gap-3 min-w-0">
 			<div class="w-12 h-12 relative overflow-hidden border border-outline rounded-xl" aria-hidden="true">
 				{#if $currentSong.cover_art}
-					<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={`{$currentSong.title} album art`} />
+					<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={t('album.art', { title: $currentSong.title })} />
 				{:else}
 					<div class="cover-placeholder w-full h-full [&::before]:hidden"></div>
 				{/if}
 			</div>
-			<div class="grid gap-0.5 min-w-0">
+			<div class="grid gap-0.5 min-w-0" aria-live="polite" aria-atomic="true">
 				<strong class="truncate">{$currentSong.title}</strong>
 				<span class="truncate text-soft text-sm">{nowPlayingDetail()}</span>
 			</div>
@@ -134,17 +135,17 @@
 		<span class="text-soft font-mono tabular-nums whitespace-nowrap">{playbackTimeLabel()}</span>
 		<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
 		<div class="flex justify-center items-center gap-2">
-			<Button size="icon" variant="ghost" onclick={onPlayPrevious} disabled={!canPrev} aria-label="Previous track"><SkipBack class="size-5" /></Button>
-			<Button size="icon" variant="ghost" onclick={onResume} disabled={!canPlay || isPlaying} aria-label="Play"><Play class="size-5" /></Button>
-			<Button size="icon" variant="ghost" onclick={onPause} disabled={!isPauseEnabled} aria-label="Pause"><Pause class="size-5" /></Button>
-			<Button size="icon" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label="Stop"><Square class="size-5" /></Button>
-			<Button size="icon" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label="Next track"><SkipForward class="size-5" /></Button>
+			<Button size="icon" variant="ghost" onclick={onPlayPrevious} disabled={!canPrev} aria-label={t('transport.previous')}><SkipBack class="size-5" /></Button>
+			<Button size="icon" variant="ghost" onclick={onResume} disabled={!canPlay || isPlaying} aria-label={t('transport.play')}><Play class="size-5" /></Button>
+			<Button size="icon" variant="ghost" onclick={onPause} disabled={!isPauseEnabled} aria-label={t('transport.pause')}><Pause class="size-5" /></Button>
+			<Button size="icon" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label={t('transport.stop')}><Square class="size-5" /></Button>
+			<Button size="icon" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label={t('transport.next')}><SkipForward class="size-5" /></Button>
 			<div class="relative">
 				<Button
 					size="icon"
 					variant="ghost"
 					onclick={() => (showSpeedMenu = !showSpeedMenu)}
-					aria-label="Playback speed"
+					aria-label={t('transport.speed')}
 					class="font-mono text-xs"
 				>
 					{$playbackSettings.playback_speed}&times;
@@ -167,10 +168,10 @@
 			</div>
 		</div>
 		<label class="grid gap-2 text-soft text-sm">
-			<span>Volume {$volume}</span>
+			<span>{t('transport.volume')} {$volume}</span>
 			<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={(v: number[]) => volume.set(v[0] / 100)} />
 		</label>
-		<Button size="icon" variant="ghost" onclick={toggleCompact} aria-label="Compact mode" title="Compact mode" class="self-end">
+		<Button size="icon" variant="ghost" onclick={toggleCompact} aria-label={t('transport.compact')} title={t('transport.compact')} class="self-end">
 			<Minimize2 class="size-4" />
 		</Button>
 	</div>

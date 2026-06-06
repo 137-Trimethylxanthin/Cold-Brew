@@ -150,7 +150,7 @@
 				<span class="state-pill">{$playbackStatus?.state ?? 'Idle'}</span>
 			</div>
 
-			<SpectrumAnalyzer />
+			<SpectrumAnalyzer showLabels={true} />
 
 			<div class="grid gap-2">
 				<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>

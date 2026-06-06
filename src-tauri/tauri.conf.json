@@ -1,6 +1,6 @@
 {
 	"productName": "Cold Brew",
-	"version": "0.2.0",
+	"version": "0.0.1",
 	"identifier": "com.coldbrew.app",
 	"build": {
 		"frontendDist": "../build",

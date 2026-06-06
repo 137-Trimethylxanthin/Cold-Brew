@@ -8,7 +8,7 @@ use base64::engine::general_purpose::STANDARD as BASE64;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::prelude::Accessor;
 use rusqlite::{Connection, params};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tracing::instrument;
 use walkdir::WalkDir;
@@ -1471,4 +1471,528 @@ pub fn is_watcher_running() -> bool {
 
 pub fn stop_watcher() {
     WATCHER_RUNNING.store(false, Ordering::SeqCst);
+}
+
+// ── Smart Playlists ──
+
+#[derive(Clone, Debug, Serialize)]
+pub struct SmartPlaylistSummary {
+    pub id: i64,
+    pub name: String,
+    pub rules_json: String,
+    pub is_template: bool,
+    pub track_count: usize,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct SmartPlaylistRule {
+    pub field: String,
+    pub op: String,
+    pub value: serde_json::Value,
+}
+
+#[allow(dead_code)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
+struct SmartPlaylistRules {
+    #[serde(default)]
+    rules: Vec<SmartPlaylistRule>,
+    #[serde(default)]
+    combination: Option<Vec<SmartPlaylistRules>>,
+    #[serde(default)]
+    logic: Option<String>,
+}
+
+fn smart_playlists_open_database(app: &AppHandle) -> Result<Connection, String> {
+    let data_dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|error| format!("Could not resolve app data directory: {error}"))?;
+    fs::create_dir_all(&data_dir)
+        .map_err(|error| format!("Could not create app data directory: {error}"))?;
+    Connection::open(data_dir.join("smart_playlists.sqlite")).map_err(database_error)
+}
+
+fn smart_playlists_initialize_database(connection: &Connection) -> Result<(), String> {
+    connection
+        .execute_batch(
+            "CREATE TABLE IF NOT EXISTS smart_playlists (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                rules_json TEXT NOT NULL,
+                is_template INTEGER NOT NULL DEFAULT 0,
+                created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );"
+        )
+        .map_err(database_error)
+}
+
+#[instrument(skip(app))]
+pub fn create_smart_playlist(app: &AppHandle, name: String, rules_json: String) -> Result<SmartPlaylistSummary, String> {
+    let name = name.trim().to_string();
+    if name.is_empty() {
+        return Err("Smart playlist name is required.".to_string());
+    }
+    serde_json::from_str::<serde_json::Value>(&rules_json)
+        .map_err(|e| format!("Invalid rules JSON: {e}"))?;
+    let connection = smart_playlists_open_database(app)?;
+    smart_playlists_initialize_database(&connection)?;
+    connection
+        .execute(
+            "INSERT INTO smart_playlists (name, rules_json) VALUES (?1, ?2)",
+            params![name, rules_json],
+        )
+        .map_err(database_error)?;
+    let id = connection.last_insert_rowid();
+    let tracks = evaluate_smart_playlist_rules(app, &rules_json)?;
+    Ok(SmartPlaylistSummary {
+        id,
+        name,
+        rules_json,
+        is_template: false,
+        track_count: tracks.len(),
+    })
+}
+
+#[instrument(skip(app))]
+pub fn list_smart_playlists(app: &AppHandle) -> Result<Vec<SmartPlaylistSummary>, String> {
+    let _ = create_template_smart_playlists(app);
+    let connection = smart_playlists_open_database(app)?;
+    smart_playlists_initialize_database(&connection)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT id, name, rules_json, is_template FROM smart_playlists ORDER BY name COLLATE NOCASE"
+        )
+        .map_err(database_error)?;
+    let rows = statement
+        .query_map([], |row| {
+            let is_template: i64 = row.get(3)?;
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, String>(2)?,
+                is_template != 0,
+            ))
+        })
+        .map_err(database_error)?;
+
+    let mut playlists = Vec::new();
+    for row in rows {
+        let (id, name, rules_json, is_template) = row.map_err(database_error)?;
+        let tracks = evaluate_smart_playlist_rules(app, &rules_json).unwrap_or_default();
+        playlists.push(SmartPlaylistSummary {
+            id,
+            name,
+            rules_json,
+            is_template,
+            track_count: tracks.len(),
+        });
+    }
+    Ok(playlists)
+}
+
+#[instrument(skip(app))]
+pub fn get_smart_playlist_tracks(app: &AppHandle, playlist_id: i64) -> Result<Vec<LibraryTrack>, String> {
+    let connection = smart_playlists_open_database(app)?;
+    smart_playlists_initialize_database(&connection)?;
+    let rules_json: String = connection
+        .query_row(
+            "SELECT rules_json FROM smart_playlists WHERE id = ?1",
+            params![playlist_id],
+            |row| row.get(0),
+        )
+        .map_err(|_| format!("Smart playlist {playlist_id} not found."))?;
+    evaluate_smart_playlist_rules(app, &rules_json)
+}
+
+#[instrument(skip(app))]
+pub fn delete_smart_playlist(app: &AppHandle, playlist_id: i64) -> Result<(), String> {
+    let connection = smart_playlists_open_database(app)?;
+    smart_playlists_initialize_database(&connection)?;
+    connection
+        .execute("DELETE FROM smart_playlists WHERE id = ?1 AND is_template = 0", params![playlist_id])
+        .map_err(database_error)?;
+    Ok(())
+}
+
+#[instrument(skip(app))]
+pub fn create_template_smart_playlists(app: &AppHandle) -> Result<(), String> {
+    let connection = smart_playlists_open_database(app)?;
+    smart_playlists_initialize_database(&connection)?;
+    let count: i64 = connection
+        .query_row("SELECT COUNT(*) FROM smart_playlists WHERE is_template = 1", [], |r| r.get(0))
+        .unwrap_or(0);
+    if count > 0 {
+        return Ok(());
+    }
+
+    let templates: &[(&str, &str)] = &[
+        ("Recently Added", r#"{"rules":[{"field":"added_at","op":"gte","value":"now-30d"}]}"#),
+        ("Never Played", r#"{"rules":[{"field":"play_count","op":"equals","value":0}]}"#),
+        ("Top Rated", r#"{"rules":[{"field":"last_played","op":"gte","value":"now-90d"}]}"#),
+        ("Forgotten", r#"{"rules":[{"field":"last_played","op":"lt","value":"now-30d"}]}"#),
+    ];
+
+    for (name, rules) in templates {
+        connection
+            .execute(
+                "INSERT INTO smart_playlists (name, rules_json, is_template) VALUES (?1, ?2, 1)",
+                params![name, rules],
+            )
+            .map_err(database_error)?;
+    }
+    Ok(())
+}
+
+fn evaluate_smart_playlist_rules(app: &AppHandle, rules_json: &str) -> Result<Vec<LibraryTrack>, String> {
+    let parsed: serde_json::Value = serde_json::from_str(rules_json)
+        .map_err(|e| format!("Invalid rules JSON: {e}"))?;
+    let (where_clause, bind_values) = build_smart_playlist_sql(&parsed)?;
+    let connection = open_database(app)?;
+    initialize_database(&connection)?;
+
+    let sql = format!(
+        "SELECT t.path, t.title, t.artist, t.album, t.genre, t.track_number, t.duration_ms,
+                t.sample_rate, t.bit_depth, t.bitrate, t.file_size, t.modified_secs, t.extension, t.has_artwork
+         FROM tracks t
+         LEFT JOIN (
+             SELECT path, MAX(created_at) AS last_played, COUNT(*) AS play_count
+             FROM listening_history
+             WHERE event = 'started'
+             GROUP BY path
+         ) lh ON t.path = lh.path
+         WHERE {}
+         ORDER BY t.album COLLATE NOCASE, t.track_number, t.title COLLATE NOCASE
+         LIMIT 500",
+        where_clause
+    );
+
+    let mut statement = connection.prepare(&sql).map_err(database_error)?;
+    let params_refs: Vec<&dyn rusqlite::types::ToSql> = bind_values
+        .iter()
+        .map(|v| v as &dyn rusqlite::types::ToSql)
+        .collect();
+    let rows = statement
+        .query_map(params_refs.as_slice(), |row| {
+            let duration_ms: Option<i64> = row.get(6)?;
+            let file_size: i64 = row.get(10)?;
+            let has_artwork: i64 = row.get(13)?;
+            Ok(LibraryTrack {
+                path: row.get(0)?,
+                title: row.get(1)?,
+                artist: row.get(2)?,
+                album: row.get(3)?,
+                genre: row.get(4)?,
+                track_number: row.get(5)?,
+                duration_ms: duration_ms.and_then(|v| u64::try_from(v).ok()),
+                sample_rate: row.get(7)?,
+                bit_depth: row.get(8)?,
+                bitrate: row.get(9)?,
+                file_size: u64::try_from(file_size).unwrap_or_default(),
+                modified_secs: row.get(11)?,
+                extension: row.get(12)?,
+                has_artwork: has_artwork != 0,
+            })
+        })
+        .map_err(database_error)?;
+
+    let mut tracks = Vec::new();
+    for row in rows {
+        tracks.push(row.map_err(database_error)?);
+    }
+    Ok(tracks)
+}
+
+fn build_smart_playlist_sql(value: &serde_json::Value) -> Result<(String, Vec<String>), String> {
+    if let Some(rules) = value.get("rules").and_then(|v| v.as_array()) {
+        let mut conditions = Vec::new();
+        let mut bind_values = Vec::new();
+        for rule in rules {
+            let (cond, val) = build_rule_condition(rule)?;
+            conditions.push(cond);
+            if let Some(v) = val {
+                bind_values.push(v);
+            }
+        }
+        let logic = value
+            .get("logic")
+            .and_then(|v| v.as_str())
+            .unwrap_or("AND");
+        let clause = conditions.join(&format!(" {logic} "));
+        return Ok((clause, bind_values));
+    }
+
+    if let Some(combination) = value.get("combination").and_then(|v| v.as_array()) {
+        let mut conditions = Vec::new();
+        let mut bind_values = Vec::new();
+        for nested in combination {
+            let (cond, vals) = build_smart_playlist_sql(nested)?;
+            conditions.push(format!("({cond})"));
+            bind_values.extend(vals);
+        }
+        let logic = value
+            .get("logic")
+            .and_then(|v| v.as_str())
+            .unwrap_or("OR");
+        let clause = conditions.join(&format!(" {logic} "));
+        return Ok((clause, bind_values));
+    }
+
+    Err("Invalid smart playlist rules format.".to_string())
+}
+
+fn build_rule_condition(rule: &serde_json::Value) -> Result<(String, Option<String>), String> {
+    let field = rule
+        .get("field")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Rule missing 'field'.".to_string())?;
+    let op = rule
+        .get("op")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Rule missing 'op'.".to_string())?;
+    let value = rule.get("value").ok_or_else(|| "Rule missing 'value'.".to_string())?;
+
+    let db_field = match field {
+        "genre" => "t.genre".to_string(),
+        "artist" => "t.artist".to_string(),
+        "album" => "t.album".to_string(),
+        "title" => "t.title".to_string(),
+        "year" => "t.modified_secs".to_string(),
+        "play_count" => "COALESCE(lh.play_count, 0)".to_string(),
+        "last_played" => "lh.last_played".to_string(),
+        "duration" => "t.duration_ms".to_string(),
+        "format" => "t.extension".to_string(),
+        "added_at" => "t.added_at".to_string(),
+        _ => return Err(format!("Unsupported field: {field}")),
+    };
+
+    match op {
+        "equals" => {
+            let v = value_to_sql_string(value);
+            Ok((format!("{db_field} = ?1"), Some(v)))
+        }
+        "contains" => {
+            let v = format!("%{}%", value_to_sql_string(value).trim_matches('\''));
+            Ok((format!("{db_field} LIKE ?1"), Some(v)))
+        }
+        "gt" => {
+            let v = value_to_sql_string(value);
+            Ok((format!("{db_field} > ?1"), Some(v)))
+        }
+        "lt" => {
+            let v = value_to_sql_string(value);
+            Ok((format!("{db_field} < ?1"), Some(v)))
+        }
+        "gte" => {
+            let v = value_to_sql_string(value);
+            Ok((format!("{db_field} >= ?1"), Some(v)))
+        }
+        "lte" => {
+            let v = value_to_sql_string(value);
+            Ok((format!("{db_field} <= ?1"), Some(v)))
+        }
+        "between" => {
+            let arr = value.as_array().ok_or("between requires array of two values")?;
+            let v1 = value_to_sql_string(&arr[0]);
+            let v2 = value_to_sql_string(&arr.get(1).unwrap_or(&arr[0]));
+            Ok((format!("{db_field} BETWEEN {v1} AND {v2}"), None))
+        }
+        _ => Err(format!("Unsupported operator: {op}")),
+    }
+}
+
+fn value_to_sql_string(value: &serde_json::Value) -> String {
+    match value {
+        serde_json::Value::String(s) => {
+            let now_special = s.strip_prefix("now-");
+            if let Some(rest) = now_special {
+                let days: i64 = rest.trim_end_matches('d').parse().unwrap_or(30);
+                format!("datetime('now', '-{days} days')")
+            } else {
+                format!("'{}'", s.replace('\'', "''"))
+            }
+        }
+        serde_json::Value::Number(n) => n.to_string(),
+        serde_json::Value::Bool(b) => (if *b { 1 } else { 0 }).to_string(),
+        _ => value.to_string(),
+    }
+}
+
+// ── Discovery Dashboard ──
+
+#[derive(Clone, Debug, Serialize)]
+pub struct DiscoverySection {
+    pub label: String,
+    pub tracks: Vec<LibraryTrack>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct DiscoveryResult {
+    pub you_might_like: DiscoverySection,
+    pub deep_cuts: DiscoverySection,
+    pub new_additions: DiscoverySection,
+}
+
+#[instrument(skip(app))]
+pub fn get_discovery_dashboard(app: &AppHandle) -> Result<DiscoveryResult, String> {
+    let you_might_like = get_discover_you_might_like(app)?;
+    let deep_cuts = get_discover_deep_cuts(app)?;
+    let new_additions = get_discover_new_additions(app)?;
+    Ok(DiscoveryResult {
+        you_might_like,
+        deep_cuts,
+        new_additions,
+    })
+}
+
+#[instrument(skip(app))]
+pub fn get_discover_you_might_like(app: &AppHandle) -> Result<DiscoverySection, String> {
+    let connection = open_database(app)?;
+    initialize_database(&connection)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT DISTINCT t2.path, t2.title, t2.artist, t2.album, t2.genre, t2.track_number,
+                    t2.duration_ms, t2.sample_rate, t2.bit_depth, t2.bitrate, t2.file_size,
+                    t2.modified_secs, t2.extension, t2.has_artwork
+             FROM listening_history lh
+             JOIN tracks t ON lh.path = t.path AND t.artist IS NOT NULL
+             JOIN tracks t2 ON t2.artist = t.artist AND t2.path != t.path
+             WHERE lh.event = 'started'
+             GROUP BY t2.path
+             ORDER BY RANDOM()
+             LIMIT 20"
+        )
+        .map_err(database_error)?;
+    tracks_from_statement(&mut statement)
+        .map(|tracks| DiscoverySection {
+            label: "You Might Like".to_string(),
+            tracks,
+        })
+}
+
+#[instrument(skip(app))]
+pub fn get_discover_deep_cuts(app: &AppHandle) -> Result<DiscoverySection, String> {
+    let connection = open_database(app)?;
+    initialize_database(&connection)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT t.path, t.title, t.artist, t.album, t.genre, t.track_number,
+                    t.duration_ms, t.sample_rate, t.bit_depth, t.bitrate, t.file_size,
+                    t.modified_secs, t.extension, t.has_artwork
+             FROM tracks t
+             WHERE t.artist IN (
+                 SELECT DISTINCT t2.artist FROM listening_history lh2
+                 JOIN tracks t2 ON lh2.path = t2.path AND t2.artist IS NOT NULL
+                 WHERE lh2.event = 'started'
+             )
+             AND t.path NOT IN (
+                 SELECT DISTINCT lh.path FROM listening_history lh WHERE lh.event = 'started'
+             )
+             ORDER BY RANDOM()
+             LIMIT 20"
+        )
+        .map_err(database_error)?;
+    tracks_from_statement(&mut statement)
+        .map(|tracks| DiscoverySection {
+            label: "Deep Cuts".to_string(),
+            tracks,
+        })
+}
+
+#[instrument(skip(app))]
+pub fn get_discover_new_additions(app: &AppHandle) -> Result<DiscoverySection, String> {
+    let connection = open_database(app)?;
+    initialize_database(&connection)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT path, title, artist, album, genre, track_number, duration_ms,
+                    sample_rate, bit_depth, bitrate, file_size, modified_secs, extension, has_artwork
+             FROM tracks
+             WHERE added_at IS NOT NULL
+             ORDER BY added_at DESC
+             LIMIT 20"
+        )
+        .map_err(database_error)?;
+    tracks_from_statement(&mut statement)
+        .map(|tracks| DiscoverySection {
+            label: "New Additions".to_string(),
+            tracks,
+        })
+}
+
+fn tracks_from_statement(statement: &mut rusqlite::Statement) -> Result<Vec<LibraryTrack>, String> {
+    let rows = statement
+        .query_map([], |row| {
+            let duration_ms: Option<i64> = row.get(6)?;
+            let file_size: i64 = row.get(10)?;
+            let has_artwork: i64 = row.get(13)?;
+            Ok(LibraryTrack {
+                path: row.get(0)?,
+                title: row.get(1)?,
+                artist: row.get(2)?,
+                album: row.get(3)?,
+                genre: row.get(4)?,
+                track_number: row.get(5)?,
+                duration_ms: duration_ms.and_then(|v| u64::try_from(v).ok()),
+                sample_rate: row.get(7)?,
+                bit_depth: row.get(8)?,
+                bitrate: row.get(9)?,
+                file_size: u64::try_from(file_size).unwrap_or_default(),
+                modified_secs: row.get(11)?,
+                extension: row.get(12)?,
+                has_artwork: has_artwork != 0,
+            })
+        })
+        .map_err(database_error)?;
+    let mut tracks = Vec::new();
+    for row in rows {
+        tracks.push(row.map_err(database_error)?);
+    }
+    Ok(tracks)
+}
+
+// ── Genre Radio ──
+
+#[instrument(skip(app))]
+pub fn get_random_tracks_by_genre(app: &AppHandle, genre: &str, limit: usize) -> Result<Vec<LibraryTrack>, String> {
+    let connection = open_database(app)?;
+    initialize_database(&connection)?;
+    let mut statement = connection
+        .prepare(
+            "SELECT path, title, artist, album, genre, track_number, duration_ms,
+                    sample_rate, bit_depth, bitrate, file_size, modified_secs, extension, has_artwork
+             FROM tracks
+             WHERE genre IS NOT NULL AND LOWER(genre) = LOWER(?1)
+             ORDER BY RANDOM()
+             LIMIT ?2"
+        )
+        .map_err(database_error)?;
+    let rows = statement
+        .query_map(params![genre, limit as i64], |row| {
+            let duration_ms: Option<i64> = row.get(6)?;
+            let file_size: i64 = row.get(10)?;
+            let has_artwork: i64 = row.get(13)?;
+            Ok(LibraryTrack {
+                path: row.get(0)?,
+                title: row.get(1)?,
+                artist: row.get(2)?,
+                album: row.get(3)?,
+                genre: row.get(4)?,
+                track_number: row.get(5)?,
+                duration_ms: duration_ms.and_then(|v| u64::try_from(v).ok()),
+                sample_rate: row.get(7)?,
+                bit_depth: row.get(8)?,
+                bitrate: row.get(9)?,
+                file_size: u64::try_from(file_size).unwrap_or_default(),
+                modified_secs: row.get(11)?,
+                extension: row.get(12)?,
+                has_artwork: has_artwork != 0,
+            })
+        })
+        .map_err(database_error)?;
+    let mut tracks = Vec::new();
+    for row in rows {
+        tracks.push(row.map_err(database_error)?);
+    }
+    Ok(tracks)
 }

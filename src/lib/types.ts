@@ -299,3 +299,22 @@ export type RestoredSession = {
 	queue_song_ids: string[];
 	queue_current_index: number;
 };
+
+export type SmartPlaylistSummary = {
+	id: number;
+	name: string;
+	rules_json: string;
+	is_template: boolean;
+	track_count: number;
+};
+
+export type DiscoverySection = {
+	label: string;
+	tracks: LibraryTrack[];
+};
+
+export type DiscoveryResult = {
+	you_might_like: DiscoverySection;
+	deep_cuts: DiscoverySection;
+	new_additions: DiscoverySection;
+};

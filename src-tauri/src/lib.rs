@@ -134,7 +134,13 @@ pub fn run() {
             crate::system::notifications::set_notification_setting,
             get_tracks_page,
             restore_playback_session,
-            save_full_session_command
+            save_full_session_command,
+            create_smart_playlist,
+            list_smart_playlists,
+            get_smart_playlist_tracks,
+            delete_smart_playlist,
+            get_discovery_dashboard,
+            start_genre_radio
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -1141,4 +1147,73 @@ fn save_full_session_command(
         &queue_song_ids,
         queue_current_index,
     )
+}
+
+// ── M19: Smart Playlists ──
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn create_smart_playlist(app: AppHandle, name: String, rules_json: String) -> Result<crate::storage::database::SmartPlaylistSummary, String> {
+    crate::storage::database::create_smart_playlist(&app, name, rules_json)
+}
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn list_smart_playlists(app: AppHandle) -> Result<Vec<crate::storage::database::SmartPlaylistSummary>, String> {
+    crate::storage::database::list_smart_playlists(&app)
+}
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn get_smart_playlist_tracks(app: AppHandle, playlist_id: i64) -> Result<Vec<crate::storage::database::LibraryTrack>, String> {
+    crate::storage::database::get_smart_playlist_tracks(&app, playlist_id)
+}
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn delete_smart_playlist(app: AppHandle, playlist_id: i64) -> Result<(), String> {
+    crate::storage::database::delete_smart_playlist(&app, playlist_id)
+}
+
+// ── M19: Discovery Dashboard ──
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn get_discovery_dashboard(app: AppHandle) -> Result<crate::storage::database::DiscoveryResult, String> {
+    crate::storage::database::get_discovery_dashboard(&app)
+}
+
+// ── M19: Genre Radio ──
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn start_genre_radio(app: AppHandle, genre: String) -> Result<QueuePlaybackResult, String> {
+    let tracks = crate::storage::database::get_random_tracks_by_genre(&app, &genre, 100)?;
+    if tracks.is_empty() {
+        return Err(format!("No tracks found for genre: {genre}"));
+    }
+
+    let songs: Vec<crate::audio::player::Song> = tracks
+        .into_iter()
+        .map(|track| crate::audio::player::Song {
+            id: track.path,
+            title: track.title,
+            artist: track.artist.unwrap_or_else(|| "Unknown artist".to_string()),
+            album: track.album.unwrap_or_default(),
+            duration: usize::try_from(track.duration_ms.unwrap_or(0) * 10000).unwrap_or(0),
+            source: Some("local".to_string()),
+            uri: None,
+            external_url: None,
+            quality: None,
+            playable: Some(true),
+        })
+        .collect();
+
+    let first = &songs[0];
+    let queue = crate::audio::player::play_track_now(first.clone())?;
+    for song in songs.iter().skip(1) {
+        let _ = crate::audio::player::queue_song(song.clone());
+    }
+
+    play_queue_snapshot(&app, queue)
 }

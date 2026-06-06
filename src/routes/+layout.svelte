@@ -70,6 +70,10 @@
 		void restoreSession();
 		void refreshQueue();
 		void refreshPlaybackStatus();
+
+		// M20: Restore accent color and density from localStorage
+		restoreAccentColor();
+		restoreDensity();
 		const refreshTimer = window.setInterval(() => {
 			void refreshQueue();
 			void refreshPlaybackStatus();
@@ -619,6 +623,33 @@
 			$currentSong.id ||
 			upcomingSongs.length > 0
 		);
+	}
+
+	// M20: Restore accent color from localStorage
+	function restoreAccentColor() {
+		if (typeof localStorage === 'undefined') return;
+		const saved = localStorage.getItem('coldbrew.accentColor');
+		if (saved) {
+			const colors: Record<string, string> = {
+				'cold-blue': 'oklch(70% 0.13 205)',
+				caramel: 'oklch(68% 0.12 68)',
+				rose: 'oklch(65% 0.17 15)',
+				mint: 'oklch(70% 0.13 160)',
+				lavender: 'oklch(70% 0.11 290)',
+				amber: 'oklch(75% 0.14 82)'
+			};
+			const cssValue = colors[saved];
+			if (cssValue) document.documentElement.style.setProperty('--color-brand', cssValue);
+		}
+	}
+
+	// M20: Restore layout density from localStorage
+	function restoreDensity() {
+		if (typeof localStorage === 'undefined') return;
+		const saved = localStorage.getItem('coldbrew.density');
+		if (saved && ['compact', 'comfortable', 'spacious'].includes(saved)) {
+			document.body.setAttribute('data-density', saved);
+		}
 	}
 
 	function isTypingTarget(target: EventTarget | null) {

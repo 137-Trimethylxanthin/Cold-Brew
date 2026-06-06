@@ -6,7 +6,8 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import * as Select from '$lib/components/ui/select';
-	import { Play, ListPlus, Plus, Info, Radio } from '@lucide/svelte';
+	import { Play, ListPlus, Plus, Info, Radio, LayoutGrid, List } from '@lucide/svelte';
+	import * as Card from '$lib/components/ui/card';
 	import type {
 		LibraryTrack,
 		LibraryStats,
@@ -22,7 +23,9 @@
 		RemotePlaylist,
 		RemoteTrack,
 		Song,
-		SpotifyNativeStatus
+		SpotifyNativeStatus,
+		SmartPlaylistSummary,
+		DiscoveryResult
 	} from '$lib/types';
 
 	type SortKey = 'title' | 'artist' | 'album' | 'quality' | 'duration';
@@ -98,10 +101,54 @@
 	let loadingDuplicates = $state(false);
 	let showDuplicates = $state(false);
 
+	// M19: Smart Playlists & Discovery
+	let smartPlaylists: SmartPlaylistSummary[] = $state([]);
+	const JSON_PLACEHOLDER = `{"rules":[{"field":"genre","op":"equals","value":"Rock"}]}`;
+
+	let smartPlaylistRulesJson = $state('{"rules":[{"field":"genre","op":"equals","value":"Rock"}]}');
+	let smartPlaylistName = $state('');
+	let smartPlaylistTracks: LibraryTrack[] = $state([]);
+	let selectedSmartPlaylistId: number | null = $state(null);
+	let discovery: DiscoveryResult | null = $state(null);
+	let loadingDiscovery = $state(false);
+
+	// M20: Album Grid View
+	let viewMode = $state<'list' | 'grid'>('list');
+	let albumSheetOpen = $state(false);
+	let selectedAlbumKey = $state('');
+	let selectedAlbumTracks: LibraryTrack[] = $state([]);
+	let selectedAlbumTitle = $state('');
+	let selectedAlbumArtist = $state('');
+
+	const albumGroups = $derived(
+		Object.entries(
+			localTracks.reduce<Record<string, LibraryTrack[]>>((acc, track) => {
+				const key = (track.album || 'Unknown Album') + '|||' + (track.artist || 'Unknown Artist');
+				if (!acc[key]) acc[key] = [];
+				acc[key].push(track);
+				return acc;
+			}, {})
+		)
+			.map(([key, tracks]) => {
+				const [album, artist] = key.split('|||');
+				return { key, album, artist, tracks, count: tracks.length };
+			})
+			.sort((a, b) => a.album.localeCompare(b.album, undefined, { sensitivity: 'base', numeric: true }))
+	);
+
+	function openAlbumSheet(key: string, album: string, artist: string, tracks: LibraryTrack[]) {
+		selectedAlbumKey = key;
+		selectedAlbumTitle = album;
+		selectedAlbumArtist = artist;
+		selectedAlbumTracks = tracks;
+		albumSheetOpen = true;
+	}
+
 	onMount(() => {
 		void loadLocalLibrary();
 		void loadPlaylists();
 		void loadListeningHistory();
+		void loadSmartPlaylists();
 		void refreshSpotifyNativeStatus();
 
 		const updateOnline = () => {
@@ -584,6 +631,68 @@
 		finally { loadingDuplicates = false; }
 	}
 
+	// M19: Smart Playlists
+	async function loadSmartPlaylists() {
+		error = '';
+		try {
+			smartPlaylists = await invoke<SmartPlaylistSummary[]>('list_smart_playlists');
+		} catch (err) { error = toErrorMessage(err); }
+	}
+
+	async function createSmartPlaylist() {
+		if (!smartPlaylistName.trim()) { error = 'Enter a smart playlist name.'; return; }
+		if (!smartPlaylistRulesJson.trim()) { error = 'Enter rules JSON.'; return; }
+		error = ''; message = '';
+		try {
+			const result = await invoke<SmartPlaylistSummary>('create_smart_playlist', {
+				name: smartPlaylistName, rules_json: smartPlaylistRulesJson
+			});
+			smartPlaylistName = '';
+			await loadSmartPlaylists();
+			message = `Created smart playlist: ${result.name} (${result.track_count} tracks)`;
+		} catch (err) { error = toErrorMessage(err); }
+	}
+
+	async function openSmartPlaylist(id: number) {
+		error = '';
+		try {
+			selectedSmartPlaylistId = id;
+			smartPlaylistTracks = await invoke<LibraryTrack[]>('get_smart_playlist_tracks', { playlist_id: id });
+		} catch (err) { error = toErrorMessage(err); }
+	}
+
+	async function deleteSmartPlaylist(id: number) {
+		error = '';
+		try {
+			await invoke('delete_smart_playlist', { playlist_id: id });
+			selectedSmartPlaylistId = null;
+			smartPlaylistTracks = [];
+			await loadSmartPlaylists();
+			message = 'Smart playlist deleted.';
+		} catch (err) { error = toErrorMessage(err); }
+	}
+
+	// M19: Discovery Dashboard
+	async function loadDiscovery() {
+		loadingDiscovery = true; error = '';
+		try {
+			discovery = await invoke<DiscoveryResult>('get_discovery_dashboard');
+		} catch (err) { error = toErrorMessage(err); }
+		finally { loadingDiscovery = false; }
+	}
+
+	// M19: Genre Radio
+	async function startRadio(track: LibraryTrack) {
+		const genre = track.genre;
+		if (!genre) { error = 'This track has no genre tag - cannot start radio.'; return; }
+		error = '';
+		try {
+			const result = await invoke('start_genre_radio', { genre });
+			message = `Starting radio for ${genre}`;
+			await loadListeningHistory();
+		} catch (err) { error = toErrorMessage(err); }
+	}
+
 	function formatDurationSecs(secs: number) {
 		const h = Math.floor(secs / 3600);
 		const m = Math.floor((secs % 3600) / 60);
@@ -725,7 +834,12 @@
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Local Files</h2>
 		<div class="flex items-center gap-2 flex-wrap">
+		<div class="flex items-center gap-1 border border-outline rounded-full p-0.5">
+			<Button size="sm" class={viewMode === 'list' ? 'rounded-full' : 'rounded-full bg-transparent border-0'} variant={viewMode === 'list' ? 'default' : 'ghost'} onclick={() => viewMode = 'list'}><List class="size-3.5" /> List</Button>
+			<Button size="sm" class={viewMode === 'grid' ? 'rounded-full' : 'rounded-full bg-transparent border-0'} variant={viewMode === 'grid' ? 'default' : 'ghost'} onclick={() => viewMode = 'grid'}><LayoutGrid class="size-3.5" /> Grid</Button>
+		</div>
 		<Button variant="outline" size="sm" onclick={findDuplicates} disabled={loadingDuplicates}>Find Duplicates</Button>
+		{#if viewMode === 'list'}
 		<div class="flex justify-center items-center gap-1.5">
 			{#each localColumnOptions as column}
 				<Button variant={visibleColumns[column.id] ? 'default' : 'outline'} size="sm" onclick={() => toggleColumn(column.id)}>
@@ -733,8 +847,10 @@
 				</Button>
 			{/each}
 		</div>
+		{/if}
 		</div>
 	</div>
+	{#if viewMode === 'list'}
 	<div class="overflow-auto rounded-2xl border border-outline">
 	<Table.Root class="w-full table-fixed">
 		<Table.Header>
@@ -792,6 +908,7 @@
 						<div class="flex justify-center gap-1">
 							<Button size="sm" class="h-7 w-7 p-0" onclick={() => playLocal(track)} aria-label="Play"><Play class="size-3.5" /></Button>
 							<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => queueLocal(track)} aria-label="Queue"><ListPlus class="size-3.5" /></Button>
+							<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => startRadio(track)} aria-label="Start radio"><Radio class="size-3.5" /></Button>
 							<Button variant="secondary" size="sm" class="h-7 w-7 p-0" onclick={() => addLocalToPlaylist(track)} aria-label="Add to playlist"><Plus class="size-3.5" /></Button>
 							<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => inspectTrack(track)} aria-label="Track info"><Info class="size-3.5" /></Button>
 						</div>
@@ -806,6 +923,32 @@
 			<Button variant="outline" size="sm" onclick={loadMoreTracks} disabled={loadingMore}>
 				{loadingMore ? 'Loading...' : `Load ${Math.min(PER_PAGE, localTracks.length - displayedTrackCount)} more (${displayedTrackCount}/${localTracks.length} shown)`}
 			</Button>
+		</div>
+	{/if}
+	{/if}
+
+	{#if viewMode === 'grid'}
+		<div class="album-grid grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+			{#each albumGroups as group}
+				<button class="album-card text-left bg-transparent border-0 p-0 cursor-pointer group" onclick={() => openAlbumSheet(group.key, group.album, group.artist, group.tracks)}>
+					<Card.Root class="overflow-hidden border border-outline rounded-2xl bg-surface/70 hover:bg-surface transition-colors h-full">
+						<div class="aspect-square w-full relative overflow-hidden">
+							{#if group.tracks[0]?.has_artwork}
+								<div class="hero-cover-placeholder w-full h-full"></div>
+							{:else}
+								<div class="cover-placeholder w-full h-full [&::before]:hidden"></div>
+							{/if}
+							<div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/40">
+								<span class="text-white font-mono text-xs px-2 py-1 bg-black/60 rounded-full">{group.count} {group.count === 1 ? 'track' : 'tracks'}</span>
+							</div>
+						</div>
+						<Card.Content class="p-2.5">
+							<p class="text-sm font-semibold truncate">{group.album}</p>
+							<p class="text-xs text-soft truncate">{group.artist}</p>
+						</Card.Content>
+					</Card.Root>
+				</button>
+			{/each}
 		</div>
 	{/if}
 
@@ -957,6 +1100,154 @@
 		{/if}
 	</Sheet.SheetContent>
 </Sheet.Sheet>
+
+<!-- M20: Album Tracks Sheet -->
+<Sheet.Sheet bind:open={albumSheetOpen}>
+	<Sheet.SheetContent side="right" class="w-[480px] sm:max-w-[480px]">
+		<Sheet.SheetHeader>
+			<Sheet.SheetTitle>{selectedAlbumTitle}</Sheet.SheetTitle>
+			<Sheet.SheetDescription>{selectedAlbumArtist} &middot; {selectedAlbumTracks.length} {selectedAlbumTracks.length === 1 ? 'track' : 'tracks'}</Sheet.SheetDescription>
+		</Sheet.SheetHeader>
+
+		{#if selectedAlbumTracks.length > 0}
+			<div class="overflow-auto rounded-xl border border-outline mt-3">
+				<Table.Root class="w-full table-fixed">
+					<Table.Body>
+						{#each selectedAlbumTracks as track, idx}
+							<Table.Row class="border-b border-outline/60 hover:bg-surface/50 transition-colors">
+								<Table.Cell class="px-2 py-1.5 w-8 text-center text-soft font-mono text-xs">{idx + 1}</Table.Cell>
+								<Table.Cell class="px-2 py-1.5 align-middle min-w-0">
+									<strong class="text-sm truncate block" title={track.title}>{track.title}</strong>
+									<span class="text-soft text-xs">{formatDuration(track.duration_ms)} &middot; {formatQuality(track)}</span>
+								</Table.Cell>
+								<Table.Cell class="px-1.5 py-1.5 w-[90px] align-middle">
+									<div class="flex gap-1">
+										<Button size="sm" class="h-7 w-7 p-0" onclick={() => playLocal(track)} aria-label="Play"><Play class="size-3.5" /></Button>
+										<Button variant="outline" size="sm" class="h-7 w-7 p-0" onclick={() => queueLocal(track)} aria-label="Queue"><ListPlus class="size-3.5" /></Button>
+									</div>
+								</Table.Cell>
+							</Table.Row>
+						{/each}
+					</Table.Body>
+				</Table.Root>
+			</div>
+		{/if}
+	</Sheet.SheetContent>
+</Sheet.Sheet>
+
+<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
+	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Smart Playlists</h2>
+	<div class="library-playlist-grid">
+		<div class="grid content-start gap-1.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+			<div class="flex gap-2">
+				<Input bind:value={smartPlaylistName} placeholder="Smart playlist name" class="flex-1" />
+				<Button variant="default" size="sm" onclick={createSmartPlaylist}>Create</Button>
+			</div>
+			<div>
+				<textarea bind:value={smartPlaylistRulesJson} placeholder={JSON_PLACEHOLDER}
+					class="w-full mt-1.5 bg-surface border border-outline rounded-xl p-1.5 text-sm font-mono" rows="3"></textarea>
+			</div>
+			<p class="text-soft text-xs mt-0.5">Fields: genre, artist, album, title, year, play_count, last_played, duration, format, added_at | Ops: equals, contains, gt, lt, gte, lte, between</p>
+			{#if smartPlaylists.length === 0}
+				<p class="text-soft text-sm mt-1.5">No smart playlists yet</p>
+			{:else}
+				{#each smartPlaylists as sp}
+					<div class="flex items-center justify-between gap-1.5 mt-1">
+						<Button
+							variant={sp.id === selectedSmartPlaylistId ? 'default' : 'outline'}
+							size="sm"
+							class="flex-1 justify-between text-left"
+							onclick={() => openSmartPlaylist(sp.id)}>
+							<span>{sp.name}{sp.is_template ? ' ⚡' : ''}</span>
+							<small class="text-soft whitespace-nowrap">{sp.track_count} tracks</small>
+						</Button>
+						{#if !sp.is_template}
+							<Button variant="outline" size="sm" class="h-7 px-2 text-xs" onclick={() => deleteSmartPlaylist(sp.id)}>✕</Button>
+						{/if}
+					</div>
+				{/each}
+			{/if}
+		</div>
+
+		<div class="grid gap-2.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+			{#if smartPlaylistTracks.length > 0}
+				<div class="overflow-auto max-h-[420px] rounded-xl border border-outline">
+					<Table.Root class="w-full table-fixed">
+						<Table.Header>
+							<Table.Row>
+								<Table.Head class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Title</Table.Head>
+								<Table.Head class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Artist</Table.Head>
+								<Table.Head class="h-8 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Album</Table.Head>
+								<Table.Head class="w-[70px] h-8 px-2 text-center align-middle text-soft font-mono text-[10px] uppercase"></Table.Head>
+							</Table.Row>
+						</Table.Header>
+						<Table.Body>
+							{#each smartPlaylistTracks as track}
+								<Table.Row class="border-b border-outline/60 hover:bg-surface/50">
+									<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.title}</span></Table.Cell>
+									<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.artist ?? ''}</span></Table.Cell>
+									<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.album ?? ''}</span></Table.Cell>
+									<Table.Cell class="px-1 py-1 align-middle">
+										<div class="flex justify-center gap-1">
+											<Button size="sm" class="h-6 w-6 p-0" onclick={() => playLocal(track)}><Play class="size-3" /></Button>
+											<Button variant="outline" size="sm" class="h-6 w-6 p-0" onclick={() => queueLocal(track)}><ListPlus class="size-3" /></Button>
+											<Button variant="secondary" size="sm" class="h-6 w-6 p-0" onclick={() => startRadio(track)}><Radio class="size-3" /></Button>
+										</div>
+									</Table.Cell>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
+				</div>
+			{:else}
+				<p class="text-soft text-sm">Select a smart playlist to evaluate rules</p>
+			{/if}
+		</div>
+	</div>
+</section>
+
+<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
+	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Discover</h2>
+	<div class="flex items-center gap-3 flex-wrap mb-2">
+		<Button variant="secondary" size="sm" onclick={loadDiscovery} disabled={loadingDiscovery}>Refresh</Button>
+	</div>
+	{#if discovery}
+		<div class="grid gap-2.5" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+			{#each [discovery.you_might_like, discovery.deep_cuts, discovery.new_additions] as section}
+				<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+					<h3 class="m-0 mb-1.5 text-sm font-[family-name:var(--font-family-display)]">{section.label} ({section.tracks.length})</h3>
+					<div class="overflow-auto max-h-[280px] rounded-xl border border-outline">
+						<Table.Root class="w-full table-fixed">
+							<Table.Header>
+								<Table.Row>
+									<Table.Head class="h-7 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Title</Table.Head>
+									<Table.Head class="h-7 px-2 text-left align-middle text-soft font-mono text-[10px] uppercase">Artist</Table.Head>
+									<Table.Head class="w-[60px] h-7 px-2 text-center align-middle text-soft font-mono text-[10px] uppercase"></Table.Head>
+								</Table.Row>
+							</Table.Header>
+							<Table.Body>
+								{#each section.tracks as track}
+									<Table.Row class="border-b border-outline/60 hover:bg-surface/50">
+										<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.title}</span></Table.Cell>
+										<Table.Cell class="px-2 py-1 align-middle"><span class="text-xs truncate block">{track.artist ?? ''}</span></Table.Cell>
+										<Table.Cell class="px-1 py-1 align-middle">
+											<div class="flex justify-center gap-1">
+												<Button size="sm" class="h-6 w-6 p-0" onclick={() => playLocal(track)}><Play class="size-3" /></Button>
+												<Button variant="secondary" size="sm" class="h-6 w-6 p-0" onclick={() => startRadio(track)}><Radio class="size-3" /></Button>
+											</div>
+										</Table.Cell>
+									</Table.Row>
+								{/each}
+							</Table.Body>
+						</Table.Root>
+					</div>
+				</div>
+			{/each}
+		</div>
+	{:else if !loadingDiscovery}
+		<p class="text-soft text-sm">Click Refresh to load discovery recommendations</p>
+	{/if}
+</section>
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
 	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Playlists</h2>

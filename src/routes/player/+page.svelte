@@ -113,7 +113,28 @@
 
 <section class="player-route" data-od-id="player-route">
 	<section class="player-hero" data-od-id="player-hero">
-		<NowPlaying song={$currentSong} status={$playbackStatus} />
+		<NowPlaying song={$currentSong} status={$playbackStatus}>
+			{#snippet children()}
+				<div class="player-transport" aria-label="Playback controls">
+				<Button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0}>
+				<SkipBack class="size-4" /> Prev
+				</Button>
+				<Button class="player-transport-main" onclick={playRouteSelection}
+				disabled={$currentSong.id === '' && upcomingSongs.length === 0}>
+				<Play class="size-4" /> Play
+				</Button>
+				<Button onclick={() => runPlayerCommand('playback_pause')} disabled={!$playbackStatus?.playing}>
+				<Pause class="size-4" /> Pause
+				</Button>
+				<Button onclick={() => runPlayerCommand('playback_stop')} disabled={!$playbackStatus?.current_path}>
+				<Square class="size-4" /> Stop
+				</Button>
+				<Button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0}>
+				<SkipForward class="size-4" /> Next
+				</Button>
+				</div>
+			{/snippet}
+		</NowPlaying>
 
 		<div class="player-copy">
 			{#if spotifyIsActive}

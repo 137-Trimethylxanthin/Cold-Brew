@@ -613,6 +613,89 @@
 @layer utilities {
 	.text-danger { color: var(--color-danger); }
 	.text-success { color: var(--color-success); }
+
+	/* ── M20: Color swatches ── */
+	.color-swatch {
+		width: 44px;
+		height: 44px;
+		border-radius: 50%;
+		border: 3px solid transparent;
+		background: var(--swatch-color);
+		cursor: pointer;
+		outline: none;
+		transition: border-color 0.15s ease, transform 0.15s ease;
+	}
+
+	.color-swatch:hover,
+	.color-swatch:focus-visible {
+		border-color: var(--color-fg);
+		transform: scale(1.15);
+	}
+
+	.color-swatch-active {
+		border-color: var(--color-fg);
+		box-shadow: 0 0 0 2px var(--swatch-color);
+	}
+
+	/* ── M20: Density selector ── */
+	.density-btn {
+		min-height: 36px;
+		padding: 0.35rem 1rem;
+		border: 1px solid var(--color-outline);
+		border-radius: 999px;
+		background: oklch(22% 0.026 58 / 0.88);
+		color: var(--color-soft);
+		font-size: 0.8rem;
+		font-weight: 500;
+		cursor: pointer;
+		outline: none;
+		transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+	}
+
+	.density-btn:hover,
+	.density-btn:focus-visible {
+		border-color: var(--color-brand);
+		color: var(--color-fg);
+	}
+
+	.density-btn-active {
+		background: var(--color-fg);
+		color: var(--color-bg);
+		border-color: var(--color-fg);
+	}
+
+	/* ── M20: Density spacing rules ── */
+	[data-density='compact'] {
+		--density-mult: 0.7;
+	}
+
+	[data-density='comfortable'] {
+		--density-mult: 1;
+	}
+
+	[data-density='spacious'] {
+		--density-mult: 1.4;
+	}
+
+	[data-density='compact'] .settings-panel,
+	[data-density='compact'] .player-panel {
+		padding: 0.625rem;
+		gap: 0.5rem;
+	}
+
+	[data-density='spacious'] .settings-panel,
+	[data-density='spacious'] .player-panel {
+		padding: 1.5rem;
+		gap: 1.25rem;
+	}
+
+	[data-density='compact'] .content {
+		padding: 0.75rem;
+	}
+
+	[data-density='spacious'] .content {
+		padding: 2.25rem;
+	}
 }
 
 @layer base {

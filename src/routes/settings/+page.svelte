@@ -74,6 +74,58 @@
 	let message = '';
 	let error = '';
 
+	// M20: Accent color
+	const ACCENT_STORAGE_KEY = 'coldbrew.accentColor';
+	const accentColors = [
+		{ id: 'cold-blue', label: 'Cold Blue', cssValue: 'oklch(70% 0.13 205)' },
+		{ id: 'caramel', label: 'Caramel', cssValue: 'oklch(68% 0.12 68)' },
+		{ id: 'rose', label: 'Rose', cssValue: 'oklch(65% 0.17 15)' },
+		{ id: 'mint', label: 'Mint', cssValue: 'oklch(70% 0.13 160)' },
+		{ id: 'lavender', label: 'Lavender', cssValue: 'oklch(70% 0.11 290)' },
+		{ id: 'amber', label: 'Amber', cssValue: 'oklch(75% 0.14 82)' }
+	];
+	let selectedAccent = $state('cold-blue');
+
+	function selectAccentColor(id: string) {
+		selectedAccent = id;
+		const color = accentColors.find((c) => c.id === id);
+		if (color) {
+			document.documentElement.style.setProperty('--color-brand', color.cssValue);
+			if (typeof localStorage !== 'undefined') localStorage.setItem(ACCENT_STORAGE_KEY, id);
+		}
+	}
+
+	// M20: Layout density
+	const DENSITY_STORAGE_KEY = 'coldbrew.density';
+	const densityOptions = [
+		{ id: 'compact', label: 'Compact' },
+		{ id: 'comfortable', label: 'Comfortable' },
+		{ id: 'spacious', label: 'Spacious' }
+	];
+	let density = $state('comfortable');
+
+	function selectDensity(id: string) {
+		density = id;
+		document.body.setAttribute('data-density', id);
+		if (typeof localStorage !== 'undefined') localStorage.setItem(DENSITY_STORAGE_KEY, id);
+	}
+
+	function restoreAccentAndDensity() {
+		if (typeof localStorage !== 'undefined') {
+			const saved = localStorage.getItem(ACCENT_STORAGE_KEY);
+			if (saved && accentColors.some((c) => c.id === saved)) {
+				selectedAccent = saved;
+				const color = accentColors.find((c) => c.id === saved);
+				if (color) document.documentElement.style.setProperty('--color-brand', color.cssValue);
+			}
+			const savedDensity = localStorage.getItem(DENSITY_STORAGE_KEY);
+			if (savedDensity && densityOptions.some((d) => d.id === savedDensity)) {
+				density = savedDensity;
+				document.body.setAttribute('data-density', savedDensity);
+			}
+		}
+	}
+
 	// Watch folders
 	let watchFolders = $state(false);
 	let watchingLabel = $state('');
@@ -89,7 +141,8 @@
 	void loadServiceCapabilities(); void loadProviderAccounts();
 	void loadProviderLoginStates(); void loadLastFmScrobbleStatus();
 	void loadProviderStatuses();
-	 void loadAllDevStates();
+	void loadAllDevStates();
+	restoreAccentAndDensity();
 	});
 
 	function providerBaseFields(providerId: string): { key: string; label: string }[] {
@@ -542,6 +595,43 @@
 
 		<!-- ===== GENERAL TAB ===== -->
 		<Tabs.Content value="general" class="settings-tab-content">
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Accent Color</h2>
+					<p class="text-soft text-sm">Choose an accent color for the interface</p>
+				</div>
+				<div class="flex flex-wrap gap-3">
+					{#each accentColors as color}
+						<button
+							class="color-swatch"
+							class:color-swatch-active={selectedAccent === color.id}
+							style="--swatch-color: {color.cssValue}"
+							onclick={() => selectAccentColor(color.id)}
+							aria-label={`${color.label} accent`}
+							title={color.label}
+						></button>
+					{/each}
+				</div>
+			</section>
+
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Layout Density</h2>
+					<p class="text-soft text-sm">Control spacing throughout the interface</p>
+				</div>
+				<div class="flex gap-2">
+					{#each densityOptions as option}
+						<button
+							class="density-btn"
+							class:density-btn-active={density === option.id}
+							onclick={() => selectDensity(option.id)}
+						>
+							{option.label}
+						</button>
+					{/each}
+				</div>
+			</section>
+
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Notifications</h2>

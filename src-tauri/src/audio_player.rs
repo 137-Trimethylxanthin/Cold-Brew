@@ -947,9 +947,9 @@ fn output_device_id(index: usize, name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        clamp_volume, format_sample_rate, is_lossless_format, normalize_output_device_id,
-        output_device_id, parse_replay_gain_db, replay_gain_db_to_linear, source_format_from_path,
-        title_from_path, ReplayGainMode, ReplayGainTags,
+        ReplayGainMode, ReplayGainTags, clamp_volume, format_sample_rate, is_lossless_format,
+        normalize_output_device_id, output_device_id, parse_replay_gain_db,
+        replay_gain_db_to_linear, source_format_from_path, title_from_path,
     };
     use std::path::Path;
 

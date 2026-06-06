@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::env;
 use std::sync::{Mutex, OnceLock};
 
-use keyring_core::{set_default_store, Entry, Error};
+use keyring_core::{Entry, Error, set_default_store};
 use serde::Serialize;
 
 const SERVICE: &str = "cold-brew";
@@ -270,7 +270,10 @@ pub fn load_provider_secrets(provider_id: &str) -> Result<Option<ProviderSecrets
     let provider_id = normalize_provider_id(provider_id)?;
 
     if let Some(secrets) = load_provider_secrets_from_secrets_module(&provider_id) {
-        if secrets.client_id.is_some() || secrets.client_secret.is_some() || secrets.api_key.is_some() {
+        if secrets.client_id.is_some()
+            || secrets.client_secret.is_some()
+            || secrets.api_key.is_some()
+        {
             return Ok(Some(secrets));
         }
     }
@@ -310,7 +313,13 @@ fn load_provider_secrets_from_secrets_module(provider_id: &str) -> Option<Provid
     let access_token = crate::secrets::get_credential(provider_id, "access_token");
     let refresh_token = crate::secrets::get_credential(provider_id, "refresh_token");
 
-    if client_id.is_none() && client_secret.is_none() && api_key.is_none() && api_secret.is_none() && access_token.is_none() && refresh_token.is_none() {
+    if client_id.is_none()
+        && client_secret.is_none()
+        && api_key.is_none()
+        && api_secret.is_none()
+        && access_token.is_none()
+        && refresh_token.is_none()
+    {
         return None;
     }
 
@@ -653,8 +662,8 @@ fn normalize_provider_id(provider_id: &str) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::{
-        non_empty_option, normalize_provider_id, provider_entry_name,
-        provider_login_state_from_account, ProviderAccount,
+        ProviderAccount, non_empty_option, normalize_provider_id, provider_entry_name,
+        provider_login_state_from_account,
     };
 
     #[test]

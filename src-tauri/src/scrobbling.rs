@@ -4,7 +4,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use md5::{Digest, Md5};
 use reqwest::StatusCode;
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
@@ -182,10 +182,7 @@ fn optional_lastfm_auth() -> Result<Option<LastFmAuth>, String> {
     let Some(api_secret) = secrets.api_secret.and_then(non_empty_owned) else {
         return Ok(None);
     };
-    let Some(session_key) = secrets
-        .access_token
-        .and_then(non_empty_owned)
-    else {
+    let Some(session_key) = secrets.access_token.and_then(non_empty_owned) else {
         return Ok(None);
     };
 
@@ -558,20 +555,12 @@ fn is_retriable_http_status(status: StatusCode) -> bool {
 
 fn non_empty_string(value: &str) -> Option<&str> {
     let value = value.trim();
-    if value.is_empty() {
-        None
-    } else {
-        Some(value)
-    }
+    if value.is_empty() { None } else { Some(value) }
 }
 
 fn non_empty_owned(value: String) -> Option<String> {
     let value = value.trim().to_string();
-    if value.is_empty() {
-        None
-    } else {
-        Some(value)
-    }
+    if value.is_empty() { None } else { Some(value) }
 }
 
 fn database_error(error: rusqlite::Error) -> String {

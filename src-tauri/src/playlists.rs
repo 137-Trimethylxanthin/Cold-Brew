@@ -2,7 +2,7 @@ use std::convert::TryFrom;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 use tracing::instrument;

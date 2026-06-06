@@ -2,8 +2,8 @@ use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -16,8 +16,7 @@ use crate::{credentials, scrobbling};
 
 const SPOTIFY_AUTHORIZE_ENDPOINT: &str = "https://accounts.spotify.com/authorize";
 const SPOTIFY_TOKEN_ENDPOINT: &str = "https://accounts.spotify.com/api/token";
-const SPOTIFY_DEFAULT_SCOPE: &str =
-    "playlist-read-private playlist-read-collaborative user-read-private user-read-email user-read-playback-state user-modify-playback-state streaming";
+const SPOTIFY_DEFAULT_SCOPE: &str = "playlist-read-private playlist-read-collaborative user-read-private user-read-email user-read-playback-state user-modify-playback-state streaming";
 const TIDAL_AUTHORIZE_ENDPOINT: &str = "https://login.tidal.com/authorize";
 const TIDAL_TOKEN_ENDPOINT: &str = "https://auth.tidal.com/v1/oauth2/token";
 const TIDAL_DEFAULT_SCOPE: &str = "search.read playlists.read user.read";
@@ -919,11 +918,13 @@ mod tests {
     fn random_tokens_are_urlsafe_without_padding() {
         let token = random_urlsafe_token(32);
         assert!(!token.contains('='));
-        assert!(token
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric()
-                || character == '-'
-                || character == '_'));
+        assert!(
+            token
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric()
+                    || character == '-'
+                    || character == '_')
+        );
     }
 
     #[test]
@@ -949,11 +950,13 @@ mod tests {
 
         assert_eq!(callback.code, "abc123");
         assert_eq!(callback.state.as_deref(), Some("state123"));
-        assert!(parse_oauth_callback_request(
-            "GET /callback?code=abc123&state=bad HTTP/1.1\r\nhost: 127.0.0.1\r\n\r\n",
-            "/callback",
-            "state123",
-        )
-        .is_err());
+        assert!(
+            parse_oauth_callback_request(
+                "GET /callback?code=abc123&state=bad HTTP/1.1\r\nhost: 127.0.0.1\r\n\r\n",
+                "/callback",
+                "state123",
+            )
+            .is_err()
+        );
     }
 }

@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fs;
 
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
@@ -263,11 +263,7 @@ fn listened_duration_ms(event: &str, position_ms: u64, duration_ms: Option<u64>)
         .map(|duration_ms| position_ms.min(duration_ms))
         .unwrap_or(position_ms);
 
-    if position_ms < 5_000 {
-        0
-    } else {
-        position_ms
-    }
+    if position_ms < 5_000 { 0 } else { position_ms }
 }
 
 fn database_error(error: rusqlite::Error) -> String {

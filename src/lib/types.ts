@@ -237,3 +237,10 @@ export type AudioOutputDevice = {
 	default_channels: number | null;
 	default_sample_format: string | null;
 };
+
+export type SpotifyNativeStatus = {
+	connected: boolean;
+	username: string | null;
+	device_name: string | null;
+	error: string | null;
+};

@@ -6,7 +6,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import * as Select from '$lib/components/ui/select';
-	import { Play, ListPlus, Plus, Info } from '@lucide/svelte';
+	import { Play, ListPlus, Plus, Info, Radio } from '@lucide/svelte';
 	import type {
 		LibraryTrack,
 		ListeningHistoryEntry,
@@ -19,7 +19,8 @@
 		QueueSnapshot,
 		RemotePlaylist,
 		RemoteTrack,
-		Song
+		Song,
+		SpotifyNativeStatus
 	} from '$lib/types';
 
 	type SortKey = 'title' | 'artist' | 'album' | 'quality' | 'duration';
@@ -77,11 +78,14 @@
 	let loadingRemotePlaylists = $state(false);
 	let message = $state('');
 	let error = $state('');
+	let nativeSpotifyStatus: SpotifyNativeStatus | null = $state(null);
+	let connectingSpotify = $state(false);
 
 	onMount(() => {
 		void loadLocalLibrary();
 		void loadPlaylists();
 		void loadListeningHistory();
+		void refreshSpotifyNativeStatus();
 	});
 
 	async function loadLocalLibrary() {
@@ -471,6 +475,74 @@
 		if (message) return message;
 		return 'Unexpected application error.';
 	}
+
+	async function refreshSpotifyNativeStatus() {
+		try {
+			nativeSpotifyStatus = await invoke<SpotifyNativeStatus>('spotify_native_status');
+		} catch {
+			nativeSpotifyStatus = null;
+		}
+	}
+
+	async function ensureSpotifyNativeConnected(): Promise<boolean> {
+		if (nativeSpotifyStatus?.connected) return true;
+
+		try {
+			connectingSpotify = true;
+			error = '';
+			const token = await invoke<string>('get_spotify_web_playback_token');
+			if (!token) {
+				error = 'Connect Spotify in Settings → Accounts first.';
+				return false;
+			}
+			nativeSpotifyStatus = await invoke<SpotifyNativeStatus>('connect_spotify_native', { accessToken: token });
+			if (nativeSpotifyStatus.connected) {
+				message = `Spotify connected as ${nativeSpotifyStatus.device_name ?? 'Cold-Brew'}.`;
+				return true;
+			}
+			error = nativeSpotifyStatus.error ?? 'Could not connect to Spotify.';
+			return false;
+		} catch (err) {
+			error = toErrorMessage(err);
+			nativeSpotifyStatus = null;
+			return false;
+		} finally {
+			connectingSpotify = false;
+		}
+	}
+
+	async function playSpotifyNative(track: RemoteTrack) {
+		error = '';
+		if (!nativeSpotifyStatus?.connected) {
+			const connected = await ensureSpotifyNativeConnected();
+			if (!connected) return;
+		}
+
+		try {
+			await invoke<SpotifyNativeStatus>('start_spotify_native_playback', {
+				trackUri: track.uri,
+				deviceId: null
+			});
+			message = `Playing ${track.title} via Spotify Connect.`;
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
+	}
+
+	async function disconnectSpotifyNative() {
+		try {
+			nativeSpotifyStatus = await invoke<SpotifyNativeStatus>('disconnect_spotify_native');
+			message = 'Spotify disconnected.';
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
+	}
+
+	function spotifyStatusLabel() {
+		if (connectingSpotify) return '⏳ Connecting...';
+		if (nativeSpotifyStatus?.connected) return `🟢 Spotify Connected`;
+		return '🔴 Spotify Disconnected';
+	}
 </script>
 
 <section class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-[clamp(22px,5vw,52px)]"
@@ -770,7 +842,23 @@
 	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Remote Search</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<span class="text-soft text-sm">{loadingRemote ? 'Loading...' : `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span>
+		{#if selectedRemoteProvider === 'spotify'}
+			<span class="text-xs font-mono">{spotifyStatusLabel()}</span>
+		{/if}
 	</div>
+	{#if selectedRemoteProvider === 'spotify'}
+		<div class="flex items-center gap-2 mb-2">
+			<Button variant={nativeSpotifyStatus?.connected ? 'secondary' : 'default'} size="sm"
+				onclick={nativeSpotifyStatus?.connected ? disconnectSpotifyNative : ensureSpotifyNativeConnected}
+				disabled={connectingSpotify}>
+				<Radio class="size-3.5" />
+				{nativeSpotifyStatus?.connected ? 'Disconnect' : connectingSpotify ? 'Connecting...' : 'Connect Native'}
+			</Button>
+			{#if nativeSpotifyStatus?.username}
+				<span class="text-xs text-soft">as {nativeSpotifyStatus.username}</span>
+			{/if}
+		</div>
+	{/if}
 	<div class="library-scan-row">
 		<Select.Root bind:value={selectedRemoteProvider} onValueChange={() => changeRemoteProvider()}>
 			<Select.Trigger class="flex-1 min-w-[min(100%,160px)]">
@@ -827,7 +915,18 @@
 					<Table.Cell class="px-3 py-2.5 align-middle">{track.album ?? ''}</Table.Cell>
 					<Table.Cell class="px-3 py-2.5 align-middle">{track.quality ?? (track.playable ? 'Remote playable' : 'Metadata only')}</Table.Cell>
 					<Table.Cell class="px-3 py-2.5 align-middle">{formatDuration(track.duration_ms)}</Table.Cell>
-					<Table.Cell class="px-3 py-2 align-middle"><Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueRemote(track)}>Queue</Button></Table.Cell>
+					<Table.Cell class="px-3 py-2 align-middle">
+						<div class="flex gap-1">
+							{#if track.source === 'spotify' && track.playable}
+								<Button variant="default" size="sm" class="h-7 px-2 text-xs"
+									onclick={() => playSpotifyNative(track)}
+									disabled={connectingSpotify}>
+									<Play class="size-3" />
+								</Button>
+							{/if}
+							<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => queueRemote(track)}>Queue</Button>
+						</div>
+					</Table.Cell>
 				</Table.Row>
 			{/each}
 		</Table.Body>

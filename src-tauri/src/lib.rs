@@ -2,7 +2,6 @@ mod audio_player;
 mod auth_flows;
 mod credentials;
 pub mod error;
-pub mod secrets;
 mod jellyfin;
 mod library;
 mod listening_history;
@@ -14,6 +13,8 @@ mod playlists;
 mod providers;
 mod remote_providers;
 mod scrobbling;
+pub mod secrets;
+mod spotify_native;
 
 use std::path::Path;
 
@@ -108,7 +109,14 @@ pub fn run() {
             get_provider_credentials,
             set_provider_credentials,
             reset_provider_credentials,
-            get_all_provider_statuses
+            get_all_provider_statuses,
+            spotify_native_status,
+            connect_spotify_native,
+            disconnect_spotify_native,
+            start_spotify_native_playback,
+            spotify_native_pause,
+            spotify_native_resume,
+            spotify_native_stop
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -819,7 +827,13 @@ fn get_provider_credentials(provider: String) -> Result<serde_json::Value, Strin
     let has_redirect_uri = secrets::get_credential(&provider, "redirect_uri").is_some();
     let has_app_id = secrets::get_credential(&provider, "app_id").is_some();
     let has_app_secret = secrets::get_credential(&provider, "app_secret").is_some();
-    let has_creds = has_client_id || has_client_secret || has_api_key || has_api_secret || has_app_id || has_app_secret || has_redirect_uri;
+    let has_creds = has_client_id
+        || has_client_secret
+        || has_api_key
+        || has_api_secret
+        || has_app_id
+        || has_app_secret
+        || has_redirect_uri;
     let is_default = secrets::is_default_credential(&provider);
 
     Ok(serde_json::json!({
@@ -888,4 +902,55 @@ fn get_all_provider_statuses() -> Result<serde_json::Value, String> {
     }
 
     Ok(serde_json::Value::Array(results))
+}
+
+// --- Native Spotify Playback Commands ---
+
+#[tauri::command(rename_all = "snake_case")]
+fn spotify_native_status() -> Result<spotify_native::SpotifyNativeStatus, String> {
+    spotify_native::spotify_native_status()
+}
+
+#[instrument]
+#[tauri::command(rename_all = "snake_case")]
+async fn connect_spotify_native(
+    access_token: String,
+) -> Result<spotify_native::SpotifyNativeStatus, String> {
+    tracing::info!("Connecting native Spotify player");
+    spotify_native::connect_spotify_native(access_token).await
+}
+
+#[instrument]
+#[tauri::command(rename_all = "snake_case")]
+async fn disconnect_spotify_native() -> Result<spotify_native::SpotifyNativeStatus, String> {
+    tracing::info!("Disconnecting native Spotify player");
+    spotify_native::disconnect_spotify_native().await
+}
+
+#[instrument]
+#[tauri::command(rename_all = "snake_case")]
+fn start_spotify_native_playback(
+    track_uri: String,
+    device_id: Option<String>,
+) -> Result<spotify_native::SpotifyNativeStatus, String> {
+    tracing::info!(track_uri, "Starting native Spotify playback");
+    spotify_native::start_spotify_native_playback(track_uri, device_id)
+}
+
+#[instrument]
+#[tauri::command(rename_all = "snake_case")]
+fn spotify_native_pause() -> Result<spotify_native::SpotifyNativeStatus, String> {
+    spotify_native::spotify_native_pause()
+}
+
+#[instrument]
+#[tauri::command(rename_all = "snake_case")]
+fn spotify_native_resume() -> Result<spotify_native::SpotifyNativeStatus, String> {
+    spotify_native::spotify_native_resume()
+}
+
+#[instrument]
+#[tauri::command(rename_all = "snake_case")]
+fn spotify_native_stop() -> Result<spotify_native::SpotifyNativeStatus, String> {
+    spotify_native::spotify_native_stop()
 }

@@ -385,13 +385,13 @@
 </script>
 
 <section class="settings-page">
-	<div class="heading-bg relative overflow-hidden border border-border rounded-3xl shadow-2xl p-[clamp(22px,5vw,52px)]" style="min-height: 180px">
+	<div class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-[clamp(22px,5vw,52px)]" style="min-height: 180px">
 		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]">Settings</h1>
-		<p class="text-muted text-[0.9rem]">Accounts, audio, and library configuration</p>
+		<p class="text-soft text-[0.9rem]">Accounts, audio, and library configuration</p>
 	</div>
 
-	{#if error}<p class="mt-3 px-3.5 py-2.5 border border-border rounded-[20px] bg-danger/20 text-danger/70">{error}</p>{/if}
-	{#if message}<p class="mt-3 px-3.5 py-2.5 border border-border rounded-[20px] bg-success/20 text-success/80">{message}</p>{/if}
+	{#if error}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-danger/20 text-danger/70">{error}</p>{/if}
+	{#if message}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-success/20 text-success/80">{message}</p>{/if}
 
 	<Tabs.Root value="general" class="tabs-root">
 		<Tabs.List>
@@ -405,41 +405,41 @@
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Services</h2>
-					<p class="text-muted text-[0.9rem]">Provider capabilities and current implementation state</p>
+					<p class="text-soft text-[0.9rem]">Provider capabilities and current implementation state</p>
 				</div>
 
 				<div class="overflow-x-auto">
 					<table class="w-full min-w-[920px] border-collapse">
 						<thead>
 							<tr>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Service</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">State</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Auth</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Search</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Playlists</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Playback</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Scrobble</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase min-w-[260px]">Notes</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Service</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">State</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Auth</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Search</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Playlists</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Playback</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Scrobble</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase min-w-[260px]">Notes</th>
 							</tr>
 						</thead>
 						<tbody>
 							{#each serviceCapabilities as provider}
 								<tr>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem] min-w-[130px]">
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem] min-w-[130px]">
 										<strong>{provider.name}</strong>
 										{#if provider.documentation_url}
-											<a class="block mt-0.5 text-accent text-[0.76rem]" href={provider.documentation_url} target="_blank" rel="noreferrer">Docs</a>
+											<a class="block mt-0.5 text-brand text-[0.76rem]" href={provider.documentation_url} target="_blank" rel="noreferrer">Docs</a>
 										{/if}
 									</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">
 										<span class="state-pill {provider.integration_state}">{stateLabel(provider.integration_state)}</span>
 									</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{provider.auth_model}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{yesNo(provider.can_search)}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{yesNo(provider.can_list_playlists)}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{playbackLabel(provider)}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{yesNo(provider.can_scrobble)}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem] text-muted">{notesPreview(provider)}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{provider.auth_model}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{yesNo(provider.can_search)}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{yesNo(provider.can_list_playlists)}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{playbackLabel(provider)}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{yesNo(provider.can_scrobble)}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem] text-soft">{notesPreview(provider)}</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -450,9 +450,9 @@
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">ReplayGain</h2>
-					<p class="text-muted text-[0.9rem]">Applied during local playback when matching ReplayGain tags are present</p>
+					<p class="text-soft text-[0.9rem]">Applied during local playback when matching ReplayGain tags are present</p>
 				</div>
-				<label class="grid gap-[6px] text-muted text-[0.86rem]">
+				<label class="grid gap-[6px] text-soft text-[0.86rem]">
 					Mode
 					<Select.Root bind:value={replayGainMode} onValueChange={setReplayGainMode}>
 						<Select.Trigger class="w-[180px]">
@@ -472,15 +472,15 @@
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Jellyfin</h2>
-					<p class="text-muted text-[0.9rem]">
+					<p class="text-soft text-[0.9rem]">
 						{#if account}Stored from {account.source}; password present: {account.has_password ? 'yes' : 'no'}
 						{:else}No Jellyfin account saved
 						{/if}
 					</p>
 				</div>
-				<label class="grid gap-[6px] text-muted text-[0.86rem]">Server URL <Input bind:value={baseUrl} placeholder="https://jellyfin.example" class="w-full" /></label>
-				<label class="grid gap-[6px] text-muted text-[0.86rem]">Username <Input bind:value={userName} autocomplete="username" class="w-full" /></label>
-				<label class="grid gap-[6px] text-muted text-[0.86rem]">Password <Input bind:value={password} type="password" autocomplete="current-password" class="w-full" /></label>
+				<label class="grid gap-[6px] text-soft text-[0.86rem]">Server URL <Input bind:value={baseUrl} placeholder="https://jellyfin.example" class="w-full" /></label>
+				<label class="grid gap-[6px] text-soft text-[0.86rem]">Username <Input bind:value={userName} autocomplete="username" class="w-full" /></label>
+				<label class="grid gap-[6px] text-soft text-[0.86rem]">Password <Input bind:value={password} type="password" autocomplete="current-password" class="w-full" /></label>
 				<div class="flex flex-wrap gap-2">
 					<Button onclick={saveAccount}>Save</Button>
 					<Button variant="outline" onclick={clearAccount}>Clear</Button>
@@ -490,11 +490,11 @@
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Service Credentials</h2>
-					<p class="text-muted text-[0.9rem]">Secure storage for provider OAuth/API material and user app credentials</p>
+					<p class="text-soft text-[0.9rem]">Secure storage for provider OAuth/API material and user app credentials</p>
 				</div>
 
 				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Service
+					<label class="grid gap-[6px] text-soft text-[0.86rem]">Service
 						<Select.Root bind:value={selectedProviderId}>
 							<Select.Trigger class="w-full">
 								<SelectPrimitive.Value placeholder="Select service" />
@@ -506,13 +506,13 @@
 							</Select.Content>
 						</Select.Root>
 					</label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Account label <Input bind:value={providerDisplayName} placeholder="Personal account" autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Client ID / App ID <Input bind:value={providerClientId} autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Client secret / App secret <Input bind:value={providerClientSecret} type="password" autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">API key <Input bind:value={providerApiKey} autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">API secret <Input bind:value={providerApiSecret} type="password" autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Access token / Session key <Input bind:value={providerAccessToken} type="password" autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-muted text-[0.86rem]">Refresh token <Input bind:value={providerRefreshToken} type="password" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-soft text-[0.86rem]">Account label <Input bind:value={providerDisplayName} placeholder="Personal account" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-soft text-[0.86rem]">Client ID / App ID <Input bind:value={providerClientId} autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-soft text-[0.86rem]">Client secret / App secret <Input bind:value={providerClientSecret} type="password" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-soft text-[0.86rem]">API key <Input bind:value={providerApiKey} autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-soft text-[0.86rem]">API secret <Input bind:value={providerApiSecret} type="password" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-soft text-[0.86rem]">Access token / Session key <Input bind:value={providerAccessToken} type="password" autocomplete="off" class="w-full" /></label>
+					<label class="grid gap-[6px] text-soft text-[0.86rem]">Refresh token <Input bind:value={providerRefreshToken} type="password" autocomplete="off" class="w-full" /></label>
 				</div>
 
 				<div class="flex flex-wrap gap-2">
@@ -525,19 +525,19 @@
 					<table class="w-full border-collapse">
 						<thead>
 							<tr>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Service</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Login state</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Details</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Last failure</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Service</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Login state</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Details</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Last failure</th>
 							</tr>
 						</thead>
 						<tbody>
 							{#each providerLoginStateRows() as loginState}
 								<tr>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{providerName(loginState.provider_id)}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]"><span class="state-pill {loginState.status}">{stateLabel(loginState.status)}</span></td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{loginState.message}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem] {loginState.status === 'failed' ? 'text-danger' : ''}">{loginState.last_error ?? 'None'}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{providerName(loginState.provider_id)}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]"><span class="state-pill {loginState.status}">{stateLabel(loginState.status)}</span></td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{loginState.message}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem] {loginState.status === 'failed' ? 'text-danger' : ''}">{loginState.last_error ?? 'None'}</td>
 								</tr>
 							{/each}
 						</tbody>
@@ -546,37 +546,37 @@
 
 				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
 					<ProviderLoginPanel providerId="spotify" providerName="Spotify" description="OAuth PKCE" loginState={loginStateForProvider('spotify')}>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <Input bind:value={spotifyRedirectUri} autocomplete="off" class="w-full" /></label>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <Input bind:value={spotifyScope} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-soft text-[0.86rem]">Redirect URI <Input bind:value={spotifyRedirectUri} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-soft text-[0.86rem]">Scope <Input bind:value={spotifyScope} autocomplete="off" class="w-full" /></label>
 						<div class="flex flex-wrap gap-2"><Button onclick={completeSpotifyLoginInBrowser}>Login in browser</Button><Button variant="secondary" onclick={startSpotifyLogin}>Manual login URL</Button><Button variant="secondary" onclick={refreshSpotifyToken}>Refresh Spotify token</Button></div>
 						{#if spotifyAuthorizationUrl}
-							<a class="text-accent text-[0.86rem]" href={spotifyAuthorizationUrl} target="_blank" rel="noreferrer">Open Spotify authorization</a>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <Input bind:value={spotifyAuthorizationCode} autocomplete="off" class="w-full" /></label>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <Input bind:value={spotifyAuthorizationState} autocomplete="off" class="w-full" /></label>
+							<a class="text-brand text-[0.86rem]" href={spotifyAuthorizationUrl} target="_blank" rel="noreferrer">Open Spotify authorization</a>
+							<label class="grid gap-[6px] text-soft text-[0.86rem]">Returned URL or code <Input bind:value={spotifyAuthorizationCode} autocomplete="off" class="w-full" /></label>
+							<label class="grid gap-[6px] text-soft text-[0.86rem]">State <Input bind:value={spotifyAuthorizationState} autocomplete="off" class="w-full" /></label>
 							<div class="flex flex-wrap gap-2"><Button onclick={finishSpotifyLogin}>Finish Spotify login</Button></div>
 						{/if}
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="tidal" providerName="TIDAL" description="OAuth PKCE" loginState={loginStateForProvider('tidal')}>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <Input bind:value={tidalRedirectUri} autocomplete="off" class="w-full" /></label>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <Input bind:value={tidalScope} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-soft text-[0.86rem]">Redirect URI <Input bind:value={tidalRedirectUri} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-soft text-[0.86rem]">Scope <Input bind:value={tidalScope} autocomplete="off" class="w-full" /></label>
 						<div class="flex flex-wrap gap-2"><Button onclick={startTidalLogin}>Start TIDAL login</Button><Button variant="secondary" onclick={refreshTidalToken}>Refresh TIDAL token</Button></div>
 						{#if tidalAuthorizationUrl}
-							<a class="text-accent text-[0.86rem]" href={tidalAuthorizationUrl} target="_blank" rel="noreferrer">Open TIDAL authorization</a>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <Input bind:value={tidalAuthorizationCode} autocomplete="off" class="w-full" /></label>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <Input bind:value={tidalAuthorizationState} autocomplete="off" class="w-full" /></label>
+							<a class="text-brand text-[0.86rem]" href={tidalAuthorizationUrl} target="_blank" rel="noreferrer">Open TIDAL authorization</a>
+							<label class="grid gap-[6px] text-soft text-[0.86rem]">Returned URL or code <Input bind:value={tidalAuthorizationCode} autocomplete="off" class="w-full" /></label>
+							<label class="grid gap-[6px] text-soft text-[0.86rem]">State <Input bind:value={tidalAuthorizationState} autocomplete="off" class="w-full" /></label>
 							<div class="flex flex-wrap gap-2"><Button onclick={finishTidalLogin}>Finish TIDAL login</Button></div>
 						{/if}
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="youtube" providerName="YouTube" description="Google OAuth" loginState={loginStateForProvider('youtube')}>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Redirect URI <Input bind:value={youtubeRedirectUri} autocomplete="off" class="w-full" /></label>
-						<label class="grid gap-[6px] text-muted text-[0.86rem]">Scope <Input bind:value={youtubeScope} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-soft text-[0.86rem]">Redirect URI <Input bind:value={youtubeRedirectUri} autocomplete="off" class="w-full" /></label>
+						<label class="grid gap-[6px] text-soft text-[0.86rem]">Scope <Input bind:value={youtubeScope} autocomplete="off" class="w-full" /></label>
 						<div class="flex flex-wrap gap-2"><Button onclick={startYoutubeLogin}>Start YouTube login</Button><Button variant="secondary" onclick={refreshYoutubeToken}>Refresh YouTube token</Button></div>
 						{#if youtubeAuthorizationUrl}
-							<a class="text-accent text-[0.86rem]" href={youtubeAuthorizationUrl} target="_blank" rel="noreferrer">Open Google authorization</a>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">Returned URL or code <Input bind:value={youtubeAuthorizationCode} autocomplete="off" class="w-full" /></label>
-							<label class="grid gap-[6px] text-muted text-[0.86rem]">State <Input bind:value={youtubeAuthorizationState} autocomplete="off" class="w-full" /></label>
+							<a class="text-brand text-[0.86rem]" href={youtubeAuthorizationUrl} target="_blank" rel="noreferrer">Open Google authorization</a>
+							<label class="grid gap-[6px] text-soft text-[0.86rem]">Returned URL or code <Input bind:value={youtubeAuthorizationCode} autocomplete="off" class="w-full" /></label>
+							<label class="grid gap-[6px] text-soft text-[0.86rem]">State <Input bind:value={youtubeAuthorizationState} autocomplete="off" class="w-full" /></label>
 							<div class="flex flex-wrap gap-2"><Button onclick={finishYoutubeLogin}>Finish YouTube login</Button></div>
 						{/if}
 					</ProviderLoginPanel>
@@ -584,7 +584,7 @@
 					<ProviderLoginPanel providerId="lastfm" providerName="Last.fm" description="Desktop session" loginState={loginStateForProvider('lastfm')}>
 						<div class="flex flex-wrap gap-2"><Button onclick={startLastFmLogin}>Start Last.fm login</Button></div>
 						{#if lastFmAuthorizationUrl}
-							<a class="text-accent text-[0.86rem]" href={lastFmAuthorizationUrl} target="_blank" rel="noreferrer">Open Last.fm authorization</a>
+							<a class="text-brand text-[0.86rem]" href={lastFmAuthorizationUrl} target="_blank" rel="noreferrer">Open Last.fm authorization</a>
 							<div class="flex flex-wrap gap-2"><Button onclick={finishLastFmLogin}>Finish Last.fm login</Button></div>
 						{/if}
 					</ProviderLoginPanel>
@@ -597,22 +597,22 @@
 					<ProviderLoginPanel providerId="bandcamp" providerName="Bandcamp" description="Link-out" loginState={loginStateForProvider('bandcamp')}>
 						<p>{loginStateForProvider('bandcamp')?.message ?? 'No Bandcamp login state available'}</p>
 						<div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={() => selectProviderCredentials('bandcamp')}>Edit Bandcamp note</Button></div>
-						<a class="text-accent text-[0.86rem]" href="https://bandcamp.com/developer" target="_blank" rel="noreferrer">Open Bandcamp developer docs</a>
+						<a class="text-brand text-[0.86rem]" href="https://bandcamp.com/developer" target="_blank" rel="noreferrer">Open Bandcamp developer docs</a>
 					</ProviderLoginPanel>
 				</div>
 
 				{#if providerAccounts.length > 0}
 					<table class="w-full border-collapse">
 						<thead>
-							<tr><th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Service</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Saved fields</th>
-								<th class="border-b border-border px-[0.6rem] py-[0.55rem] text-left align-top text-muted font-mono text-[0.76rem] uppercase">Source</th></tr>
+							<tr><th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Service</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Saved fields</th>
+								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Source</th></tr>
 						</thead>
 						<tbody>
 							{#each providerAccounts as pa}
-								<tr><td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{providerName(pa.provider_id)}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{savedProviderFlags(pa)}</td>
-									<td class="border-b border-border px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{pa.source}</td></tr>
+								<tr><td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{providerName(pa.provider_id)}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{savedProviderFlags(pa)}</td>
+									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{pa.source}</td></tr>
 							{/each}
 						</tbody>
 					</table>
@@ -622,12 +622,12 @@
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Last.fm Scrobbling</h2>
-					<p class="text-muted text-[0.9rem]">{lastFmCredentialsReady() ? 'Last.fm scrobbling credentials are ready' : 'Save a Last.fm API key, API secret, and session key in Service Credentials'}</p>
+					<p class="text-soft text-[0.9rem]">{lastFmCredentialsReady() ? 'Last.fm scrobbling credentials are ready' : 'Save a Last.fm API key, API secret, and session key in Service Credentials'}</p>
 				</div>
 				<div class="grid grid-cols-3 gap-2.5 max-md:grid-cols-1">
-					<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Pending</span><strong class="text-xl">{lastFmScrobbleStatus?.pending_count ?? 0}</strong></div>
-					<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Submitted</span><strong class="text-xl">{lastFmScrobbleStatus?.submitted_count ?? 0}</strong></div>
-					<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Failed</span><strong class="text-xl">{lastFmScrobbleStatus?.failed_count ?? 0}</strong></div>
+					<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Pending</span><strong class="text-xl">{lastFmScrobbleStatus?.pending_count ?? 0}</strong></div>
+					<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Submitted</span><strong class="text-xl">{lastFmScrobbleStatus?.submitted_count ?? 0}</strong></div>
+					<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Failed</span><strong class="text-xl">{lastFmScrobbleStatus?.failed_count ?? 0}</strong></div>
 				</div>
 				{#if lastFmScrobbleStatus?.last_error}<p class="text-danger">{lastFmScrobbleStatus.last_error}</p>{/if}
 				<div class="flex flex-wrap gap-2"><Button onclick={retryLastFmScrobbles} disabled={!lastFmCredentialsReady()}>Retry pending scrobbles</Button><Button variant="secondary" onclick={loadLastFmScrobbleStatus}>Refresh status</Button></div>
@@ -638,9 +638,9 @@
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Audio Output</h2>
-					<p class="text-muted text-[0.9rem]">{selectedAudioOutputDescription()}</p>
+					<p class="text-soft text-[0.9rem]">{selectedAudioOutputDescription()}</p>
 				</div>
-				<label class="grid gap-[6px] text-muted text-[0.86rem]">Output device
+				<label class="grid gap-[6px] text-soft text-[0.86rem]">Output device
 					<Select.Root bind:value={selectedAudioOutput} onValueChange={selectAudioOutput}>
 						<Select.Trigger class="w-full">
 							<SelectPrimitive.Value placeholder="Select output device" />
@@ -660,15 +660,15 @@
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Library Scan</h2>
-					<p class="text-muted text-[0.9rem]">Index local music files for browsing and playback</p>
+					<p class="text-soft text-[0.9rem]">Index local music files for browsing and playback</p>
 				</div>
 				<div class="flex gap-2"><Input bind:value={libraryPath} placeholder="/path/to/music" aria-label="Music folder path" class="flex-1" /><Button onclick={scanLibrary} disabled={loadingLibrary}>Scan</Button></div>
 				{#if scanSummary}
 					<div class="grid grid-cols-4 gap-2.5 max-xl:grid-cols-2">
-						<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Scanned</span><strong class="text-xl break-words">{scanSummary.scanned_files}</strong></div>
-						<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Indexed</span><strong class="text-xl break-words">{scanSummary.indexed_tracks}</strong></div>
-						<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Skipped</span><strong class="text-xl break-words">{scanSummary.skipped_files}</strong></div>
-						<div class="grid gap-1 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-muted font-mono text-[0.78rem] uppercase">Root</span><strong class="font-mono text-[0.76rem] break-words">{scanSummary.root}</strong></div>
+						<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Scanned</span><strong class="text-xl break-words">{scanSummary.scanned_files}</strong></div>
+						<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Indexed</span><strong class="text-xl break-words">{scanSummary.indexed_tracks}</strong></div>
+						<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Skipped</span><strong class="text-xl break-words">{scanSummary.skipped_files}</strong></div>
+						<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Root</span><strong class="font-mono text-[0.76rem] break-words">{scanSummary.root}</strong></div>
 					</div>
 				{/if}
 			</section>

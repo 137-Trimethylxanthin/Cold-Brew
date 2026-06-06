@@ -135,7 +135,7 @@
 
 			<div class="grid gap-2">
 				<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
-				<div class="flex justify-between font-mono text-[0.76rem] text-muted">
+				<div class="flex justify-between font-mono text-[0.76rem] text-soft">
 					<span>{playbackTimeLabel()}</span>
 					<span>{$playbackStatus?.output_sample_rate ? formatSampleRate($playbackStatus.output_sample_rate) : 'Ready'}</span>
 				</div>
@@ -160,7 +160,7 @@
 			</Button>
 			</div>
 
-			<label class="grid gap-[3px] text-muted text-[0.78rem]">
+			<label class="grid gap-[3px] text-soft text-[0.78rem]">
 			<span>Volume {$volume}</span>
 			<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={async (v: number[]) => { const val = v[0] / 100; $volume = val; try { await invoke('set_playback_volume', { volume: val }); } catch { /* Browser-only dev */ } }} />
 			</label>
@@ -171,22 +171,22 @@
 		<section class="player-panel">
 			<div class="flex items-end justify-between gap-[14px]">
 				<div>
-					<p class="text-accent font-mono text-[0.68rem] tracking-widest uppercase m-0">Queue</p>
+					<p class="text-brand font-mono text-[0.68rem] tracking-widest uppercase m-0">Queue</p>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Up next</h2>
 				</div>
 				<span class="state-pill">{upcomingSongs.length} tracks</span>
 			</div>
 			{#if upcomingSongs.length === 0}
-				<p class="text-muted">Queue is empty</p>
+				<p class="text-soft">Queue is empty</p>
 			{:else}
 				<ol class="grid gap-2 m-0 p-0 list-none">
 					{#each upcomingSongs.slice(0, 5) as song, index}
-						<li class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border border-border rounded-[20px] p-2.5 bg-surface/78">
-							<span class="text-muted font-mono text-[0.76rem]">{String(index + 1).padStart(2, '0')}</span>
+						<li class="grid grid-cols-[auto_minmax(0,1fr)] items-center gap-3 border border-outline rounded-[20px] p-2.5 bg-surface/78">
+							<span class="text-soft font-mono text-[0.76rem]">{String(index + 1).padStart(2, '0')}</span>
 							<span class="grid gap-0.5 min-w-0">
 								<strong class="truncate">{song.title}</strong>
 								{#if queuedSongDetail(song)}
-									<small class="truncate text-muted">{queuedSongDetail(song)}</small>
+									<small class="truncate text-soft">{queuedSongDetail(song)}</small>
 								{/if}
 							</span>
 						</li>
@@ -198,22 +198,22 @@
 		<section class="player-panel">
 			<div class="flex items-end justify-between gap-[14px]">
 				<div>
-					<p class="text-accent font-mono text-[0.68rem] tracking-widest uppercase m-0">Output</p>
+					<p class="text-brand font-mono text-[0.68rem] tracking-widest uppercase m-0">Output</p>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">{$playbackStatus?.output_device_name ?? 'Default device'}</h2>
 				</div>
 				<span class="state-pill">{$playbackStatus?.playing ? 'Playing' : 'Idle'}</span>
 			</div>
 			<div class="grid grid-cols-3 gap-2.5">
-				<div class="grid gap-1 min-w-0 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
-					<span class="font-mono text-[0.76rem] uppercase text-muted">Source</span>
+				<div class="grid gap-1 min-w-0 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+					<span class="font-mono text-[0.76rem] uppercase text-soft">Source</span>
 					<strong>{$currentSong.source ? formatSource($currentSong.source) : 'Local'}</strong>
 				</div>
-				<div class="grid gap-1 min-w-0 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
-					<span class="font-mono text-[0.76rem] uppercase text-muted">Quality</span>
+				<div class="grid gap-1 min-w-0 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+					<span class="font-mono text-[0.76rem] uppercase text-soft">Quality</span>
 					<strong>{qualityDisplay()}</strong>
 				</div>
-				<div class="grid gap-1 min-w-0 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
-					<span class="font-mono text-[0.76rem] uppercase text-muted">ReplayGain</span>
+				<div class="grid gap-1 min-w-0 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+					<span class="font-mono text-[0.76rem] uppercase text-soft">ReplayGain</span>
 					<strong>{$playbackStatus?.replay_gain_mode ?? 'off'}</strong>
 				</div>
 			</div>
@@ -224,15 +224,15 @@
 		<section class="player-panel">
 			<div class="flex items-end justify-between gap-[14px]">
 				<div>
-					<p class="text-accent font-mono text-[0.68rem] tracking-widest uppercase m-0">History</p>
+					<p class="text-brand font-mono text-[0.68rem] tracking-widest uppercase m-0">History</p>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Recent</h2>
 				</div>
 			</div>
 			<ol class="grid gap-2 m-0 p-0 list-none">
 				{#each oldSongs.slice(-4).reverse() as song}
-					<li class="grid gap-1 min-w-0 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+					<li class="grid gap-1 min-w-0 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]">
 						<strong class="truncate">{song.title}</strong>
-						<span class="truncate text-muted">{queuedSongDetail(song)}</span>
+						<span class="truncate text-soft">{queuedSongDetail(song)}</span>
 					</li>
 				{/each}
 			</ol>
@@ -240,7 +240,7 @@
 	{/if}
 
 	{#if routeError}
-		<p class="p-[0.65rem] px-3.5 border border-border rounded-[20px] bg-danger/20 text-danger/70">{routeError}</p>
+		<p class="p-[0.65rem] px-3.5 border border-outline rounded-[20px] bg-danger/20 text-danger/70">{routeError}</p>
 	{/if}
 </section>
 

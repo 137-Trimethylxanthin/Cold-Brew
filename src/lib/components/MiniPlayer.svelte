@@ -72,7 +72,7 @@
 
 <div class="miniplayer">
 	<div class="flex items-center gap-3 min-w-0">
-		<div class="w-12 h-12 relative overflow-hidden border border-border rounded-[14px]" aria-hidden="true">
+		<div class="w-12 h-12 relative overflow-hidden border border-outline rounded-[14px]" aria-hidden="true">
 			{#if $currentSong.cover_art}
 				<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={`${$currentSong.title} album art`} />
 			{:else}
@@ -81,10 +81,10 @@
 		</div>
 		<div class="grid gap-0.5 min-w-0">
 			<strong class="truncate">{$currentSong.title}</strong>
-			<span class="truncate text-muted text-sm">{nowPlayingDetail()}</span>
+			<span class="truncate text-soft text-sm">{nowPlayingDetail()}</span>
 		</div>
 	</div>
-	<span class="text-muted font-mono tabular-nums whitespace-nowrap">{playbackTimeLabel()}</span>
+	<span class="text-soft font-mono tabular-nums whitespace-nowrap">{playbackTimeLabel()}</span>
 	<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
 	<div class="flex justify-center items-center gap-2">
 		<Button size="icon" variant="ghost" onclick={onPlayPrevious} disabled={!canPrev} aria-label="Previous track"><SkipBack class="size-5" /></Button>
@@ -93,7 +93,7 @@
 		<Button size="icon" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label="Stop"><Square class="size-5" /></Button>
 		<Button size="icon" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label="Next track"><SkipForward class="size-5" /></Button>
 	</div>
-	<label class="grid gap-[3px] text-muted text-[0.78rem]">
+	<label class="grid gap-[3px] text-soft text-[0.78rem]">
 		<span>Volume {$volume}</span>
 		<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={(v: number[]) => volume.set(v[0] / 100)} />
 	</label>

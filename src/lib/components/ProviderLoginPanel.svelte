@@ -19,7 +19,7 @@
 	}
 </script>
 
-<section class="grid gap-2.5 border border-border rounded-[20px] p-3 bg-surface-2/[0.42]">
+<section class="grid gap-2.5 border border-outline rounded-[20px] p-3 bg-surface-2/[0.42]">
 	<div class="flex max-lg:grid items-start justify-between gap-2.5">
 		<div>
 			<h3 class="m-0 text-[0.9rem]">{providerName}</h3>

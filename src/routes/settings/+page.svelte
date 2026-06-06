@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import type {
 		AudioOutputDevice,
+		CrossfeedState,
 		JellyfinAccount,
 		LastFmScrobbleStatus,
 		LibraryStats,
@@ -26,6 +27,8 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Slider } from '$lib/components/ui/slider';
 	import ProviderLoginPanel from '$lib/components/ProviderLoginPanel.svelte';
+	import Equalizer from '$lib/components/Equalizer.svelte';
+	import { crossfeedState } from '$lib/stores';
 	import { t, setLocale, type Locale, localeName, initLocale } from '$lib/i18n';
 
 	let account: JellyfinAccount | null = null;
@@ -175,6 +178,7 @@
 	void loadServiceCapabilities(); void loadProviderAccounts();
 	void loadProviderLoginStates(); void loadLastFmScrobbleStatus();
 	void loadProviderStatuses();
+	void loadCrossfeed();
 	void loadAllDevStates();
 	restoreAccentAndDensity();
 	restoreLocaleAndContrast();
@@ -414,6 +418,27 @@
 	function formatSampleRate(sampleRate: number) {
 		const value = sampleRate / 1000;
 		return `${Number.isInteger(value) ? value : value.toFixed(1)} kHz`;
+	}
+
+	async function loadCrossfeed() {
+		error = '';
+		try {
+			const state = await invoke<CrossfeedState>('get_crossfeed');
+			crossfeedState.set(state);
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
+	}
+
+	async function setCrossfeedLevel() {
+		error = ''; message = '';
+		try {
+			const state = await invoke<CrossfeedState>('set_crossfeed', { level: $crossfeedState.level });
+			crossfeedState.set(state);
+			message = `Crossfeed set to \"${state.level}\".`;
+		} catch (err) {
+			error = toErrorMessage(err);
+		}
 	}
 
 	function stateLabel(value: string) {
@@ -1024,6 +1049,28 @@
 				</label>
 				<div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={loadAudioOutputs}>Refresh devices</Button></div>
 			</section>
+
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Crossfeed</h2>
+					<p class="text-soft text-sm">Simulates speaker crosstalk for headphone listening. No DSP yet — level is stored for future use.</p>
+				</div>
+				<label class="grid gap-2 text-soft text-sm">
+					Level
+					<Select.Root value={$crossfeedState.level} onValueChange={async (v: string) => { crossfeedState.update(s => ({ ...s, level: v })); await setCrossfeedLevel(); }}>
+						<Select.Trigger class="w-[180px]">
+							<SelectPrimitive.Value placeholder="Select level" />
+						</Select.Trigger>
+						<Select.Content>
+							<Select.Item value="off">Off</Select.Item>
+							<Select.Item value="light">Light</Select.Item>
+							<Select.Item value="strong">Strong</Select.Item>
+						</Select.Content>
+					</Select.Root>
+				</label>
+			</section>
+
+			<Equalizer />
 
 			<section class="settings-panel">
 				<div>

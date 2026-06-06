@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { playbackStatus, currentSong, volume, playbackSettings } from '$lib/stores';
+	import { playbackStatus, currentSong, volume, playbackSettings, sleepTimerState, abRepeatState } from '$lib/stores';
 	import { playbackQualityLabel } from '$lib/playback';
-	import type { Song } from '$lib/types';
-	import { SkipBack, Play, Pause, Square, SkipForward, Minimize2, Maximize2 } from '@lucide/svelte';
+	import type { AbRepeatState, SleepTimerState, Song } from '$lib/types';
+	import { SkipBack, Play, Pause, Square, SkipForward, Minimize2, Maximize2, Timer, RotateCcw } from '@lucide/svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Slider } from '$lib/components/ui/slider';
 	import { t } from '$lib/i18n';
+	import { invoke } from '@tauri-apps/api/core';
 
 	let {
 		onPlayPrevious = () => {},
@@ -39,6 +40,17 @@
 
 	const SPEED_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
 	let showSpeedMenu = $state(false);
+	let showSleepMenu = $state(false);
+
+	const SLEEP_OPTIONS = [
+		{ label: 'Off', value: null },
+		{ label: '15 min', value: 15 },
+		{ label: '30 min', value: 30 },
+		{ label: '45 min', value: 45 },
+		{ label: '60 min', value: 60 },
+		{ label: '90 min', value: 90 },
+		{ label: '120 min', value: 120 },
+	];
 
 	const COMPACT_KEY = 'coldbrew.miniplayer.compact';
 
@@ -84,6 +96,59 @@
 		const status = $playbackStatus;
 		if (status?.current_path) return playbackQualityLabel(status);
 		return '\u2014';
+	}
+
+	async function setSleepTimer(minutes: number | null) {
+		showSleepMenu = false;
+		try {
+			const state = await invoke<SleepTimerState>('set_sleep_timer', { minutes });
+			sleepTimerState.set(state);
+		} catch (err) {
+			console.error('Sleep timer error:', err);
+		}
+	}
+
+	function sleepTimerLabel() {
+		const s = $sleepTimerState;
+		if (!s.active || !s.remaining_seconds) return '';
+		const mins = Math.floor(s.remaining_seconds / 60);
+		const secs = s.remaining_seconds % 60;
+		return `${mins}:${secs.toString().padStart(2, '0')}`;
+	}
+
+	async function setAbRepeatA() {
+		try {
+			const state = await invoke<AbRepeatState>('set_ab_repeat_a', { positionSecs: null });
+			abRepeatState.set(state);
+		} catch (err) {
+			console.error('AB Repeat A error:', err);
+		}
+	}
+
+	async function setAbRepeatB() {
+		try {
+			const state = await invoke<AbRepeatState>('set_ab_repeat_b', { positionSecs: null });
+			abRepeatState.set(state);
+		} catch (err) {
+			console.error('AB Repeat B error:', err);
+		}
+	}
+
+	async function clearAbRepeat() {
+		try {
+			const state = await invoke<AbRepeatState>('clear_ab_repeat');
+			abRepeatState.set(state);
+		} catch (err) {
+			console.error('AB Repeat clear error:', err);
+		}
+	}
+
+	function abRepeatLabel() {
+		const s = $abRepeatState;
+		if (!s.loop_start_secs && !s.loop_end_secs) return '';
+		if (s.active) return 'AB';
+		if (s.loop_start_secs && !s.loop_end_secs) return 'A...';
+		return 'AB';
 	}
 </script>
 
@@ -167,6 +232,16 @@
 				{/if}
 			</div>
 		</div>
+
+		<!-- AB Repeat buttons -->
+		<div class="flex items-center gap-1">
+			<Button size="icon" variant={$abRepeatState.loop_start_secs ? 'default' : 'ghost'} onclick={setAbRepeatA} aria-label="Set A marker" class="font-mono text-xs">A</Button>
+			<Button size="icon" variant={$abRepeatState.loop_end_secs ? 'default' : 'ghost'} onclick={setAbRepeatB} aria-label="Set B marker" class="font-mono text-xs">B</Button>
+			{#if $abRepeatState.active}
+				<Button size="icon" variant="ghost" onclick={clearAbRepeat} aria-label="Clear AB repeat"><RotateCcw class="size-4" /></Button>
+			{/if}
+		</div>
+
 		<label class="grid gap-2 text-soft text-sm">
 			<span>{t('transport.volume')} {$volume}</span>
 			<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={(v: number[]) => volume.set(v[0] / 100)} />
@@ -174,6 +249,35 @@
 		<Button size="icon" variant="ghost" onclick={toggleCompact} aria-label={t('transport.compact')} title={t('transport.compact')} class="self-end">
 			<Minimize2 class="size-4" />
 		</Button>
+
+		<!-- Sleep timer -->
+		<div class="relative self-end">
+			<Button
+				size="icon"
+				variant={$sleepTimerState.active ? 'default' : 'ghost'}
+				onclick={() => (showSleepMenu = !showSleepMenu)}
+				aria-label="Sleep timer"
+				class="font-mono text-xs"
+			>
+				{#if $sleepTimerState.active && sleepTimerLabel()}
+					{sleepTimerLabel()}
+				{:else}
+					<Timer class="size-4" />
+				{/if}
+			</Button>
+			{#if showSleepMenu}
+				<div class="absolute bottom-full mb-2 right-0 bg-surface border border-outline rounded-xl shadow-xl p-1 z-50 min-w-[100px]">
+					{#each SLEEP_OPTIONS as opt}
+						<button
+							class="block w-full text-left px-3 py-1.5 rounded-lg text-sm hover:bg-surface-2 transition-colors text-soft"
+							onclick={() => setSleepTimer(opt.value as number | null)}
+						>
+							{opt.label}
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
 {/if}
 

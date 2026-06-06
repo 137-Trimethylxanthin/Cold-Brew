@@ -318,3 +318,29 @@ export type DiscoveryResult = {
 	deep_cuts: DiscoverySection;
 	new_additions: DiscoverySection;
 };
+
+export type EqState = {
+	bands: number[];
+	preset_name: string;
+};
+
+export type EqPreset = {
+	name: string;
+	bands: number[];
+};
+
+export type CrossfeedState = {
+	level: string;
+};
+
+export type SleepTimerState = {
+	active: boolean;
+	remaining_seconds: number | null;
+	total_seconds: number | null;
+};
+
+export type AbRepeatState = {
+	active: boolean;
+	loop_start_secs: number | null;
+	loop_end_secs: number | null;
+};

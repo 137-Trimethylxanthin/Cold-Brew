@@ -86,6 +86,18 @@ pub fn run() {
             set_playback_speed,
             set_mono_downmix,
             set_preamp_gain,
+            crate::audio::equalizer::get_eq_state,
+            crate::audio::equalizer::set_eq_band,
+            crate::audio::equalizer::set_eq_preset,
+            crate::audio::equalizer::list_eq_presets,
+            crate::audio::crossfeed::get_crossfeed,
+            crate::audio::crossfeed::set_crossfeed,
+            crate::audio::sleep_timer::set_sleep_timer,
+            crate::audio::sleep_timer::get_sleep_timer_remaining,
+            crate::audio::ab_repeat::set_ab_repeat_a,
+            crate::audio::ab_repeat::set_ab_repeat_b,
+            crate::audio::ab_repeat::clear_ab_repeat,
+            crate::audio::ab_repeat::get_ab_repeat,
             undo_last_skip,
             queue_history,
             shuffle_queue_command,
@@ -558,6 +570,7 @@ fn set_playback_volume(volume: f32) -> Result<crate::audio::player::PlaybackStat
 #[tauri::command(rename_all = "snake_case")]
 fn get_playback_status(app: AppHandle) -> Result<crate::audio::player::PlaybackStatus, String> {
     let status = crate::audio::player::get_playback_status()?;
+    let _ = crate::audio::ab_repeat::check_and_handle_ab_repeat();
     handle_playback_transitions(&app)?;
     save_status_position(&app, &status)?;
     Ok(status)

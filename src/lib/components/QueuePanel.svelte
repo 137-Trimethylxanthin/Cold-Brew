@@ -3,6 +3,7 @@
 	import { formatSource, playbackQualityLabel, formatSampleRate, formatDb } from '$lib/playback';
 	import type { Song } from '$lib/types';
 	import { invoke } from '@tauri-apps/api/core';
+	import { Button } from '$lib/components/ui/button';
 
 	let {
 		upcomingSongs = [],
@@ -182,7 +183,7 @@
 							<small class="truncate text-muted text-[0.76rem]">{queuedSongDetail(song)}</small>
 							{/if}
 							</span>
-							<button class="min-h-8 px-[0.65rem] text-[0.76rem]" onclick={() => onRemove(song)}>Remove</button>
+							<Button variant="ghost" size="sm" onclick={() => onRemove(song)}>Remove</Button>
 							</li>
 				{/each}
 			</ol>

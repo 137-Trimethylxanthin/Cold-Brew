@@ -4,6 +4,8 @@
 	import * as Sheet from '$lib/components/ui/sheet';
 	import * as Table from '$lib/components/ui/table';
 	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
+	import * as Select from '$lib/components/ui/select';
 	import { Play, ListPlus, Plus, Info } from '@lucide/svelte';
 	import type {
 		LibraryTrack,
@@ -651,8 +653,8 @@
 	<div class="library-playlist-grid">
 		<div class="grid content-start gap-1.5 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
-				<input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
-				<Button variant="default" size="sm" onclick={createPlaylist}>Create</Button>
+			<Input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" class="flex-1 min-w-[min(100%,160px)]" />
+			<Button variant="default" size="sm" onclick={createPlaylist}>Create</Button>
 			</div>
 			{#if playlists.length === 0}
 				<p>No playlists yet</p>
@@ -672,12 +674,12 @@
 
 		<div class="grid gap-2.5 border border-border rounded-[20px] p-2.5 bg-surface-2/[0.42]">
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
-				<input bind:value={playlistImportPath} placeholder="/path/list.m3u" aria-label="M3U import path" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
-				<Button variant="default" size="sm" onclick={importPlaylist}>Import</Button>
+			<Input bind:value={playlistImportPath} placeholder="/path/list.m3u" aria-label="M3U import path" class="flex-1 min-w-[min(100%,160px)]" />
+			<Button variant="default" size="sm" onclick={importPlaylist}>Import</Button>
 			</div>
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
-				<input bind:value={playlistExportPath} placeholder="/path/export.m3u8" aria-label="M3U export path" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
-				<Button variant="default" size="sm" onclick={exportPlaylist} disabled={selectedPlaylistId === null}>Export</Button>
+			<Input bind:value={playlistExportPath} placeholder="/path/export.m3u8" aria-label="M3U export path" class="flex-1 min-w-[min(100%,160px)]" />
+			<Button variant="default" size="sm" onclick={exportPlaylist} disabled={selectedPlaylistId === null}>Export</Button>
 			</div>
 
 			{#if selectedPlaylist}
@@ -770,14 +772,19 @@
 		<span class="text-muted text-sm">{loadingRemote ? 'Loading...' : `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span>
 	</div>
 	<div class="library-scan-row">
-		<select bind:value={selectedRemoteProvider} onchange={changeRemoteProvider} class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem]">
-			{#each remoteProviderOptions as provider}
-				<option value={provider.id}>{provider.label}</option>
-			{/each}
-		</select>
-		<input bind:value={remoteQuery} placeholder="Track, artist, album" aria-label="Remote search" class="flex-1 min-w-[min(100%,160px)] border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
+		<Select.Root bind:value={selectedRemoteProvider} onValueChange={() => changeRemoteProvider()}>
+			<Select.Trigger class="flex-1 min-w-[min(100%,160px)]">
+				{remoteProviderLabel(selectedRemoteProvider)}
+			</Select.Trigger>
+			<Select.Content>
+				{#each remoteProviderOptions as provider}
+					<Select.Item value={provider.id}>{provider.label}</Select.Item>
+				{/each}
+			</Select.Content>
+		</Select.Root>
+		<Input bind:value={remoteQuery} placeholder="Track, artist, album" aria-label="Remote search" class="flex-1 min-w-[min(100%,160px)]" />
 		{#if selectedRemoteProvider === 'tidal'}
-			<input bind:value={remoteCountryCode} placeholder="US" aria-label="TIDAL country code" class="flex-[0_0_72px] min-w-[72px] uppercase border border-border rounded-full bg-surface/88 text-fg py-2 px-[0.65rem] placeholder:text-muted/70" />
+			<Input bind:value={remoteCountryCode} placeholder="US" aria-label="TIDAL country code" class="flex-[0_0_72px] min-w-[72px] uppercase" />
 		{/if}
 		<Button variant="default" size="sm" onclick={searchRemote} disabled={loadingRemote}>Search</Button>
 		<Button variant="outline" size="sm" onclick={loadRemotePlaylists} disabled={loadingRemotePlaylists || !remotePlaylistsSupported()}>Playlists</Button>

@@ -6,6 +6,8 @@
 	import { formatSource, formatSampleRate, emptySong } from '$lib/playback';
 	import NowPlaying from '$lib/components/NowPlaying.svelte';
 	import { SkipBack, Play, Pause, Square, SkipForward } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Slider } from '$lib/components/ui/slider';
 
 	let upcomingSongs: Song[] = $state([]);
 	let oldSongs: Song[] = $state([]);
@@ -59,13 +61,6 @@
 			await refreshPlayerRoute();
 			routeError = '';
 		} catch (error) { routeError = toErrorMessage(error); }
-	}
-
-	async function handleVolumeChange(event: Event) {
-		const input = event.currentTarget as HTMLInputElement;
-		const val = Number(input.value);
-		$volume = val;
-		try { await invoke<PlaybackStatus>('set_playback_volume', { volume: val }); } catch { /* Browser-only dev */ }
 	}
 
 	function nowPlayingDetail() {
@@ -147,28 +142,27 @@
 			</div>
 
 			<div class="player-transport" aria-label="Playback controls">
-				<button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0}>
-					<SkipBack class="size-4" /> Prev
-				</button>
-				<button class="player-transport-main" onclick={playRouteSelection}
-					disabled={$currentSong.id === '' && upcomingSongs.length === 0}>
-					<Play class="size-4" /> Play
-				</button>
-				<button onclick={() => runPlayerCommand('playback_pause')} disabled={!$playbackStatus?.playing}>
-					<Pause class="size-4" /> Pause
-				</button>
-				<button onclick={() => runPlayerCommand('playback_stop')} disabled={!$playbackStatus?.current_path}>
-					<Square class="size-4" /> Stop
-				</button>
-				<button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0}>
-					<SkipForward class="size-4" /> Next
-				</button>
+			<Button onclick={() => runPlayerCommand('play_previous_queue_song')} disabled={oldSongs.length === 0}>
+			<SkipBack class="size-4" /> Prev
+			</Button>
+			<Button class="player-transport-main" onclick={playRouteSelection}
+			disabled={$currentSong.id === '' && upcomingSongs.length === 0}>
+			<Play class="size-4" /> Play
+			</Button>
+			<Button onclick={() => runPlayerCommand('playback_pause')} disabled={!$playbackStatus?.playing}>
+			<Pause class="size-4" /> Pause
+			</Button>
+			<Button onclick={() => runPlayerCommand('playback_stop')} disabled={!$playbackStatus?.current_path}>
+			<Square class="size-4" /> Stop
+			</Button>
+			<Button onclick={() => runPlayerCommand('play_next_queue_song')} disabled={upcomingSongs.length === 0}>
+			<SkipForward class="size-4" /> Next
+			</Button>
 			</div>
 
 			<label class="grid gap-[3px] text-muted text-[0.78rem]">
-				<span>Volume</span>
-				<input type="range" min="0" max="1" step="0.01" value={$volume}
-					oninput={handleVolumeChange} aria-label="Playback volume" class="w-full accent-accent" />
+			<span>Volume {$volume}</span>
+			<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={async (v: number[]) => { const val = v[0] / 100; $volume = val; try { await invoke('set_playback_volume', { volume: val }); } catch { /* Browser-only dev */ } }} />
 			</label>
 		</div>
 	</section>

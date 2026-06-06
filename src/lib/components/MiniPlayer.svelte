@@ -3,6 +3,8 @@
 	import { playbackQualityLabel } from '$lib/playback';
 	import type { Song } from '$lib/types';
 	import { SkipBack, Play, Pause, Square, SkipForward } from '@lucide/svelte';
+	import { Button } from '$lib/components/ui/button';
+	import { Slider } from '$lib/components/ui/slider';
 
 	let {
 		onPlayPrevious = () => {},
@@ -85,15 +87,14 @@
 	<span class="text-muted font-mono tabular-nums whitespace-nowrap">{playbackTimeLabel()}</span>
 	<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
 	<div class="flex justify-center items-center gap-2">
-		<button onclick={onPlayPrevious} disabled={!canPrev} class="rounded-full w-10 h-10" aria-label="Previous track"><SkipBack class="size-5" /></button>
-		<button onclick={onResume} disabled={!canPlay || isPlaying} class="rounded-full w-10 h-10" aria-label="Play"><Play class="size-5" /></button>
-		<button onclick={onPause} disabled={!isPauseEnabled} class="rounded-full w-10 h-10" aria-label="Pause"><Pause class="size-5" /></button>
-		<button onclick={onStop} disabled={!isStopEnabled} class="rounded-full w-10 h-10" aria-label="Stop"><Square class="size-5" /></button>
-		<button onclick={onPlayNext} disabled={!canNext} class="rounded-full w-10 h-10" aria-label="Next track"><SkipForward class="size-5" /></button>
+		<Button size="icon" variant="ghost" onclick={onPlayPrevious} disabled={!canPrev} aria-label="Previous track"><SkipBack class="size-5" /></Button>
+		<Button size="icon" variant="ghost" onclick={onResume} disabled={!canPlay || isPlaying} aria-label="Play"><Play class="size-5" /></Button>
+		<Button size="icon" variant="ghost" onclick={onPause} disabled={!isPauseEnabled} aria-label="Pause"><Pause class="size-5" /></Button>
+		<Button size="icon" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label="Stop"><Square class="size-5" /></Button>
+		<Button size="icon" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label="Next track"><SkipForward class="size-5" /></Button>
 	</div>
 	<label class="grid gap-[3px] text-muted text-[0.78rem]">
-		<span>Volume</span>
-		<input type="range" min="0" max="1" step="0.01" value={$volume}
-			oninput={onVolumeChange} aria-label="Playback volume" class="w-full accent-accent" />
+		<span>Volume {$volume}</span>
+		<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={(v: number[]) => volume.set(v[0] / 100)} />
 	</label>
 </div>

@@ -65,6 +65,7 @@ pub fn scan_library_path(app: &AppHandle, root: String) -> Result<ScanSummary, S
         skipped_files: 0,
         tracks: Vec::new(),
     };
+    let mut zero_byte_count: usize = 0;
 
     for entry in WalkDir::new(&root_path).follow_links(false) {
         let entry = match entry {
@@ -77,6 +78,19 @@ pub fn scan_library_path(app: &AppHandle, root: String) -> Result<ScanSummary, S
         let path = entry.path();
 
         if !path.is_file() || !is_audio_path(path) {
+            continue;
+        }
+
+        let meta = match fs::metadata(path) {
+            Ok(m) => m,
+            Err(_) => {
+                summary.skipped_files += 1;
+                continue;
+            }
+        };
+        if meta.len() == 0 {
+            zero_byte_count += 1;
+            summary.skipped_files += 1;
             continue;
         }
 
@@ -93,6 +107,12 @@ pub fn scan_library_path(app: &AppHandle, root: String) -> Result<ScanSummary, S
         }
     }
 
+    if zero_byte_count > 0 {
+        tracing::warn!(
+            zero_byte_count,
+            "Skipped zero-byte audio files during library scan"
+        );
+    }
     tracing::info!(
         scanned = summary.scanned_files,
         indexed = summary.indexed_tracks,
@@ -278,7 +298,9 @@ fn open_database(app: &AppHandle) -> Result<Connection, String> {
 fn initialize_database(connection: &Connection) -> Result<(), String> {
     connection
         .execute_batch(
-            "CREATE TABLE IF NOT EXISTS tracks (
+            "PRAGMA journal_mode=WAL;
+             PRAGMA cache_size=-8000;
+             CREATE TABLE IF NOT EXISTS tracks (
                 path TEXT PRIMARY KEY NOT NULL,
                 title TEXT NOT NULL,
                 artist TEXT,
@@ -296,7 +318,11 @@ fn initialize_database(connection: &Connection) -> Result<(), String> {
                 source TEXT NOT NULL DEFAULT 'local',
                 added_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );",
+            );
+             CREATE INDEX IF NOT EXISTS idx_tracks_artist ON tracks(artist);
+             CREATE INDEX IF NOT EXISTS idx_tracks_album ON tracks(album);
+             CREATE INDEX IF NOT EXISTS idx_tracks_title ON tracks(title);
+             CREATE INDEX IF NOT EXISTS idx_tracks_file_path ON tracks(path);",
         )
         .map_err(database_error)
 }
@@ -349,6 +375,57 @@ fn upsert_track(connection: &Connection, track: &LibraryTrack) -> Result<(), Str
 
 fn database_error(error: rusqlite::Error) -> String {
     format!("Library database error: {error}")
+}
+
+#[instrument(skip(app))]
+pub fn get_tracks_page(
+    app: &AppHandle,
+    page: usize,
+    per_page: usize,
+) -> Result<Vec<LibraryTrack>, String> {
+    let connection = open_database(app)?;
+    initialize_database(&connection)?;
+    let offset = page.saturating_mul(per_page);
+
+    let mut statement = connection
+        .prepare(
+            "SELECT path, title, artist, album, genre, track_number, duration_ms,
+                    sample_rate, bit_depth, bitrate, file_size, modified_secs, extension, has_artwork
+             FROM tracks
+             ORDER BY album COLLATE NOCASE, track_number, title COLLATE NOCASE
+             LIMIT ?1 OFFSET ?2",
+        )
+        .map_err(database_error)?;
+
+    let rows = statement
+        .query_map(params![per_page as i64, offset as i64], |row| {
+            let duration_ms: Option<i64> = row.get(6)?;
+            let file_size: i64 = row.get(10)?;
+            let has_artwork: i64 = row.get(13)?;
+            Ok(LibraryTrack {
+                path: row.get(0)?,
+                title: row.get(1)?,
+                artist: row.get(2)?,
+                album: row.get(3)?,
+                genre: row.get(4)?,
+                track_number: row.get(5)?,
+                duration_ms: duration_ms.and_then(|value| u64::try_from(value).ok()),
+                sample_rate: row.get(7)?,
+                bit_depth: row.get(8)?,
+                bitrate: row.get(9)?,
+                file_size: u64::try_from(file_size).unwrap_or_default(),
+                modified_secs: row.get(11)?,
+                extension: row.get(12)?,
+                has_artwork: has_artwork != 0,
+            })
+        })
+        .map_err(database_error)?;
+
+    let mut tracks = Vec::new();
+    for row in rows {
+        tracks.push(row.map_err(database_error)?);
+    }
+    Ok(tracks)
 }
 
 #[derive(Clone, Debug, Serialize)]

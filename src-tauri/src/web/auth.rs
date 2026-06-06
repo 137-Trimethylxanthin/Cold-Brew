@@ -970,7 +970,7 @@ const JELLYFIN_BASE_URL: &str = "jellyfin.base_url";
 const JELLYFIN_USER_NAME: &str = "jellyfin.user_name";
 const JELLYFIN_PASSWORD: &str = "jellyfin.password";
 const PROVIDER_ACCOUNT_IDS: &[&str] =
-    &["spotify", "tidal", "qobuz", "youtube", "lastfm", "bandcamp"];
+    &["spotify", "tidal", "qobuz", "youtube", "lastfm", "bandcamp", "soundcloud"];
 const PROVIDER_ACCOUNT_FIELDS: &[&str] = &[
     "display_name",
     "client_id",
@@ -1338,6 +1338,11 @@ fn provider_login_state_from_account(
             "link_out_only",
             "No supported Bandcamp login flow is implemented; use link-out or local downloads.",
         ),
+        "soundcloud" => api_key_login_state(
+            account.as_ref(),
+            "SoundCloud API key saved; metadata search and previews can run.",
+            "Save a SoundCloud API key or use the built-in default client ID before using SoundCloud search.",
+        ),
         _ => (
             "missing",
             "No credential status is available for this provider.",
@@ -1442,6 +1447,21 @@ fn credentials_credentials_youtube_login_state(account: Option<&ProviderAccount>
             "partial",
             "YouTube credentials are incomplete; a Data API key or OAuth access token is required.",
         )
+    }
+}
+
+fn api_key_login_state(
+    account: Option<&ProviderAccount>,
+    ready_message: &'static str,
+    missing_message: &'static str,
+) -> (&'static str, &'static str) {
+    let Some(account) = account else {
+        return ("missing", missing_message);
+    };
+    if account.has_api_key {
+        ("ready", ready_message)
+    } else {
+        ("partial", missing_message)
     }
 }
 

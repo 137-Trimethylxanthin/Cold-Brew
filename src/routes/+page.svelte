@@ -48,6 +48,12 @@
 	let playlistImportPath = $state('');
 	let playlistExportPath = $state('');
 	let localTracks: LibraryTrack[] = $state([]);
+	let displayedTrackCount = $state(0);
+	const PER_PAGE = 100;
+	let loadingMore = $state(false);
+	let allTracksLoaded = $state(false);
+	let isOffline = $state(!navigator.onLine);
+	let offlineToastShown = $state(false);
 	let jellyfinSongs: Song[] = $state([]);
 	let selectedRemoteProvider: RemoteProvider = $state('spotify');
 	let remoteQuery = $state('');
@@ -97,13 +103,48 @@
 		void loadPlaylists();
 		void loadListeningHistory();
 		void refreshSpotifyNativeStatus();
+
+		const updateOnline = () => {
+			isOffline = !navigator.onLine;
+			if (isOffline && !offlineToastShown) {
+				offlineToastShown = true;
+			}
+		};
+		window.addEventListener('online', updateOnline);
+		window.addEventListener('offline', updateOnline);
+
+		return () => {
+			window.removeEventListener('online', updateOnline);
+			window.removeEventListener('offline', updateOnline);
+		};
 	});
+
+	function displayedTracks() {
+		return sortedLocalTracks().slice(0, displayedTrackCount);
+	}
+
+	function hasMoreTracks() {
+		return displayedTrackCount < localTracks.length;
+	}
+
+	async function loadMoreTracks() {
+		if (loadingMore || !hasMoreTracks()) return;
+		loadingMore = true;
+		await new Promise((r) => setTimeout(r, 0));
+		displayedTrackCount = Math.min(
+			displayedTrackCount + PER_PAGE,
+			localTracks.length
+		);
+		loadingMore = false;
+	}
 
 	async function loadLocalLibrary() {
 		loadingLibrary = true;
 		error = '';
 		try {
 			localTracks = await invoke<LibraryTrack[]>('list_library_tracks');
+			displayedTrackCount = Math.min(PER_PAGE, localTracks.length);
+			allTracksLoaded = displayedTrackCount >= localTracks.length;
 		} catch (err) {
 			error = toErrorMessage(err);
 		} finally {
@@ -128,6 +169,10 @@
 	async function searchRemote() {
 		if (!remoteQuery.trim()) {
 			error = `Enter a ${remoteProviderLabel(selectedRemoteProvider)} search query.`;
+			return;
+		}
+		if (isOffline) {
+			error = 'Offline - showing local files only. Remote search is unavailable.';
 			return;
 		}
 
@@ -317,6 +362,14 @@
 	}
 
 	function queueLocal(track: LibraryTrack) { void queueSong(localTrackToSong(track)); }
+
+	function trackDisplayArtist(track: LibraryTrack) {
+		return track.artist || 'Unknown Artist';
+	}
+
+	function trackDisplayAlbum(track: LibraryTrack) {
+		return track.album || 'Unknown Album';
+	}
 
 	async function inspectTrack(track: LibraryTrack) {
 		selectedTrack = track;
@@ -604,6 +657,9 @@
 	<div class="relative z-[1]">
 		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]">Library</h1>
 		<p class="text-soft text-sm">{localTracks.length} local tracks indexed — scan new paths in Settings</p>
+		{#if isOffline}
+			<p class="text-warning text-sm mt-1">Offline — showing local files only</p>
+		{/if}
 	</div>
 	<div class="flex gap-2 relative z-[1]">
 		<Button variant="secondary" size="sm" onclick={loadLocalLibrary} disabled={loadingLibrary}>Refresh</Button>
@@ -720,16 +776,16 @@
 			</Table.Row>
 		</Table.Header>
 		<Table.Body>
-			{#each sortedLocalTracks().slice(0, 100) as track}
+			{#each displayedTracks() as track}
 				<Table.Row class="border-b border-outline/60 hover:bg-surface/50 transition-colors">
 					<Table.Cell class="px-3 py-2 align-middle min-w-0">
 						<div class="truncate">
-							<strong class="text-sm">{track.title}</strong>
+							<strong class="text-sm truncate block" title={track.title}>{track.title}</strong>
 							<span class="text-soft text-xs ml-1.5">{track.extension.toUpperCase()}{track.has_artwork ? ' · Art' : ''}</span>
 						</div>
 					</Table.Cell>
-					{#if visibleColumns.artist}<Table.Cell class="px-3 py-2 align-middle min-w-0"><span class="truncate block text-sm">{track.artist ?? '—'}</span></Table.Cell>{/if}
-					{#if visibleColumns.album}<Table.Cell class="px-3 py-2 align-middle min-w-0"><span class="truncate block text-sm">{track.album ?? '—'}</span></Table.Cell>{/if}
+					{#if visibleColumns.artist}<Table.Cell class="px-3 py-2 align-middle min-w-0"><span class="truncate block text-sm" title={trackDisplayArtist(track)}>{trackDisplayArtist(track)}</span></Table.Cell>{/if}
+					{#if visibleColumns.album}<Table.Cell class="px-3 py-2 align-middle min-w-0"><span class="truncate block text-sm" title={trackDisplayAlbum(track)}>{trackDisplayAlbum(track)}</span></Table.Cell>{/if}
 					{#if visibleColumns.quality}<Table.Cell class="px-3 py-2 align-middle text-sm text-soft font-mono">{formatQuality(track)}</Table.Cell>{/if}
 					{#if visibleColumns.duration}<Table.Cell class="px-3 py-2 align-middle text-sm text-soft font-mono tabular-nums">{formatDuration(track.duration_ms)}</Table.Cell>{/if}
 					<Table.Cell class="px-1.5 py-1.5 align-middle">
@@ -745,6 +801,13 @@
 		</Table.Body>
 	</Table.Root>
 	</div>
+	{#if hasMoreTracks()}
+		<div class="flex justify-center mt-3">
+			<Button variant="outline" size="sm" onclick={loadMoreTracks} disabled={loadingMore}>
+				{loadingMore ? 'Loading...' : `Load ${Math.min(PER_PAGE, localTracks.length - displayedTrackCount)} more (${displayedTrackCount}/${localTracks.length} shown)`}
+			</Button>
+		</div>
+	{/if}
 
 </section>
 

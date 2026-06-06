@@ -82,6 +82,7 @@ pub fn reset_to_default(provider: &str) -> Result<(), String> {
         "youtube" => vec!["api_key"],
         "lastfm" => vec!["api_key", "api_secret"],
         "bandcamp" => vec![],
+        "soundcloud" => vec!["api_key"],
         _ => return Err(format!("Unknown provider: {provider}")),
     };
 

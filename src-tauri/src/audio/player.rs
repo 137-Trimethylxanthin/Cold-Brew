@@ -196,12 +196,23 @@ impl AudioPlayer {
         }
 
         let settings = self.playback_settings_snapshot();
-        let prepared_tracks = tracks
-            .iter()
-            .map(|track| {
-                prepare_local_track(track, self.replay_gain_mode, &settings)
-            })
-            .collect::<Result<Vec<_>, _>>()?;
+        let mut prepared_tracks: Vec<_> = Vec::new();
+        for track in &tracks {
+            match prepare_local_track(track, self.replay_gain_mode, &settings) {
+                Ok(pt) => prepared_tracks.push(pt),
+                Err(err) => {
+                    tracing::warn!(
+                        path = %track.path,
+                        error = %err,
+                        "Skipping corrupted audio file"
+                    );
+                }
+            }
+        }
+
+        if prepared_tracks.is_empty() {
+            return Err("No playable tracks found — all files in the batch failed to decode.".to_string());
+        }
 
         let crossfade_ms = self.crossfade_duration_ms.filter(|&d| d > 0);
         let has_current = self.current_path.is_some()

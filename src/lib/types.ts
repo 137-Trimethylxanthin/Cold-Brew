@@ -289,3 +289,13 @@ export type AlbumStat = {
 	artist: string;
 	play_count: number;
 };
+
+export type RestoredSession = {
+	last_track_path: string | null;
+	last_track_title: string | null;
+	position_ms: number;
+	duration_ms: number | null;
+	volume: number;
+	queue_song_ids: string[];
+	queue_current_index: number;
+};

@@ -27,7 +27,7 @@ pub fn run() {
             tauri::async_runtime::spawn(async move {
                 crate::audio::player::run().await;
             });
-            crate::system::hotkeys::register_media_hotkeys(&_app.handle());
+            crate::system::hotkeys::register_media_hotkeys(_app.handle());
             crate::system::mpris::init_mpris();
             Ok(())
         })
@@ -51,6 +51,8 @@ pub fn run() {
             refresh_youtube_access_token,
             start_lastfm_login,
             finish_lastfm_login,
+            search_soundcloud_tracks,
+            search_youtube_music_tracks,
             save_provider_account,
             clear_provider_account,
             get_lastfm_scrobble_status,
@@ -129,7 +131,10 @@ pub fn run() {
             stop_folder_watcher,
             is_folder_watcher_running,
             crate::system::notifications::get_notification_setting,
-            crate::system::notifications::set_notification_setting
+            crate::system::notifications::set_notification_setting,
+            get_tracks_page,
+            restore_playback_session,
+            save_full_session_command
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -935,6 +940,7 @@ fn get_all_provider_statuses() -> Result<serde_json::Value, String> {
         ("youtube", "YouTube Music", "youtube"),
         ("lastfm", "Last.fm", "radio-tower"),
         ("bandcamp", "Bandcamp", "shopping-bag"),
+        ("soundcloud", "SoundCloud", "cloud"),
     ];
 
     let mut results = Vec::new();
@@ -1068,4 +1074,71 @@ fn stop_folder_watcher() {
 #[tauri::command(rename_all = "snake_case")]
 fn is_folder_watcher_running() -> bool {
     crate::storage::database::is_watcher_running()
+}
+
+// ── YouTube Music Search Command ──
+
+#[tauri::command(rename_all = "snake_case")]
+async fn search_youtube_music_tracks(
+    query: String,
+    limit: Option<u32>,
+) -> Result<Vec<crate::providers::remote::RemoteTrack>, String> {
+    crate::providers::youtube::search_youtube_music_as_remote(query, limit).await
+}
+
+// ── SoundCloud Search Command ──
+
+#[tauri::command(rename_all = "snake_case")]
+async fn search_soundcloud_tracks(
+    query: String,
+    limit: Option<u32>,
+) -> Result<Vec<crate::providers::remote::RemoteTrack>, String> {
+    crate::providers::soundcloud::search_soundcloud_as_remote(query, limit).await
+}
+
+// ── Pagination Command ──
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn get_tracks_page(
+    app: AppHandle,
+    page: usize,
+    per_page: usize,
+) -> Result<Vec<crate::storage::database::LibraryTrack>, String> {
+    crate::storage::database::get_tracks_page(&app, page, per_page)
+}
+
+// ── Crash Recovery Commands ──
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn restore_playback_session(
+    app: AppHandle,
+) -> Result<Option<crate::storage::playback_store::RestoredSession>, String> {
+    crate::storage::playback_store::restore_playback_session(&app)
+}
+
+#[allow(clippy::too_many_arguments)]
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn save_full_session_command(
+    app: AppHandle,
+    last_track_path: Option<String>,
+    last_track_title: Option<String>,
+    position_ms: u64,
+    duration_ms: Option<u64>,
+    volume: f32,
+    queue_song_ids: Vec<String>,
+    queue_current_index: usize,
+) -> Result<(), String> {
+    crate::storage::playback_store::save_full_session(
+        &app,
+        last_track_path.as_deref(),
+        last_track_title.as_deref(),
+        position_ms,
+        duration_ms,
+        volume,
+        &queue_song_ids,
+        queue_current_index,
+    )
 }

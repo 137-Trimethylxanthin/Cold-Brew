@@ -4,7 +4,7 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
 	import { toast, Toaster } from 'svelte-sonner';
-	import type { PlaybackSettings, PlaybackStatus, QueuePlaybackResult, QueueSnapshot, Song } from '$lib/types';
+	import type { PlaybackSettings, PlaybackStatus, QueuePlaybackResult, QueueSnapshot, RestoredSession, Song } from '$lib/types';
 	import { playbackStatus, currentSong, volume, playbackSettings } from '$lib/stores';
 	import { toErrorMessage, playbackQualityLabel, formatSource, formatSampleRate, formatDb, titleFromPath, emptySong } from '$lib/playback';
 	import SideNav from '$lib/components/SideNav.svelte';
@@ -50,7 +50,24 @@
 		return $page.url.pathname.startsWith(path);
 	}
 
+	let sessionSaveInterval: number | null = null;
+	let offlineToastShown = $state(false);
+
 	onMount(() => {
+		const updateOnline = () => {
+			if (!navigator.onLine && !offlineToastShown) {
+				offlineToastShown = true;
+				toast.warning('Offline — showing local files only');
+			} else if (navigator.onLine && offlineToastShown) {
+				offlineToastShown = false;
+				toast.success('Back online');
+			}
+		};
+		window.addEventListener('online', updateOnline);
+		window.addEventListener('offline', updateOnline);
+		updateOnline();
+
+		void restoreSession();
 		void refreshQueue();
 		void refreshPlaybackStatus();
 		const refreshTimer = window.setInterval(() => {
@@ -58,6 +75,9 @@
 			void refreshPlaybackStatus();
 			void refreshSpotifyState();
 		}, 1000);
+		sessionSaveInterval = window.setInterval(() => {
+			void saveCurrentSession();
+		}, 5000);
 		const onKeyDown = (event: KeyboardEvent) => {
 			if (isTypingTarget(event.target)) return;
 			if (event.code === 'Space') {
@@ -81,10 +101,56 @@
 
 		return () => {
 			window.clearInterval(refreshTimer);
+			if (sessionSaveInterval) window.clearInterval(sessionSaveInterval);
 			window.removeEventListener('keydown', onKeyDown);
+			window.removeEventListener('online', updateOnline);
+			window.removeEventListener('offline', updateOnline);
 			spotifyPlayer?.disconnect();
+			void saveCurrentSession();
 		};
 	});
+
+	async function restoreSession() {
+		try {
+			const session = await invoke<RestoredSession | null>('restore_playback_session');
+			if (!session?.last_track_path) return;
+
+			if (session.volume > 0) {
+				$volume = session.volume;
+				await invoke('set_playback_volume', { volume: session.volume }).catch(() => {});
+			}
+
+			if (session.queue_song_ids.length > 0) {
+				toast.info(`Restored ${session.queue_song_ids.length} queued tracks from previous session`);
+			}
+		} catch {
+			// session restore is best-effort
+		}
+	}
+
+	async function saveCurrentSession() {
+		try {
+			const queueSnapshot = await invoke<QueueSnapshot>('get_queue_snapshot').catch(() => null);
+			if (!queueSnapshot) return;
+
+			const songIds: string[] = [];
+			if (queueSnapshot.current_song) songIds.push(queueSnapshot.current_song.id);
+			for (const s of queueSnapshot.upcoming) songIds.push(s.id);
+
+			const status = $playbackStatus;
+			await invoke('save_full_session_command', {
+				lastTrackPath: status?.current_path ?? null,
+				lastTrackTitle: status?.current_title ?? null,
+				positionMs: status?.position_ms ?? 0,
+				durationMs: status?.duration_ms ?? null,
+				volume: $volume,
+				queueSongIds: songIds,
+				queueCurrentIndex: 0
+			});
+		} catch {
+			// session save is best-effort
+		}
+	}
 
 	async function refreshPlaybackStatus() {
 		try {

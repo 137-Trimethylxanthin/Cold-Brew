@@ -99,6 +99,7 @@
 			qobuz: [{ key: 'app_id', label: 'App ID' }, { key: 'app_secret', label: 'App Secret' }],
 			youtube: [{ key: 'api_key', label: 'API Key' }],
 			lastfm: [{ key: 'api_key', label: 'API Key' }, { key: 'api_secret', label: 'API Secret' }],
+			soundcloud: [{ key: 'api_key', label: 'API Key (Client ID)' }],
 		};
 		return byId[providerId] ?? [];
 	}
@@ -508,16 +509,16 @@
 
 	// Dev tab helper
 	async function loadAllDevStates() {
-		for (const pid of ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp']) {
+		for (const pid of ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp', 'soundcloud']) {
 			await loadDevProviderState(pid);
 		}
 	}
 
 	const devProviderNames: Record<string, string> = {
-		spotify: 'Spotify', tidal: 'TIDAL', qobuz: 'Qobuz', youtube: 'YouTube Music', lastfm: 'Last.fm', bandcamp: 'Bandcamp'
+		spotify: 'Spotify', tidal: 'TIDAL', qobuz: 'Qobuz', youtube: 'YouTube Music', lastfm: 'Last.fm', bandcamp: 'Bandcamp', soundcloud: 'SoundCloud'
 	};
 
-	const ALL_PROVIDER_IDS = ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp'];
+	const ALL_PROVIDER_IDS = ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp', 'soundcloud'];
 </script>
 
 <section class="settings-page" data-od-id="settings-page">
@@ -689,6 +690,11 @@
 					<ProviderLoginPanel providerId="bandcamp" providerName="Bandcamp" description="Link-out" loginState={loginStateForProvider('bandcamp')}>
 						<p>{loginStateForProvider('bandcamp')?.message ?? 'No Bandcamp login state available'}</p>
 						<a class="text-brand text-sm" href="https://bandcamp.com/developer" target="_blank" rel="noreferrer">Open Bandcamp developer docs</a>
+					</ProviderLoginPanel>
+
+					<ProviderLoginPanel providerId="soundcloud" providerName="SoundCloud" description="Built-in API key" loginState={loginStateForProvider('soundcloud')}>
+						<p>{loginStateForProvider('soundcloud')?.message ?? 'SoundCloud search uses a built-in client ID. Register your own app for higher rate limits.'}</p>
+						<a class="text-brand text-sm" href="https://developers.soundcloud.com/" target="_blank" rel="noreferrer">Open SoundCloud for Developers</a>
 					</ProviderLoginPanel>
 				</div>
 			</section>

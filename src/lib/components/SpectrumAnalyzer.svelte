@@ -9,7 +9,7 @@
 
 	let { bars = 28, height: defaultH = 54 }: Props = $props();
 
-	const NOISE_FLOOR = 0.01;
+	const NOISE_FLOOR = 0.012;
 
 	let canvasEl: HTMLCanvasElement;
 	let animFrameId: number;
@@ -21,30 +21,23 @@
 	let bufH = 0;
 	let time = 0;
 
-	// Per-bar character — speed gets faster toward treble, bass has more weight
-	const profiles = Array.from({ length: bars }, (_, i) => {
-		const t = i / (bars - 1);
-		const speed = 0.10 + t * 0.22;
-		const boost = 3.2 - t * 2.6;
-		const phase = (i / bars) * Math.PI * 2.1;
-		return { speed, boost, phase };
+	// ── Log frequency ranges per bar (Cava-style) ──
+	const freqRanges = Array.from({ length: bars }, (_, i) => {
+		const fLo = Math.round(20 * Math.pow(20000 / 20, i / bars));
+		const fHi = Math.round(20 * Math.pow(20000 / 20, (i + 1) / bars));
+		return fLo < 1000 ? `${fLo}` : `${(fLo / 1000).toFixed(fLo >= 10000 ? 0 : 1)}k`;
 	});
 
-	// Build overlapping frequency windows so each bar has a WIDE range → more boom
-	function buildWideFreqMap(totalBins: number, displayBars: number): [number, number][] {
-		const windows: [number, number][] = [];
-		for (let i = 0; i < displayBars; i++) {
-			const center = Math.round(Math.pow(i / (displayBars - 1), 0.58) * (totalBins - 1));
-			// Each window grabs bins around its center — wider in the middle, tighter at edges
-			const width = Math.round(4 + (i / (displayBars - 1)) * 8);
-			const start = Math.max(0, center - width);
-			const end = Math.min(totalBins, center + width + 1);
-			windows.push([start, end]);
-		}
-		return windows;
+	// Map 64 FFT bins → display bars using same log scale
+	const freqMap: number[] = [];
+	for (let i = 0; i <= bars; i++) {
+		const f = 20 * Math.pow(20000 / 20, i / bars);
+		freqMap.push(Math.round(((f - 20) / (20000 - 20)) * 63));
 	}
+	freqMap[0] = 0;
+	freqMap[bars] = 64;
 
-	const freqWindows = buildWideFreqMap(64, bars);
+	const speeds = Array.from({ length: bars }, (_, i) => 0.08 + (i / (bars - 1)) * 0.14);
 
 	function sizeCanvas() {
 		if (!canvasEl) return;
@@ -70,22 +63,17 @@
 
 			const arr = new Float32Array(bars);
 			for (let i = 0; i < bars; i++) {
-				const [start, end] = freqWindows[i];
+				const start = freqMap[i];
+				const end = freqMap[i + 1];
 				let sum = 0;
 				let count = 0;
 				for (let j = start; j < end && j < raw.length; j++) {
 					sum += raw[j] ?? 0;
 					count++;
 				}
-				// Add a tiny bit of the neighbor window to avoid dead spots
-				const neighborLeft = i > 0 ? raw[freqWindows[i - 1][1] - 1] ?? 0 : 0;
-				sum += neighborLeft * 0.15;
 				arr[i] = count > 0 ? sum / count : 0;
 			}
-
-			for (let i = 0; i < bars; i++) {
-				arr[i] = Math.pow(arr[i] * profiles[i].boost, 0.50);
-			}
+			for (let i = 0; i < bars; i++) arr[i] = Math.pow(arr[i], 0.55);
 			target = arr;
 		}).then((fn) => { unlisten = fn; });
 
@@ -97,10 +85,7 @@
 
 		draw();
 
-		return () => {
-			cleanup = true;
-			ro.disconnect();
-		};
+		return () => { cleanup = true; ro.disconnect(); };
 	});
 
 	onDestroy(() => {
@@ -123,11 +108,8 @@
 
 		for (let i = 0; i < bars; i++) {
 			let t = target[i];
-			// Only add drift when completely silent — keep real bars clean
-			if (isSilent) {
-				t = 0.025 + 0.05 * Math.abs(Math.sin(time * 1.4 + profiles[i].phase));
-			}
-			c[i] = lerp(current[i], t, profiles[i].speed);
+			if (isSilent) t = 0.02 + 0.06 * Math.abs(Math.sin(time * 1.5 + i * 0.35));
+			c[i] = lerp(current[i], t, speeds[i]);
 		}
 		current = c;
 
@@ -135,14 +117,27 @@
 		const h = bufH;
 		const dpr = devicePixelRatio || 1;
 
+		const labelH = Math.round(14 * dpr);
+		const drawH = h - labelH;
+
 		ctx.clearRect(0, 0, w, h);
 
-		const barW = (w / bars) * 0.72;
-		const gap = (w / bars) * 0.28;
-		const radius = Math.min(barW * 0.5, dpr * 4);
-		const maxH = h * 0.94;
+		// Frequency labels
+		ctx.font = `${Math.round(9 * dpr)}px "JetBrains Mono", monospace`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'top';
+		ctx.fillStyle = 'oklch(68% 0.023 72 / 0.42)';
 
-		const grad = ctx.createLinearGradient(0, h, 0, 0);
+		for (const idx of [0, Math.floor(bars / 4), Math.floor(bars / 2), Math.floor(bars * 3 / 4), bars - 1]) {
+			ctx.fillText(freqRanges[idx], ((idx + 0.5) / bars) * w, drawH + Math.round(2 * dpr));
+		}
+
+		const barW = (w / bars) * 0.70;
+		const gap = (w / bars) * 0.30;
+		const radius = Math.min(barW * 0.5, dpr * 4);
+		const maxH = drawH * 0.92;
+
+		const grad = ctx.createLinearGradient(0, drawH, 0, 0);
 		grad.addColorStop(0.0, 'oklch(70% 0.13 205 / 0.28)');
 		grad.addColorStop(0.25, 'oklch(70% 0.13 205 / 0.48)');
 		grad.addColorStop(0.5, 'oklch(70% 0.13 205 / 0.70)');
@@ -155,13 +150,13 @@
 			if (val < NOISE_FLOOR && !isSilent) continue;
 			const barH = Math.max(dpr * 2.5, val * maxH);
 			const x = i * (w / bars) + gap / 2;
-			const y = h - barH;
+			const y = drawH - barH;
 
 			ctx.beginPath();
 			ctx.moveTo(x + radius, y);
 			ctx.arcTo(x + barW, y, x + barW, y + radius, radius);
-			ctx.lineTo(x + barW, h);
-			ctx.lineTo(x, h);
+			ctx.lineTo(x + barW, drawH);
+			ctx.lineTo(x, drawH);
 			ctx.lineTo(x, y + radius);
 			ctx.arcTo(x, y, x + radius, y, radius);
 			ctx.fill();

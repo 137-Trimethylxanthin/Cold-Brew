@@ -74,6 +74,15 @@ pub fn run() {
             list_audio_output_devices,
             set_audio_output_device,
             set_replay_gain_mode,
+            set_crossfade,
+            get_playback_settings,
+            set_playback_speed,
+            set_mono_downmix,
+            set_preamp_gain,
+            undo_last_skip,
+            queue_history,
+            shuffle_queue_command,
+            move_queue_item,
             queue_song,
             remove_queued_song,
             move_queued_song,
@@ -544,6 +553,51 @@ fn set_audio_output_device(
 #[tauri::command(rename_all = "snake_case")]
 fn set_replay_gain_mode(mode: String) -> Result<crate::audio::player::PlaybackStatus, String> {
     crate::audio::player::set_replay_gain_mode(mode)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn set_crossfade(duration_ms: Option<u64>) -> Result<crate::audio::player::PlaybackStatus, String> {
+    crate::audio::player::set_crossfade(duration_ms)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn get_playback_settings() -> Result<crate::audio::player::PlaybackSettings, String> {
+    crate::audio::player::get_playback_settings()
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn set_playback_speed(speed: f32) -> Result<crate::audio::player::PlaybackStatus, String> {
+    crate::audio::player::set_playback_speed(speed)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn set_mono_downmix(enabled: bool) -> Result<crate::audio::player::PlaybackStatus, String> {
+    crate::audio::player::set_mono_downmix(enabled)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn set_preamp_gain(db: f32) -> Result<crate::audio::player::PlaybackStatus, String> {
+    crate::audio::player::set_preamp_gain(db)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn undo_last_skip() -> Result<crate::audio::player::QueueSnapshot, String> {
+    crate::audio::player::undo_last_skip()
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn queue_history() -> Result<Vec<crate::audio::player::QueueHistoryEntry>, String> {
+    crate::audio::player::queue_history()
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn shuffle_queue_command() -> Result<crate::audio::player::QueueSnapshot, String> {
+    crate::audio::player::shuffle_queue()
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn move_queue_item(from: usize, to: usize) -> Result<crate::audio::player::QueueSnapshot, String> {
+    crate::audio::player::move_queue_item(from, to)
 }
 
 #[instrument]

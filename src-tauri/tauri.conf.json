@@ -11,9 +11,11 @@
 	"app": {
 		"windows": [
 			{
-				"title": "Cold-Brew",
+				"title": "Cold Brew",
 				"width": 1200,
 				"height": 760,
+				"minWidth": 800,
+				"minHeight": 500,
 				"resizable": true,
 				"fullscreen": false
 			}

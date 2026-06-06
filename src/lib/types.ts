@@ -244,3 +244,16 @@ export type SpotifyNativeStatus = {
 	device_name: string | null;
 	error: string | null;
 };
+
+export type PlaybackSettings = {
+	crossfade_duration_ms: number | null;
+	playback_speed: number;
+	mono_downmix: boolean;
+	preamp_gain_db: number;
+	replay_gain_mode: string;
+};
+
+export type QueueHistoryEntry = {
+	song: Song;
+	played_at: string;
+};

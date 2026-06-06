@@ -539,14 +539,14 @@
 	}
 
 	function spotifyStatusLabel() {
-		if (connectingSpotify) return '⏳ Connecting...';
-		if (nativeSpotifyStatus?.connected) return `🟢 Spotify Connected`;
-		return '🔴 Spotify Disconnected';
+		if (connectingSpotify) return 'Connecting...';
+		if (nativeSpotifyStatus?.connected) return 'Spotify Connected';
+		return 'Spotify Disconnected';
 	}
 </script>
 
-<section class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-[clamp(22px,5vw,52px)]"
-	style="min-height: 210px" data-od-id="library-hero">
+<section class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-4 pt-10 pb-10 min-h-[210px]"
+	data-od-id="library-hero">
 	<div class="relative z-[1]">
 		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]">Library</h1>
 		<p class="text-soft text-sm">{localTracks.length} local tracks indexed — scan new paths in Settings</p>
@@ -557,10 +557,10 @@
 	<div class="hero-blob absolute right-[clamp(18px,5vw,64px)] bottom-[clamp(18px,5vw,54px)] w-[min(28vw,250px)] aspect-square rounded-3xl opacity-[0.22] pointer-events-none"></div>
 </section>
 
-{#if error}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-danger/20 text-danger/70">{error}</p>{/if}
-{#if message}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-success/20 text-success/80">{message}</p>{/if}
+{#if error}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-danger/20 text-danger">{error}</p>{/if}
+{#if message}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-success/20 text-success">{message}</p>{/if}
 
-<section class="mt-6 border border-outline rounded-3xl p-[18px] bg-surface/90" data-od-id="local-files">
+<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90" data-od-id="local-files">
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Local Files</h2>
 		<div class="flex justify-center items-center gap-1.5 mb-3">
@@ -571,7 +571,7 @@
 			{/each}
 		</div>
 	</div>
-	<div class="overflow-auto rounded-[20px] border border-outline">
+	<div class="overflow-auto rounded-2xl border border-outline">
 	<Table.Root class="w-full table-fixed">
 		<Table.Header>
 			<Table.Row>
@@ -659,34 +659,34 @@
 				</div>
 
 				<dl class="track-inspector-dl">
-					<div class="min-w-0"><dt class="text-soft font-mono text-[0.76rem] uppercase">Album</dt><dd class="mt-[3px] break-words">{selectedTrack.album ?? ''}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-[0.76rem] uppercase">Genre</dt><dd class="mt-[3px] break-words">{selectedTrack.genre ?? ''}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-[0.76rem] uppercase">Track</dt><dd class="mt-[3px] break-words">{selectedTrack.track_number ?? ''}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-[0.76rem] uppercase">Quality</dt><dd class="mt-[3px] break-words">{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-[0.76rem] uppercase">Duration</dt><dd class="mt-[3px] break-words">{formatDuration(selectedTrack.duration_ms)}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-[0.76rem] uppercase">File size</dt><dd class="mt-[3px] break-words">{formatFileSize(selectedTrack.file_size)}</dd></div>
-					<div class="min-w-0"><dt class="text-soft font-mono text-[0.76rem] uppercase">Modified</dt><dd class="mt-[3px] break-words">{formatDate(selectedTrack.modified_secs)}</dd></div>
-					<div class="col-span-full min-w-0"><dt class="text-soft font-mono text-[0.76rem] uppercase">Path</dt><dd class="mt-[3px] break-words">{selectedTrack.path}</dd></div>
+					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Album</dt><dd class="mt-1 break-words">{selectedTrack.album ?? ''}</dd></div>
+					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Genre</dt><dd class="mt-1 break-words">{selectedTrack.genre ?? ''}</dd></div>
+					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Track</dt><dd class="mt-1 break-words">{selectedTrack.track_number ?? ''}</dd></div>
+					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Quality</dt><dd class="mt-1 break-words">{formatQuality(selectedTrack) || selectedTrack.extension.toUpperCase()}</dd></div>
+					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Duration</dt><dd class="mt-1 break-words">{formatDuration(selectedTrack.duration_ms)}</dd></div>
+					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">File size</dt><dd class="mt-1 break-words">{formatFileSize(selectedTrack.file_size)}</dd></div>
+					<div class="min-w-0"><dt class="text-soft font-mono text-xs uppercase">Modified</dt><dd class="mt-1 break-words">{formatDate(selectedTrack.modified_secs)}</dd></div>
+					<div class="col-span-full min-w-0"><dt class="text-soft font-mono text-xs uppercase">Path</dt><dd class="mt-1 break-words">{selectedTrack.path}</dd></div>
 				</dl>
 
 				<div class="grid gap-2 mt-3.5 pt-3 border-t border-outline">
-					<h3 class="text-[0.95rem]">Lyrics</h3>
+					<h3 class="text-sm">Lyrics</h3>
 					{#if loadingLyrics}
 						<p>Loading lyrics</p>
 					{:else if selectedLyrics}
 						<p>{selectedLyrics.synced ? 'Synced' : 'Plain'} from {selectedLyrics.source}</p>
-						<pre class="max-h-[220px] overflow-auto m-0 whitespace-pre-wrap text-[0.84rem]/[1.45] font-mono">{selectedLyrics.content}</pre>
+						<pre class="max-h-[220px] overflow-auto m-0 whitespace-pre-wrap text-sm font-mono">{selectedLyrics.content}</pre>
 					{:else}
 						<p>No local lyrics found</p>
 					{/if}
 				</div>
 
 				<div class="grid gap-2 mt-3.5 pt-3 border-t border-outline">
-					<h3 class="text-[0.95rem]">Metadata Suggestions</h3>
+					<h3 class="text-sm">Metadata Suggestions</h3>
 					{#if loadingMetadata}
 						<p>Searching MusicBrainz</p>
 					{:else if metadataSuggestions.length > 0}
-						<Table.Root class="w-full rounded-[20px] overflow-hidden border border-outline mt-2.5">
+						<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-2.5">
 							<Table.Header>
 								<Table.Row>
 									<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Title</Table.Head>
@@ -720,10 +720,10 @@
 	</Sheet.SheetContent>
 </Sheet.Sheet>
 
-<section class="mt-6 border border-outline rounded-3xl p-[18px] bg-surface/90">
+<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
 	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Playlists</h2>
 	<div class="library-playlist-grid">
-		<div class="grid content-start gap-1.5 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+		<div class="grid content-start gap-1.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
 			<Input bind:value={playlistName} placeholder="Playlist name" aria-label="Playlist name" class="flex-1 min-w-[min(100%,160px)]" />
 			<Button variant="default" size="sm" onclick={createPlaylist}>Create</Button>
@@ -744,7 +744,7 @@
 			{/if}
 		</div>
 
-		<div class="grid gap-2.5 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]">
+		<div class="grid gap-2.5 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
 			<div class="flex gap-2 min-w-[min(100%,440px)]">
 			<Input bind:value={playlistImportPath} placeholder="/path/list.m3u" aria-label="M3U import path" class="flex-1 min-w-[min(100%,160px)]" />
 			<Button variant="default" size="sm" onclick={importPlaylist}>Import</Button>
@@ -770,7 +770,7 @@
 	</div>
 </section>
 
-<section class="mt-6 border border-outline rounded-3xl p-[18px] bg-surface/90">
+<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
 	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Recent Listening</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<span class="text-soft text-sm">{listeningHistory.length} entries</span>
@@ -780,7 +780,7 @@
 		<p>No listening history yet</p>
 	{:else}
 		{#if listeningSummaries.length > 0}
-			<Table.Root class="w-full rounded-[20px] overflow-hidden border border-outline mt-3">
+			<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-3">
 				<Table.Header>
 					<Table.Row>
 						<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Track</Table.Head>
@@ -808,7 +808,7 @@
 				</Table.Body>
 			</Table.Root>
 		{/if}
-		<Table.Root class="w-full rounded-[20px] overflow-hidden border border-outline mt-3">
+		<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-3">
 			<Table.Header>
 				<Table.Row>
 					<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Track</Table.Head>
@@ -838,7 +838,7 @@
 	{/if}
 </section>
 
-<section class="mt-6 border border-outline rounded-3xl p-[18px] bg-surface/90">
+<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
 	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Remote Search</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<span class="text-soft text-sm">{loadingRemote ? 'Loading...' : `${remoteProviderLabel(selectedRemoteProvider)} metadata`}</span>
@@ -891,7 +891,7 @@
 			{/each}
 		</div>
 	{/if}
-	<Table.Root class="w-full rounded-[20px] overflow-hidden border border-outline mt-3">
+	<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-3">
 		<Table.Header>
 			<Table.Row>
 				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Source</Table.Head>
@@ -933,13 +933,13 @@
 	</Table.Root>
 </section>
 
-<section class="mt-6 border border-outline rounded-3xl p-[18px] bg-surface/90">
+<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
 	<h2 class="m-0 mb-2 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Jellyfin</h2>
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<span class="text-soft text-sm">Remote media server</span>
 		<Button variant="default" size="sm" onclick={loadJellyfin} disabled={loadingJellyfin}>Load songs</Button>
 	</div>
-	<Table.Root class="w-full rounded-[20px] overflow-hidden border border-outline mt-3">
+	<Table.Root class="w-full rounded-2xl overflow-hidden border border-outline mt-3">
 		<Table.Header>
 			<Table.Row>
 				<Table.Head class="h-10 px-3 text-left align-middle text-soft font-mono text-xs uppercase tracking-wider">Title</Table.Head>

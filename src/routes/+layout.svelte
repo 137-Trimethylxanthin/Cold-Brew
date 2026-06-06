@@ -4,8 +4,8 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { onMount } from 'svelte';
 	import { toast, Toaster } from 'svelte-sonner';
-	import type { PlaybackStatus, QueuePlaybackResult, QueueSnapshot, Song } from '$lib/types';
-	import { playbackStatus, currentSong, volume } from '$lib/stores';
+	import type { PlaybackSettings, PlaybackStatus, QueuePlaybackResult, QueueSnapshot, Song } from '$lib/types';
+	import { playbackStatus, currentSong, volume, playbackSettings } from '$lib/stores';
 	import { toErrorMessage, playbackQualityLabel, formatSource, formatSampleRate, formatDb, titleFromPath, emptySong } from '$lib/playback';
 	import SideNav from '$lib/components/SideNav.svelte';
 	import QueuePanel from '$lib/components/QueuePanel.svelte';
@@ -89,6 +89,8 @@
 	async function refreshPlaybackStatus() {
 		try {
 			syncPlaybackStatus(await invoke<PlaybackStatus>('get_playback_status'));
+			const settings = await invoke<PlaybackSettings>('get_playback_settings');
+			$playbackSettings = settings;
 		} catch {}
 	}
 
@@ -242,6 +244,11 @@
 			return;
 		}
 		syncPlaybackStatus(await invoke<PlaybackStatus>('set_playback_volume', { volume: vol }));
+	}
+
+	async function setSpeed(speed: number) {
+		$playbackSettings = { ...$playbackSettings, playback_speed: speed };
+		await invoke<PlaybackStatus>('set_playback_speed', { speed });
 	}
 
 	async function playPreviousQueueSong() {
@@ -607,6 +614,7 @@
 	onStop={stopPlayback}
 	onPlayNext={playNextQueueSong}
 	onVolumeChange={updateVolume}
+	onSpeedChange={setSpeed}
 	canPlay={canStartPlayback()}
 	isPlaying={Boolean($playbackStatus?.playing) || spotifyIsPlaying()}
 	isPauseEnabled={Boolean($playbackStatus?.playing) || spotifyIsPlaying()}

@@ -120,7 +120,7 @@
 	}
 </script>
 
-<aside class="grid content-start gap-3.5 min-w-0 border border-outline rounded-3xl p-[18px] overflow-auto bg-surface/92" data-od-id="queue-panel">
+<aside class="grid content-start gap-3.5 min-w-0 border border-outline rounded-3xl p-4 overflow-auto bg-surface/92" data-od-id="queue-panel">
 	<section class="grid gap-3.5 border border-outline rounded-3xl p-4 bg-surface-2/[0.42]">
 		<div class="relative overflow-hidden aspect-square border border-outline/70 rounded-3xl shadow-lg" aria-hidden="true">
 			{#if $currentSong.cover_art}
@@ -129,18 +129,18 @@
 				<div class="cover-placeholder w-full h-full"></div>
 			{/if}
 		</div>
-		<div class="grid gap-[5px] min-w-0">
+		<div class="grid gap-1.5 min-w-0">
 			<h2 class="overflow-hidden m-0 font-[family-name:var(--font-family-display)] text-[clamp(24px,3vw,34px)] leading-tight truncate">
 				{$currentSong.title}
 			</h2>
 			<p>{nowPlayingDetail()}</p>
 		</div>
 		<div class="flex flex-wrap gap-2">
-			<span class="inline-flex items-center min-h-7 border border-outline rounded-full px-2.5 text-soft font-mono text-[0.68rem] uppercase bg-surface/72">
+			<span class="inline-flex items-center min-h-7 border border-outline rounded-full px-2.5 text-soft font-mono text-xs uppercase bg-surface/72">
 				{formatSource($currentSong.source ?? 'local')}
 			</span>
 			{#if $currentSong.quality}
-				<span class="inline-flex items-center min-h-7 border border-brand/40 rounded-full px-2.5 text-brand font-mono text-[0.68rem] uppercase bg-surface/72">
+				<span class="inline-flex items-center min-h-7 border border-outline rounded-full px-2.5 text-soft font-mono text-xs uppercase bg-surface/72">
 					{$currentSong.quality}
 				</span>
 			{/if}
@@ -152,7 +152,7 @@
 		</div>
 		<div class="grid gap-2">
 			<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>
-			<div class="flex justify-between font-mono text-[0.76rem] text-soft">
+			<div class="flex justify-between font-mono text-xs text-soft">
 				<span>{playbackTimeLabel()}</span>
 				<span>{$playbackStatus?.state ?? 'idle'}</span>
 			</div>
@@ -160,7 +160,7 @@
 	</section>
 
 	<section class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]">
-		<h3 class="m-0 mb-2.5 text-[0.78rem] uppercase text-soft">Up next</h3>
+		<h3 class="m-0 mb-2.5 text-xs uppercase text-soft">Up next</h3>
 		{#if upcomingSongs.length === 0}
 			<p>Queue is empty</p>
 		{:else}
@@ -169,7 +169,7 @@
 				{@const isDragging = draggedUpcomingIndex === index}
 				{@const isDragOver = dragOverUpcomingIndex === index && draggedUpcomingIndex !== index}
 				<li
-				class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 mb-2 border rounded-[20px] p-2.5 cursor-grab bg-surface/76 border-outline {isDragging ? 'opacity-55' : ''} {isDragOver ? 'border-brand bg-brand/14' : ''}"
+				class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 mb-2 border rounded-2xl p-2.5 cursor-grab bg-surface/76 border-outline {isDragging ? 'opacity-55' : ''} {isDragOver ? 'border-brand bg-brand/14' : ''}"
 				draggable="true"
 				ondragstart={(event) => startQueueDrag(event, index)}
 				ondragover={(event) => allowQueueDrop(event, index)}
@@ -180,7 +180,7 @@
 						<span class="grid gap-px min-w-0">
 							<strong class="truncate">{song.title}</strong>
 							{#if queuedSongDetail(song)}
-							<small class="truncate text-soft text-[0.76rem]">{queuedSongDetail(song)}</small>
+							<small class="truncate text-soft text-xs">{queuedSongDetail(song)}</small>
 							{/if}
 							</span>
 							<Button variant="ghost" size="sm" onclick={() => onRemove(song)}>Remove</Button>
@@ -191,14 +191,14 @@
 	</section>
 
 	<section class="border border-outline rounded-3xl p-4 bg-surface-2/[0.42]">
-		<h3 class="m-0 mb-2.5 text-[0.78rem] uppercase text-soft">History</h3>
+		<h3 class="m-0 mb-2.5 text-xs uppercase text-soft">History</h3>
 		<ol class="m-0 p-0 list-none">
 			{#each oldSongs.slice(-4).reverse() as song}
 				<li class="mb-2 min-w-0">
 					<span class="grid gap-px min-w-0">
 						<strong class="truncate">{song.title}</strong>
 						{#if queuedSongDetail(song)}
-							<small class="truncate text-soft text-[0.76rem]">{queuedSongDetail(song)}</small>
+							<small class="truncate text-soft text-xs">{queuedSongDetail(song)}</small>
 						{/if}
 					</span>
 				</li>

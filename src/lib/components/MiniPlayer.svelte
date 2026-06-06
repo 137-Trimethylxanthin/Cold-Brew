@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { playbackStatus, currentSong, volume } from '$lib/stores';
+	import { playbackStatus, currentSong, volume, playbackSettings } from '$lib/stores';
 	import { playbackQualityLabel } from '$lib/playback';
 	import type { Song } from '$lib/types';
 	import { SkipBack, Play, Pause, Square, SkipForward } from '@lucide/svelte';
@@ -13,6 +13,7 @@
 		onStop = () => {},
 		onPlayNext = () => {},
 		onVolumeChange = (_event: Event) => {},
+		onSpeedChange = (_speed: number) => {},
 		canPlay = false,
 		isPlaying = false,
 		isPauseEnabled = false,
@@ -26,6 +27,7 @@
 		onStop: () => void;
 		onPlayNext: () => void;
 		onVolumeChange: (event: Event) => void;
+		onSpeedChange?: (speed: number) => void;
 		canPlay: boolean;
 		isPlaying: boolean;
 		isPauseEnabled: boolean;
@@ -33,6 +35,9 @@
 		canPrev: boolean;
 		canNext: boolean;
 	} = $props();
+
+	const SPEED_OPTIONS = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
+	let showSpeedMenu = $state(false);
 
 	function durationLabel(duration: number) {
 		if (!duration) return '0:00';
@@ -72,7 +77,7 @@
 
 <div class="miniplayer" data-od-id="mini-player">
 	<div class="flex items-center gap-3 min-w-0">
-		<div class="w-12 h-12 relative overflow-hidden border border-outline rounded-[14px]" aria-hidden="true">
+		<div class="w-12 h-12 relative overflow-hidden border border-outline rounded-xl" aria-hidden="true">
 			{#if $currentSong.cover_art}
 				<img class="object-cover w-full h-full" src={$currentSong.cover_art} alt={`${$currentSong.title} album art`} />
 			{:else}
@@ -92,8 +97,34 @@
 		<Button size="icon" variant="ghost" onclick={onPause} disabled={!isPauseEnabled} aria-label="Pause"><Pause class="size-5" /></Button>
 		<Button size="icon" variant="ghost" onclick={onStop} disabled={!isStopEnabled} aria-label="Stop"><Square class="size-5" /></Button>
 		<Button size="icon" variant="ghost" onclick={onPlayNext} disabled={!canNext} aria-label="Next track"><SkipForward class="size-5" /></Button>
+		<div class="relative">
+			<Button
+				size="icon"
+				variant="ghost"
+				onclick={() => (showSpeedMenu = !showSpeedMenu)}
+				aria-label="Playback speed"
+				class="font-mono text-xs"
+			>
+				{$playbackSettings.playback_speed}&times;
+			</Button>
+			{#if showSpeedMenu}
+				<div class="absolute bottom-full mb-2 right-0 bg-surface border border-outline rounded-xl shadow-xl p-1 z-50 min-w-[80px]">
+					{#each SPEED_OPTIONS as speed}
+						<button
+							class="block w-full text-left px-3 py-1.5 rounded-lg text-sm hover:bg-surface-2 transition-colors {$playbackSettings.playback_speed === speed ? 'text-primary font-semibold' : 'text-soft'}"
+							onclick={() => {
+								onSpeedChange(speed);
+								showSpeedMenu = false;
+							}}
+						>
+							{speed}&times;
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</div>
 	</div>
-	<label class="grid gap-[3px] text-soft text-[0.78rem]">
+	<label class="grid gap-2 text-soft text-sm">
 		<span>Volume {$volume}</span>
 		<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={(v: number[]) => volume.set(v[0] / 100)} />
 	</label>

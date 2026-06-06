@@ -5,6 +5,8 @@ use std::time::Duration;
 
 use lofty::file::TaggedFileExt;
 use lofty::tag::ItemKey;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use rodio::cpal;
 use rodio::cpal::traits::{DeviceTrait, HostTrait};
 use rodio::{Decoder, DeviceSinkBuilder, MixerDeviceSink, Player, Source};
@@ -36,6 +38,15 @@ pub struct PlaybackStatus {
     pub replay_gain_mode: String,
     pub replay_gain_db: Option<f32>,
     pub replay_gain_source: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct PlaybackSettings {
+    pub crossfade_duration_ms: Option<u64>,
+    pub playback_speed: f32,
+    pub mono_downmix: bool,
+    pub preamp_gain_db: f32,
+    pub replay_gain_mode: String,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -86,6 +97,14 @@ struct AudioPlayer {
     gapless_events: Vec<PlaybackTransition>,
     volume: f32,
     stopped: bool,
+    crossfade_duration_ms: Option<u64>,
+    crossfade_old_player: Option<Player>,
+    crossfade_old_sink: Option<MixerDeviceSink>,
+    crossfade_start: Option<std::time::Instant>,
+    crossfade_total_ms: u64,
+    playback_speed: f32,
+    mono_downmix: bool,
+    preamp_gain_db: f32,
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -147,6 +166,14 @@ impl Default for AudioPlayer {
             gapless_events: Vec::new(),
             volume: 1.0,
             stopped: false,
+            crossfade_duration_ms: None,
+            crossfade_old_player: None,
+            crossfade_old_sink: None,
+            crossfade_start: None,
+            crossfade_total_ms: 0,
+            playback_speed: 1.0,
+            mono_downmix: false,
+            preamp_gain_db: 0.0,
         }
     }
 }
@@ -168,11 +195,27 @@ impl AudioPlayer {
             return Err("No local tracks were provided for playback.".to_string());
         }
 
+        let settings = self.playback_settings_snapshot();
         let prepared_tracks = tracks
             .iter()
-            .map(|track| prepare_local_track(track, self.replay_gain_mode))
+            .map(|track| {
+                prepare_local_track(track, self.replay_gain_mode, &settings)
+            })
             .collect::<Result<Vec<_>, _>>()?;
 
+        let crossfade_ms = self.crossfade_duration_ms.filter(|&d| d > 0);
+        let has_current = self.current_path.is_some()
+            && self.player.as_ref().is_some_and(|p| !p.empty());
+
+        if let Some(duration_ms) = crossfade_ms {
+            if has_current {
+                return self.crossfade_transition(prepared_tracks, duration_ms);
+            }
+        }
+
+        self.crossfade_old_player = None;
+        self.crossfade_old_sink = None;
+        self.crossfade_start = None;
         self.ensure_output()?;
 
         let player = self
@@ -189,6 +232,50 @@ impl AudioPlayer {
             gapless_tracks.push(track);
         }
         player.play();
+
+        self.gapless_tracks = gapless_tracks;
+        self.gapless_index = 0;
+        self.gapless_total_sources = self.gapless_tracks.len();
+        self.gapless_events.clear();
+        self.apply_prepared_track(0);
+        self.stopped = false;
+
+        Ok(self.status())
+    }
+
+    fn crossfade_transition(
+        &mut self,
+        prepared_tracks: Vec<(PreparedLocalTrack, Box<dyn Source<Item = f32> + Send + 'static>)>,
+        duration_ms: u64,
+    ) -> Result<PlaybackStatus, String> {
+        let old_sink = self.sink.take();
+        let old_player = self.player.take();
+
+        if let (Some(old_sink), Some(old_player)) = (old_sink, old_player) {
+            self.crossfade_old_player = Some(old_player);
+            self.crossfade_old_sink = Some(old_sink);
+            self.crossfade_start = Some(std::time::Instant::now());
+            self.crossfade_total_ms = duration_ms;
+        }
+
+        self.output_sample_rate = None;
+        self.output_channels = None;
+        self.output_sample_format = None;
+        self.output_device_id = None;
+        self.output_device_name = None;
+
+        self.ensure_output()?;
+        let new_player = self
+            .player
+            .as_ref()
+            .ok_or_else(|| "Audio output was not initialized.".to_string())?;
+        new_player.set_volume(if self.crossfade_old_player.is_some() { 0.0 } else { self.volume });
+        let mut gapless_tracks = Vec::with_capacity(prepared_tracks.len());
+        for (track, source) in prepared_tracks {
+            new_player.append(source);
+            gapless_tracks.push(track);
+        }
+        new_player.play();
 
         self.gapless_tracks = gapless_tracks;
         self.gapless_index = 0;
@@ -230,6 +317,9 @@ impl AudioPlayer {
         self.replay_gain_db = None;
         self.replay_gain_source = None;
         self.clear_gapless_state();
+        self.crossfade_old_player = None;
+        self.crossfade_old_sink = None;
+        self.crossfade_start = None;
         self.stopped = true;
         self.status()
     }
@@ -354,6 +444,7 @@ impl AudioPlayer {
 
     fn status(&mut self) -> PlaybackStatus {
         self.refresh_gapless_state();
+        self.update_crossfade();
         self.status_snapshot()
     }
 
@@ -539,6 +630,131 @@ impl AudioPlayer {
         self.gapless_total_sources = 0;
         self.gapless_events.clear();
     }
+
+    fn update_crossfade(&mut self) {
+        let Some(start) = self.crossfade_start else {
+            return;
+        };
+        let elapsed = start.elapsed();
+        let total = Duration::from_millis(self.crossfade_total_ms);
+
+        if elapsed >= total {
+            if let Some(old_player) = self.crossfade_old_player.take() {
+                old_player.set_volume(0.0);
+                old_player.stop();
+            }
+            self.crossfade_old_sink = None;
+            self.crossfade_start = None;
+            if let Some(player) = &self.player {
+                player.set_volume(self.volume);
+            }
+            return;
+        }
+
+        let progress = elapsed.as_secs_f32() / total.as_secs_f32();
+        let old_vol = self.volume * (1.0 - progress);
+        let new_vol = self.volume * progress;
+
+        if let Some(old_player) = &self.crossfade_old_player {
+            old_player.set_volume(old_vol);
+        }
+        if let Some(player) = &self.player {
+            player.set_volume(new_vol);
+        }
+    }
+
+    fn playback_settings_snapshot(&self) -> PlaybackSettings {
+        PlaybackSettings {
+            crossfade_duration_ms: self.crossfade_duration_ms,
+            playback_speed: self.playback_speed,
+            mono_downmix: self.mono_downmix,
+            preamp_gain_db: self.preamp_gain_db,
+            replay_gain_mode: self.replay_gain_mode.as_str().to_string(),
+        }
+    }
+
+    fn set_crossfade(&mut self, duration_ms: Option<u64>) -> PlaybackStatus {
+        self.crossfade_duration_ms = duration_ms;
+        self.status()
+    }
+
+    fn set_playback_speed_inner(&mut self, speed: f32) -> Result<PlaybackStatus, String> {
+        if !speed.is_finite() || !(0.5..=2.0).contains(&speed) {
+            return Err("Playback speed must be between 0.5 and 2.0.".to_string());
+        }
+
+        let previous_status = self.status();
+        let current_path = self.current_path.clone();
+        let current_title = self.current_title.clone();
+        self.playback_speed = speed;
+
+        if let Some(path) = current_path {
+            if matches!(previous_status.state.as_str(), "playing" | "paused") {
+                let mut status = self.play_local_track(path, current_title)?;
+                if previous_status.position_ms > 0 {
+                    status = self.seek(previous_status.position_ms)?;
+                }
+                if previous_status.paused {
+                    status = self.pause();
+                }
+                return Ok(status);
+            }
+        }
+
+        Ok(self.status())
+    }
+
+    fn set_mono_downmix_inner(&mut self, enabled: bool) -> Result<PlaybackStatus, String> {
+        if self.mono_downmix == enabled {
+            return Ok(self.status());
+        }
+
+        let previous_status = self.status();
+        let current_path = self.current_path.clone();
+        let current_title = self.current_title.clone();
+        self.mono_downmix = enabled;
+
+        if let Some(path) = current_path {
+            if matches!(previous_status.state.as_str(), "playing" | "paused") {
+                let mut status = self.play_local_track(path, current_title)?;
+                if previous_status.position_ms > 0 {
+                    status = self.seek(previous_status.position_ms)?;
+                }
+                if previous_status.paused {
+                    status = self.pause();
+                }
+                return Ok(status);
+            }
+        }
+
+        Ok(self.status())
+    }
+
+    fn set_preamp_gain_inner(&mut self, db: f32) -> Result<PlaybackStatus, String> {
+        if !db.is_finite() || !(-12.0..=12.0).contains(&db) {
+            return Err("Preamp gain must be between -12.0 and 12.0 dB.".to_string());
+        }
+
+        let previous_status = self.status();
+        let current_path = self.current_path.clone();
+        let current_title = self.current_title.clone();
+        self.preamp_gain_db = db;
+
+        if let Some(path) = current_path {
+            if matches!(previous_status.state.as_str(), "playing" | "paused") {
+                let mut status = self.play_local_track(path, current_title)?;
+                if previous_status.position_ms > 0 {
+                    status = self.seek(previous_status.position_ms)?;
+                }
+                if previous_status.paused {
+                    status = self.pause();
+                }
+                return Ok(status);
+            }
+        }
+
+        Ok(self.status())
+    }
 }
 
 impl ReplayGainMode {
@@ -631,6 +847,32 @@ pub fn set_replay_gain_mode(mode: String) -> Result<PlaybackStatus, String> {
     player.set_replay_gain_mode(mode)
 }
 
+pub fn set_crossfade(duration_ms: Option<u64>) -> Result<PlaybackStatus, String> {
+    let mut player = lock_player()?;
+    let capped = duration_ms.map(|d| d.min(12_000));
+    Ok(player.set_crossfade(capped))
+}
+
+pub fn get_playback_settings() -> Result<PlaybackSettings, String> {
+    let player = lock_player()?;
+    Ok(player.playback_settings_snapshot())
+}
+
+pub fn set_playback_speed(speed: f32) -> Result<PlaybackStatus, String> {
+    let mut player = lock_player()?;
+    player.set_playback_speed_inner(speed)
+}
+
+pub fn set_mono_downmix(enabled: bool) -> Result<PlaybackStatus, String> {
+    let mut player = lock_player()?;
+    player.set_mono_downmix_inner(enabled)
+}
+
+pub fn set_preamp_gain(db: f32) -> Result<PlaybackStatus, String> {
+    let mut player = lock_player()?;
+    player.set_preamp_gain_inner(db)
+}
+
 #[instrument]
 pub fn get_playback_status() -> Result<PlaybackStatus, String> {
     let mut player = lock_player()?;
@@ -673,7 +915,8 @@ fn normalize_audio_path(path: &str) -> Result<PathBuf, String> {
 fn prepare_local_track(
     track: &LocalPlaybackTrack,
     replay_gain_mode: ReplayGainMode,
-) -> Result<(PreparedLocalTrack, Box<dyn Source + Send + 'static>), String> {
+    settings: &PlaybackSettings,
+) -> Result<(PreparedLocalTrack, Box<dyn Source<Item = f32> + Send + 'static>), String> {
     let path = normalize_audio_path(&track.path)?;
     let file =
         File::open(&path).map_err(|error| format!("Could not open {}: {error}", path.display()))?;
@@ -695,6 +938,21 @@ fn prepare_local_track(
         .and_then(|title| non_empty_string(title.trim()))
         .unwrap_or_else(|| title_from_path(&path));
 
+    let mut source: Box<dyn Source<Item = f32> + Send + 'static> = Box::new(source.amplify(replay_gain_factor));
+
+    if settings.preamp_gain_db != 0.0 {
+        let preamp_factor = 10_f32.powf(settings.preamp_gain_db / 20.0);
+        source = Box::new(source.amplify(preamp_factor));
+    }
+
+    if settings.mono_downmix && source.channels().get() > 1 {
+        source = Box::new(MonoDownmix::new(source));
+    }
+
+    if (settings.playback_speed - 1.0).abs() > f32::EPSILON {
+        source = Box::new(source.speed(settings.playback_speed));
+    }
+
     Ok((
         PreparedLocalTrack {
             path: path.to_string_lossy().to_string(),
@@ -707,7 +965,7 @@ fn prepare_local_track(
             replay_gain_db: replay_gain.gain_db,
             replay_gain_source: replay_gain.source.map(str::to_string),
         },
-        Box::new(source.amplify(replay_gain_factor)),
+        source,
     ))
 }
 
@@ -772,6 +1030,54 @@ fn non_empty_string(value: &str) -> Option<String> {
         None
     } else {
         Some(value.to_string())
+    }
+}
+
+struct MonoDownmix<I> {
+    input: I,
+}
+
+impl<I> MonoDownmix<I> {
+    fn new(input: I) -> Self {
+        Self { input }
+    }
+}
+
+impl<I> Iterator for MonoDownmix<I>
+where
+    I: Iterator<Item = f32> + Send + 'static,
+{
+    type Item = f32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let left = self.input.next()?;
+        let right = self.input.next().unwrap_or(left);
+        Some((left + right) / 2.0)
+    }
+}
+
+impl<I> Source for MonoDownmix<I>
+where
+    I: Source<Item = f32> + Send + 'static,
+{
+    fn current_span_len(&self) -> Option<usize> {
+        self.input.current_span_len()
+    }
+
+    fn channels(&self) -> std::num::NonZero<u16> {
+        std::num::NonZero::new(1).unwrap()
+    }
+
+    fn sample_rate(&self) -> std::num::NonZero<u32> {
+        self.input.sample_rate()
+    }
+
+    fn total_duration(&self) -> Option<Duration> {
+        self.input.total_duration()
+    }
+
+    fn try_seek(&mut self, pos: Duration) -> Result<(), rodio::source::SeekError> {
+        self.input.try_seek(pos)
     }
 }
 
@@ -1039,10 +1345,21 @@ lazy_static! {
 
 const DEFAULT_QUEUE_ID: &str = "test";
 
+const SKIP_HISTORY_MAX: usize = 20;
+const PLAYED_HISTORY_MAX: usize = 50;
+
+#[derive(Clone, Debug, Serialize)]
+pub struct QueueHistoryEntry {
+    pub song: Song,
+    pub played_at: String,
+}
+
 struct Queue {
     current_song: Song,
     old: VecDeque<Song>,
     upcoming: VecDeque<Song>,
+    skip_history: VecDeque<Song>,
+    played_history: VecDeque<QueueHistoryEntry>,
 }
 
 impl Queue {
@@ -1062,7 +1379,8 @@ impl Queue {
             },
             old: VecDeque::new(),
             upcoming: VecDeque::new(),
-            //shuffeld queues are new queues in the queue manager with the shuffle prefix.
+            skip_history: VecDeque::new(),
+            played_history: VecDeque::new(),
         }
     }
 
@@ -1102,9 +1420,12 @@ impl Queue {
             return;
         }
         if self.has_current_song() {
+            let skipped = self.current_song.clone();
+            self.push_skip_history(skipped);
             self.old.push_back(self.current_song.clone());
         }
         self.current_song = self.upcoming.pop_front().unwrap();
+        self.record_now_playing();
     }
 
     fn get_current_song(&self) -> Song {
@@ -1134,6 +1455,50 @@ impl Queue {
                 return;
             }
         }
+    }
+
+    fn push_skip_history(&mut self, song: Song) {
+        if song.id.is_empty() {
+            return;
+        }
+        self.skip_history.push_back(song);
+        if self.skip_history.len() > SKIP_HISTORY_MAX {
+            self.skip_history.pop_front();
+        }
+    }
+
+    fn undo_last_skip(&mut self) -> Option<Song> {
+        let song = self.skip_history.pop_back()?;
+        self.upcoming.push_front(song.clone());
+        Some(song)
+    }
+
+    fn record_now_playing(&mut self) {
+        let song = self.current_song.clone();
+        if song.id.is_empty() {
+            return;
+        }
+        let now = chrono_now_iso();
+        self.played_history.push_back(QueueHistoryEntry {
+            song,
+            played_at: now,
+        });
+        if self.played_history.len() > PLAYED_HISTORY_MAX {
+            self.played_history.pop_front();
+        }
+    }
+
+    fn shuffle_upcoming(&mut self) {
+        let mut upcoming: Vec<Song> = self.upcoming.drain(..).collect();
+        let mut rng = thread_rng();
+        upcoming.shuffle(&mut rng);
+        for song in upcoming {
+            self.upcoming.push_back(song);
+        }
+    }
+
+    fn played_history(&self) -> Vec<QueueHistoryEntry> {
+        self.played_history.iter().cloned().collect()
     }
 }
 
@@ -1183,6 +1548,22 @@ impl QueueManager {
         to_index: usize,
     ) -> Result<(), String> {
         self.get_queue(id).move_upcoming_song(from_index, to_index)
+    }
+
+    fn undo_last_skip(&mut self, id: &str) -> Option<Song> {
+        self.get_queue(id).undo_last_skip()
+    }
+
+    fn shuffle_queue(&mut self, id: &str) {
+        self.get_queue(id).shuffle_upcoming();
+    }
+
+    fn played_history(&self, id: &str) -> Vec<QueueHistoryEntry> {
+        if let Some(queue) = self.queues.get(id) {
+            queue.played_history()
+        } else {
+            Vec::new()
+        }
     }
 }
 
@@ -1270,6 +1651,35 @@ pub fn advance_to_song_id(song_id: &str) -> Result<QueueSnapshot, String> {
     let queue = queue_manager.get_queue(DEFAULT_QUEUE_ID);
     queue.advance_to_song_id(song_id);
     Ok(queue.snapshot())
+}
+
+#[instrument]
+pub fn undo_last_skip() -> Result<QueueSnapshot, String> {
+    let mut queue_manager = lock_queue_manager()?;
+    let restored = queue_manager.undo_last_skip(DEFAULT_QUEUE_ID);
+    if restored.is_none() {
+        return Err("No skipped tracks to restore.".to_string());
+    }
+    Ok(queue_manager.get_queue(DEFAULT_QUEUE_ID).snapshot())
+}
+
+pub fn queue_history() -> Result<Vec<QueueHistoryEntry>, String> {
+    let queue_manager = lock_queue_manager()?;
+    Ok(queue_manager.played_history(DEFAULT_QUEUE_ID))
+}
+
+#[instrument]
+pub fn shuffle_queue() -> Result<QueueSnapshot, String> {
+    let mut queue_manager = lock_queue_manager()?;
+    queue_manager.shuffle_queue(DEFAULT_QUEUE_ID);
+    Ok(queue_manager.get_queue(DEFAULT_QUEUE_ID).snapshot())
+}
+
+#[instrument]
+pub fn move_queue_item(from: usize, to: usize) -> Result<QueueSnapshot, String> {
+    let mut queue_manager = lock_queue_manager()?;
+    queue_manager.move_song_in_queue(DEFAULT_QUEUE_ID, from, to)?;
+    Ok(queue_manager.get_queue(DEFAULT_QUEUE_ID).snapshot())
 }
 
 #[instrument]
@@ -1462,6 +1872,25 @@ fn optional_string(value: &Value) -> Option<String> {
         .map(str::trim)
         .filter(|value| !value.is_empty())
         .map(ToOwned::to_owned)
+}
+
+fn chrono_now_iso() -> String {
+    use std::time::SystemTime;
+    let dur = SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap_or_default();
+    let secs = dur.as_secs();
+    let days_since_epoch = secs / 86400;
+    let time_of_day = secs % 86400;
+    let hours = time_of_day / 3600;
+    let minutes = (time_of_day % 3600) / 60;
+    let seconds = time_of_day % 60;
+    let year = 1970 + (days_since_epoch / 365);
+    let month = ((days_since_epoch % 365) / 30) + 1;
+    let day = (days_since_epoch % 365) % 30 + 1;
+    format!(
+        "{year:04}-{month:02}-{day:02}T{hours:02}:{minutes:02}:{seconds:02}Z"
+    )
 }
 
 //3, 2, 4, 6, 2, 1 >=< 18, 9==4,

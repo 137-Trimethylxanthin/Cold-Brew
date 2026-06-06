@@ -8,21 +8,11 @@ lazy_static! {
     static ref SLEEP_TIMER_CANCEL: Mutex<Option<watch::Sender<bool>>> = Mutex::new(None);
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Default)]
 pub struct SleepTimerState {
     pub active: bool,
     pub remaining_seconds: Option<u64>,
     pub total_seconds: Option<u64>,
-}
-
-impl Default for SleepTimerState {
-    fn default() -> Self {
-        Self {
-            active: false,
-            remaining_seconds: None,
-            total_seconds: None,
-        }
-    }
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -96,9 +86,8 @@ pub async fn set_sleep_timer(minutes: Option<u32>) -> Result<SleepTimerState, St
             .unwrap_or(1.0);
 
         let fade_steps: u64 = fade_duration.min(30);
-        let step_duration = std::time::Duration::from_secs_f64(
-            fade_duration as f64 / fade_steps as f64,
-        );
+        let step_duration =
+            std::time::Duration::from_secs_f64(fade_duration as f64 / fade_steps as f64);
 
         for step in 0..=fade_steps {
             if *cancel_rx.borrow() {

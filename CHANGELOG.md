@@ -3,6 +3,7 @@
 ## [0.2.0] — 2026-06-06
 
 ### Added
+
 - Full shadcn-svelte component library integration (11 components)
 - Tailwind CSS v4 with custom dark theme and shadcn compliance
 - 10 audio format support (FLAC, MP3, M4A, AAC, ALAC, AIFF, OGG, Opus, WAV)
@@ -38,6 +39,7 @@
 - Keyboard shortcuts reference modal (`?`)
 
 ### Changed
+
 - Rust edition 2021 → 2024
 - Restructured Rust codebase: 19 flat files → 6 module directories
 - All native HTML replaced with shadcn-svelte components
@@ -48,6 +50,7 @@
 - SQLite WAL mode with optimized indices
 
 ### Fixed
+
 - Spotify playback now works without Spotify desktop open
 - Dark theme dropdowns no longer transparent
 - Error codes no longer shown in player card

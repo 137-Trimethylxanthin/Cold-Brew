@@ -211,12 +211,14 @@ impl AudioPlayer {
         }
 
         if prepared_tracks.is_empty() {
-            return Err("No playable tracks found — all files in the batch failed to decode.".to_string());
+            return Err(
+                "No playable tracks found — all files in the batch failed to decode.".to_string(),
+            );
         }
 
         let crossfade_ms = self.crossfade_duration_ms.filter(|&d| d > 0);
-        let has_current = self.current_path.is_some()
-            && self.player.as_ref().is_some_and(|p| !p.empty());
+        let has_current =
+            self.current_path.is_some() && self.player.as_ref().is_some_and(|p| !p.empty());
 
         if let Some(duration_ms) = crossfade_ms {
             if has_current {
@@ -256,7 +258,10 @@ impl AudioPlayer {
 
     fn crossfade_transition(
         &mut self,
-        prepared_tracks: Vec<(PreparedLocalTrack, Box<dyn Source<Item = f32> + Send + 'static>)>,
+        prepared_tracks: Vec<(
+            PreparedLocalTrack,
+            Box<dyn Source<Item = f32> + Send + 'static>,
+        )>,
         duration_ms: u64,
     ) -> Result<PlaybackStatus, String> {
         let old_sink = self.sink.take();
@@ -280,7 +285,11 @@ impl AudioPlayer {
             .player
             .as_ref()
             .ok_or_else(|| "Audio output was not initialized.".to_string())?;
-        new_player.set_volume(if self.crossfade_old_player.is_some() { 0.0 } else { self.volume });
+        new_player.set_volume(if self.crossfade_old_player.is_some() {
+            0.0
+        } else {
+            self.volume
+        });
         let mut gapless_tracks = Vec::with_capacity(prepared_tracks.len());
         for (track, source) in prepared_tracks {
             new_player.append(source);
@@ -927,7 +936,13 @@ fn prepare_local_track(
     track: &LocalPlaybackTrack,
     replay_gain_mode: ReplayGainMode,
     settings: &PlaybackSettings,
-) -> Result<(PreparedLocalTrack, Box<dyn Source<Item = f32> + Send + 'static>), String> {
+) -> Result<
+    (
+        PreparedLocalTrack,
+        Box<dyn Source<Item = f32> + Send + 'static>,
+    ),
+    String,
+> {
     let path = normalize_audio_path(&track.path)?;
     let file =
         File::open(&path).map_err(|error| format!("Could not open {}: {error}", path.display()))?;
@@ -949,7 +964,8 @@ fn prepare_local_track(
         .and_then(|title| non_empty_string(title.trim()))
         .unwrap_or_else(|| title_from_path(&path));
 
-    let mut source: Box<dyn Source<Item = f32> + Send + 'static> = Box::new(source.amplify(replay_gain_factor));
+    let mut source: Box<dyn Source<Item = f32> + Send + 'static> =
+        Box::new(source.amplify(replay_gain_factor));
 
     if settings.preamp_gain_db != 0.0 {
         let preamp_factor = 10_f32.powf(settings.preamp_gain_db / 20.0);
@@ -1264,9 +1280,9 @@ fn output_device_id(index: usize, name: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::{
-        ReplayGainMode, ReplayGainTags, clamp_volume, format_sample_rate, is_lossless_format,
-        normalize_output_device_id, output_device_id, parse_replay_gain_db,
-        replay_gain_db_to_linear, source_format_from_path, title_from_path,
+        clamp_volume, format_sample_rate, is_lossless_format, normalize_output_device_id,
+        output_device_id, parse_replay_gain_db, replay_gain_db_to_linear, source_format_from_path,
+        title_from_path, ReplayGainMode, ReplayGainTags,
     };
     use std::path::Path;
 
@@ -1347,7 +1363,7 @@ use ezsockets::CloseFrame;
 use ezsockets::Error;
 use ezsockets::Server;
 use lazy_static::lazy_static;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::net::SocketAddr;
 
 lazy_static! {
@@ -1899,9 +1915,7 @@ fn chrono_now_iso() -> String {
     let year = 1970 + (days_since_epoch / 365);
     let month = ((days_since_epoch % 365) / 30) + 1;
     let day = (days_since_epoch % 365) % 30 + 1;
-    format!(
-        "{year:04}-{month:02}-{day:02}T{hours:02}:{minutes:02}:{seconds:02}Z"
-    )
+    format!("{year:04}-{month:02}-{day:02}T{hours:02}:{minutes:02}:{seconds:02}Z")
 }
 
 //3, 2, 4, 6, 2, 1 >=< 18, 9==4,

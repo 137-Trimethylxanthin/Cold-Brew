@@ -9,8 +9,7 @@ pub fn register_media_hotkeys(app: &AppHandle) {
 
         let gs = app.global_shortcut();
 
-        let register = |shortcut: Shortcut, label: &str,
-                        action: fn(&AppHandle)| {
+        let register = |shortcut: Shortcut, label: &str, action: fn(&AppHandle)| {
             let app = app.clone();
             let label = label.to_string();
             if let Err(e) = gs.on_shortcut(

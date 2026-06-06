@@ -6,21 +6,11 @@ lazy_static! {
     static ref AB_REPEAT_STATE: Mutex<AbRepeatState> = Mutex::new(AbRepeatState::default());
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Default)]
 pub struct AbRepeatState {
     pub active: bool,
     pub loop_start_secs: Option<f64>,
     pub loop_end_secs: Option<f64>,
-}
-
-impl Default for AbRepeatState {
-    fn default() -> Self {
-        Self {
-            active: false,
-            loop_start_secs: None,
-            loop_end_secs: None,
-        }
-    }
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -54,10 +44,8 @@ pub fn set_ab_repeat_b(position_secs: Option<f64>) -> Result<AbRepeatState, Stri
 
     if let Some(secs) = position_secs {
         state.loop_end_secs = Some(secs.max(0.0));
-    } else {
-        if let Ok(status) = crate::audio::player::get_playback_status() {
-            state.loop_end_secs = Some(status.position_ms as f64 / 1000.0);
-        }
+    } else if let Ok(status) = crate::audio::player::get_playback_status() {
+        state.loop_end_secs = Some(status.position_ms as f64 / 1000.0);
     }
 
     // Validate: end must be after start

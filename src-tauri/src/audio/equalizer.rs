@@ -73,7 +73,10 @@ pub fn get_eq_state() -> Result<EqualizerState, String> {
 #[tauri::command(rename_all = "snake_case")]
 pub fn set_eq_band(index: usize, gain_db: f32) -> Result<EqualizerState, String> {
     if index >= EQ_BANDS {
-        return Err(format!("EQ band index {index} is out of range (0-{})", EQ_BANDS - 1));
+        return Err(format!(
+            "EQ band index {index} is out of range (0-{})",
+            EQ_BANDS - 1
+        ));
     }
     let clamped = gain_db.clamp(-12.0, 12.0);
     let mut state = EQ_STATE
@@ -97,7 +100,11 @@ pub fn set_eq_preset(preset_name: String) -> Result<EqualizerState, String> {
         .find(|p| p.name.eq_ignore_ascii_case(&preset_name))
         .ok_or_else(|| {
             let names: Vec<_> = presets.iter().map(|p| p.name.as_str()).collect();
-            format!("Unknown EQ preset '{}'. Available: {}", preset_name, names.join(", "))
+            format!(
+                "Unknown EQ preset '{}'. Available: {}",
+                preset_name,
+                names.join(", ")
+            )
         })?;
 
     let mut state = EQ_STATE

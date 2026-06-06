@@ -3,11 +3,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use base64::Engine;
 use base64::engine::general_purpose::STANDARD as BASE64;
+use base64::Engine;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::prelude::Accessor;
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tracing::instrument;
@@ -484,8 +484,6 @@ mod tests {
     }
 }
 
-
-
 use crate::audio::player::Song;
 
 #[derive(Clone, Debug, Serialize)]
@@ -801,8 +799,8 @@ fn playlists_database_error(error: rusqlite::Error) -> String {
 
 #[cfg(test)]
 mod playlists_tests {
-    use std::path::Path;
     use super::{parse_extinf, parse_m3u};
+    use std::path::Path;
 
     #[test]
     fn extinf_parses_duration_and_title() {
@@ -825,8 +823,6 @@ mod playlists_tests {
         assert_eq!(songs[0].duration, 50_000_000);
     }
 }
-
-
 
 use crate::audio::player::PlaybackStatus;
 
@@ -1086,7 +1082,11 @@ fn listened_duration_ms(event: &str, position_ms: u64, duration_ms: Option<u64>)
         .map(|duration_ms| position_ms.min(duration_ms))
         .unwrap_or(position_ms);
 
-    if position_ms < 5_000 { 0 } else { position_ms }
+    if position_ms < 5_000 {
+        0
+    } else {
+        position_ms
+    }
 }
 
 fn listening_database_error(error: rusqlite::Error) -> String {
@@ -1164,11 +1164,7 @@ pub fn get_library_stats(app: &AppHandle) -> Result<LibraryStats, String> {
     let tracks = list_library_tracks(app)?;
 
     let total_tracks = tracks.len();
-    let total_duration_secs: u64 = tracks
-        .iter()
-        .filter_map(|t| t.duration_ms)
-        .sum::<u64>()
-        / 1000;
+    let total_duration_secs: u64 = tracks.iter().filter_map(|t| t.duration_ms).sum::<u64>() / 1000;
 
     let mut albums_set: HashMap<String, String> = HashMap::new();
     let mut artists_set: std::collections::HashSet<String> = std::collections::HashSet::new();
@@ -1317,9 +1313,7 @@ pub fn find_duplicates(app: &AppHandle) -> Result<Vec<Vec<LibraryTrack>>, String
         .map_err(database_error)?;
 
     let duplicate_keys: Vec<(Option<String>, Option<String>, String)> = stmt
-        .query_map([], |row| {
-            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
-        })
+        .query_map([], |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)))
         .map_err(database_error)?
         .filter_map(|r| r.ok())
         .collect();
@@ -1448,10 +1442,9 @@ pub fn start_watcher(app: AppHandle, root: String) -> Result<(), String> {
                     tracing::info!(
                         "Watcher: new/modified audio files detected, rescanning library"
                     );
-                    if let Err(e) = scan_library_path(
-                        &app,
-                        root_clone.to_string_lossy().to_string(),
-                    ) {
+                    if let Err(e) =
+                        scan_library_path(&app, root_clone.to_string_lossy().to_string())
+                    {
                         tracing::error!("Watcher library scan failed: {e}");
                     }
                     debounce_timer = None;
@@ -1522,13 +1515,17 @@ fn smart_playlists_initialize_database(connection: &Connection) -> Result<(), St
                 rules_json TEXT NOT NULL,
                 is_template INTEGER NOT NULL DEFAULT 0,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-            );"
+            );",
         )
         .map_err(database_error)
 }
 
 #[instrument(skip(app))]
-pub fn create_smart_playlist(app: &AppHandle, name: String, rules_json: String) -> Result<SmartPlaylistSummary, String> {
+pub fn create_smart_playlist(
+    app: &AppHandle,
+    name: String,
+    rules_json: String,
+) -> Result<SmartPlaylistSummary, String> {
     let name = name.trim().to_string();
     if name.is_empty() {
         return Err("Smart playlist name is required.".to_string());
@@ -1592,7 +1589,10 @@ pub fn list_smart_playlists(app: &AppHandle) -> Result<Vec<SmartPlaylistSummary>
 }
 
 #[instrument(skip(app))]
-pub fn get_smart_playlist_tracks(app: &AppHandle, playlist_id: i64) -> Result<Vec<LibraryTrack>, String> {
+pub fn get_smart_playlist_tracks(
+    app: &AppHandle,
+    playlist_id: i64,
+) -> Result<Vec<LibraryTrack>, String> {
     let connection = smart_playlists_open_database(app)?;
     smart_playlists_initialize_database(&connection)?;
     let rules_json: String = connection
@@ -1610,7 +1610,10 @@ pub fn delete_smart_playlist(app: &AppHandle, playlist_id: i64) -> Result<(), St
     let connection = smart_playlists_open_database(app)?;
     smart_playlists_initialize_database(&connection)?;
     connection
-        .execute("DELETE FROM smart_playlists WHERE id = ?1 AND is_template = 0", params![playlist_id])
+        .execute(
+            "DELETE FROM smart_playlists WHERE id = ?1 AND is_template = 0",
+            params![playlist_id],
+        )
         .map_err(database_error)?;
     Ok(())
 }
@@ -1620,17 +1623,33 @@ pub fn create_template_smart_playlists(app: &AppHandle) -> Result<(), String> {
     let connection = smart_playlists_open_database(app)?;
     smart_playlists_initialize_database(&connection)?;
     let count: i64 = connection
-        .query_row("SELECT COUNT(*) FROM smart_playlists WHERE is_template = 1", [], |r| r.get(0))
+        .query_row(
+            "SELECT COUNT(*) FROM smart_playlists WHERE is_template = 1",
+            [],
+            |r| r.get(0),
+        )
         .unwrap_or(0);
     if count > 0 {
         return Ok(());
     }
 
     let templates: &[(&str, &str)] = &[
-        ("Recently Added", r#"{"rules":[{"field":"added_at","op":"gte","value":"now-30d"}]}"#),
-        ("Never Played", r#"{"rules":[{"field":"play_count","op":"equals","value":0}]}"#),
-        ("Top Rated", r#"{"rules":[{"field":"last_played","op":"gte","value":"now-90d"}]}"#),
-        ("Forgotten", r#"{"rules":[{"field":"last_played","op":"lt","value":"now-30d"}]}"#),
+        (
+            "Recently Added",
+            r#"{"rules":[{"field":"added_at","op":"gte","value":"now-30d"}]}"#,
+        ),
+        (
+            "Never Played",
+            r#"{"rules":[{"field":"play_count","op":"equals","value":0}]}"#,
+        ),
+        (
+            "Top Rated",
+            r#"{"rules":[{"field":"last_played","op":"gte","value":"now-90d"}]}"#,
+        ),
+        (
+            "Forgotten",
+            r#"{"rules":[{"field":"last_played","op":"lt","value":"now-30d"}]}"#,
+        ),
     ];
 
     for (name, rules) in templates {
@@ -1644,9 +1663,12 @@ pub fn create_template_smart_playlists(app: &AppHandle) -> Result<(), String> {
     Ok(())
 }
 
-fn evaluate_smart_playlist_rules(app: &AppHandle, rules_json: &str) -> Result<Vec<LibraryTrack>, String> {
-    let parsed: serde_json::Value = serde_json::from_str(rules_json)
-        .map_err(|e| format!("Invalid rules JSON: {e}"))?;
+fn evaluate_smart_playlist_rules(
+    app: &AppHandle,
+    rules_json: &str,
+) -> Result<Vec<LibraryTrack>, String> {
+    let parsed: serde_json::Value =
+        serde_json::from_str(rules_json).map_err(|e| format!("Invalid rules JSON: {e}"))?;
     let (where_clause, bind_values) = build_smart_playlist_sql(&parsed)?;
     let connection = open_database(app)?;
     initialize_database(&connection)?;
@@ -1714,10 +1736,7 @@ fn build_smart_playlist_sql(value: &serde_json::Value) -> Result<(String, Vec<St
                 bind_values.push(v);
             }
         }
-        let logic = value
-            .get("logic")
-            .and_then(|v| v.as_str())
-            .unwrap_or("AND");
+        let logic = value.get("logic").and_then(|v| v.as_str()).unwrap_or("AND");
         let clause = conditions.join(&format!(" {logic} "));
         return Ok((clause, bind_values));
     }
@@ -1730,10 +1749,7 @@ fn build_smart_playlist_sql(value: &serde_json::Value) -> Result<(String, Vec<St
             conditions.push(format!("({cond})"));
             bind_values.extend(vals);
         }
-        let logic = value
-            .get("logic")
-            .and_then(|v| v.as_str())
-            .unwrap_or("OR");
+        let logic = value.get("logic").and_then(|v| v.as_str()).unwrap_or("OR");
         let clause = conditions.join(&format!(" {logic} "));
         return Ok((clause, bind_values));
     }
@@ -1750,7 +1766,9 @@ fn build_rule_condition(rule: &serde_json::Value) -> Result<(String, Option<Stri
         .get("op")
         .and_then(|v| v.as_str())
         .ok_or_else(|| "Rule missing 'op'.".to_string())?;
-    let value = rule.get("value").ok_or_else(|| "Rule missing 'value'.".to_string())?;
+    let value = rule
+        .get("value")
+        .ok_or_else(|| "Rule missing 'value'.".to_string())?;
 
     let db_field = match field {
         "genre" => "t.genre".to_string(),
@@ -1792,9 +1810,11 @@ fn build_rule_condition(rule: &serde_json::Value) -> Result<(String, Option<Stri
             Ok((format!("{db_field} <= ?1"), Some(v)))
         }
         "between" => {
-            let arr = value.as_array().ok_or("between requires array of two values")?;
+            let arr = value
+                .as_array()
+                .ok_or("between requires array of two values")?;
             let v1 = value_to_sql_string(&arr[0]);
-            let v2 = value_to_sql_string(&arr.get(1).unwrap_or(&arr[0]));
+            let v2 = value_to_sql_string(arr.get(1).unwrap_or(&arr[0]));
             Ok((format!("{db_field} BETWEEN {v1} AND {v2}"), None))
         }
         _ => Err(format!("Unsupported operator: {op}")),
@@ -1860,14 +1880,13 @@ pub fn get_discover_you_might_like(app: &AppHandle) -> Result<DiscoverySection, 
              WHERE lh.event = 'started'
              GROUP BY t2.path
              ORDER BY RANDOM()
-             LIMIT 20"
+             LIMIT 20",
         )
         .map_err(database_error)?;
-    tracks_from_statement(&mut statement)
-        .map(|tracks| DiscoverySection {
-            label: "You Might Like".to_string(),
-            tracks,
-        })
+    tracks_from_statement(&mut statement).map(|tracks| DiscoverySection {
+        label: "You Might Like".to_string(),
+        tracks,
+    })
 }
 
 #[instrument(skip(app))]
@@ -1889,14 +1908,13 @@ pub fn get_discover_deep_cuts(app: &AppHandle) -> Result<DiscoverySection, Strin
                  SELECT DISTINCT lh.path FROM listening_history lh WHERE lh.event = 'started'
              )
              ORDER BY RANDOM()
-             LIMIT 20"
+             LIMIT 20",
         )
         .map_err(database_error)?;
-    tracks_from_statement(&mut statement)
-        .map(|tracks| DiscoverySection {
-            label: "Deep Cuts".to_string(),
-            tracks,
-        })
+    tracks_from_statement(&mut statement).map(|tracks| DiscoverySection {
+        label: "Deep Cuts".to_string(),
+        tracks,
+    })
 }
 
 #[instrument(skip(app))]
@@ -1913,11 +1931,10 @@ pub fn get_discover_new_additions(app: &AppHandle) -> Result<DiscoverySection, S
              LIMIT 20"
         )
         .map_err(database_error)?;
-    tracks_from_statement(&mut statement)
-        .map(|tracks| DiscoverySection {
-            label: "New Additions".to_string(),
-            tracks,
-        })
+    tracks_from_statement(&mut statement).map(|tracks| DiscoverySection {
+        label: "New Additions".to_string(),
+        tracks,
+    })
 }
 
 fn tracks_from_statement(statement: &mut rusqlite::Statement) -> Result<Vec<LibraryTrack>, String> {
@@ -1954,7 +1971,11 @@ fn tracks_from_statement(statement: &mut rusqlite::Statement) -> Result<Vec<Libr
 // ── Genre Radio ──
 
 #[instrument(skip(app))]
-pub fn get_random_tracks_by_genre(app: &AppHandle, genre: &str, limit: usize) -> Result<Vec<LibraryTrack>, String> {
+pub fn get_random_tracks_by_genre(
+    app: &AppHandle,
+    genre: &str,
+    limit: usize,
+) -> Result<Vec<LibraryTrack>, String> {
     let connection = open_database(app)?;
     initialize_database(&connection)?;
     let mut statement = connection

@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fs;
 
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 
@@ -138,6 +138,7 @@ fn database_error(error: rusqlite::Error) -> String {
     format!("Playback position database error: {error}")
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn save_full_session(
     app: &AppHandle,
     last_path: Option<&str>,
@@ -208,8 +209,7 @@ pub fn restore_playback_session(app: &AppHandle) -> Result<Option<RestoredSessio
     let queue_json: String = row.get(5).map_err(database_error)?;
     let queue_index: i64 = row.get(6).map_err(database_error)?;
 
-    let queue_song_ids: Vec<String> =
-        serde_json::from_str(&queue_json).unwrap_or_default();
+    let queue_song_ids: Vec<String> = serde_json::from_str(&queue_json).unwrap_or_default();
 
     Ok(Some(RestoredSession {
         last_track_path,

@@ -330,7 +330,9 @@ async fn finish_lastfm_login() -> Result<ProviderAccount, String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn get_lastfm_scrobble_status(app: AppHandle) -> Result<crate::providers::lastfm::LastFmScrobbleStatus, String> {
+fn get_lastfm_scrobble_status(
+    app: AppHandle,
+) -> Result<crate::providers::lastfm::LastFmScrobbleStatus, String> {
     crate::providers::lastfm::get_lastfm_scrobble_status(&app)
 }
 
@@ -441,14 +443,19 @@ async fn search_lastfm_tracks(
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn scan_library_path(app: AppHandle, path: String) -> Result<crate::storage::database::ScanSummary, String> {
+fn scan_library_path(
+    app: AppHandle,
+    path: String,
+) -> Result<crate::storage::database::ScanSummary, String> {
     tracing::info!("Starting library scan: {path}");
     crate::storage::database::scan_library_path(&app, path)
 }
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn list_library_tracks(app: AppHandle) -> Result<Vec<crate::storage::database::LibraryTrack>, String> {
+fn list_library_tracks(
+    app: AppHandle,
+) -> Result<Vec<crate::storage::database::LibraryTrack>, String> {
     crate::storage::database::list_library_tracks(&app)
 }
 
@@ -553,7 +560,10 @@ fn playback_stop(app: AppHandle) -> Result<crate::audio::player::PlaybackStatus,
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn playback_seek(app: AppHandle, position_ms: u64) -> Result<crate::audio::player::PlaybackStatus, String> {
+fn playback_seek(
+    app: AppHandle,
+    position_ms: u64,
+) -> Result<crate::audio::player::PlaybackStatus, String> {
     let status = crate::audio::player::playback_seek(position_ms)?;
     save_status_position(&app, &status)?;
     record_playback_event(&app, &status, "seeked")?;
@@ -640,12 +650,16 @@ fn move_queue_item(from: usize, to: usize) -> Result<crate::audio::player::Queue
 
 #[instrument]
 #[tauri::command(rename_all = "snake_case")]
-fn queue_song(song: crate::audio::player::Song) -> Result<crate::audio::player::QueueSnapshot, String> {
+fn queue_song(
+    song: crate::audio::player::Song,
+) -> Result<crate::audio::player::QueueSnapshot, String> {
     crate::audio::player::queue_song(song)
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn remove_queued_song(song: crate::audio::player::Song) -> Result<crate::audio::player::QueueSnapshot, String> {
+fn remove_queued_song(
+    song: crate::audio::player::Song,
+) -> Result<crate::audio::player::QueueSnapshot, String> {
     crate::audio::player::remove_song(song)
 }
 
@@ -663,13 +677,18 @@ fn get_queue_snapshot() -> Result<crate::audio::player::QueueSnapshot, String> {
 }
 
 #[tauri::command(rename_all = "snake_case")]
-fn advance_queue_to_song_id(song_id: String) -> Result<crate::audio::player::QueueSnapshot, String> {
+fn advance_queue_to_song_id(
+    song_id: String,
+) -> Result<crate::audio::player::QueueSnapshot, String> {
     crate::audio::player::advance_to_song_id(&song_id)
 }
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn play_track_now(app: AppHandle, song: crate::audio::player::Song) -> Result<QueuePlaybackResult, String> {
+fn play_track_now(
+    app: AppHandle,
+    song: crate::audio::player::Song,
+) -> Result<QueuePlaybackResult, String> {
     let queue = crate::audio::player::play_track_now(song)?;
     play_queue_snapshot(&app, queue)
 }
@@ -732,7 +751,10 @@ fn play_local_track_with_restore(
     path: String,
     title: Option<String>,
 ) -> Result<crate::audio::player::PlaybackStatus, String> {
-    play_local_tracks_with_restore(app, vec![crate::audio::player::LocalPlaybackTrack { path, title }])
+    play_local_tracks_with_restore(
+        app,
+        vec![crate::audio::player::LocalPlaybackTrack { path, title }],
+    )
 }
 
 #[instrument(skip(app))]
@@ -748,9 +770,14 @@ fn play_local_tracks_with_restore(
     handle_playback_transitions(app)?;
     record_current_track_transition(app, &first_track.path)?;
     let resume_position =
-        crate::storage::playback_store::get_playback_position(app, &first_track.path)?.and_then(|position| {
-            crate::storage::playback_store::resumable_position(position.position_ms, position.duration_ms)
-        });
+        crate::storage::playback_store::get_playback_position(app, &first_track.path)?.and_then(
+            |position| {
+                crate::storage::playback_store::resumable_position(
+                    position.position_ms,
+                    position.duration_ms,
+                )
+            },
+        );
     let mut status = crate::audio::player::play_gapless_local_tracks(tracks)?;
     if let Some(position_ms) = resume_position {
         status = crate::audio::player::playback_seek(position_ms)?;
@@ -865,19 +892,27 @@ fn save_status_position(
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn create_playlist(app: AppHandle, name: String) -> Result<crate::storage::database::PlaylistDetail, String> {
+fn create_playlist(
+    app: AppHandle,
+    name: String,
+) -> Result<crate::storage::database::PlaylistDetail, String> {
     crate::storage::database::create_playlist(&app, name)
 }
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn list_playlists(app: AppHandle) -> Result<Vec<crate::storage::database::PlaylistSummary>, String> {
+fn list_playlists(
+    app: AppHandle,
+) -> Result<Vec<crate::storage::database::PlaylistSummary>, String> {
     crate::storage::database::list_playlists(&app)
 }
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn get_playlist(app: AppHandle, playlist_id: i64) -> Result<crate::storage::database::PlaylistDetail, String> {
+fn get_playlist(
+    app: AppHandle,
+    playlist_id: i64,
+) -> Result<crate::storage::database::PlaylistDetail, String> {
     crate::storage::database::get_playlist(&app, playlist_id)
 }
 
@@ -909,10 +944,12 @@ fn export_m3u_playlist(app: AppHandle, playlist_id: i64, path: String) -> Result
 #[tauri::command(rename_all = "snake_case")]
 fn get_provider_credentials(provider: String) -> Result<serde_json::Value, String> {
     let has_client_id = crate::storage::keyring::get_credential(&provider, "client_id").is_some();
-    let has_client_secret = crate::storage::keyring::get_credential(&provider, "client_secret").is_some();
+    let has_client_secret =
+        crate::storage::keyring::get_credential(&provider, "client_secret").is_some();
     let has_api_key = crate::storage::keyring::get_credential(&provider, "api_key").is_some();
     let has_api_secret = crate::storage::keyring::get_credential(&provider, "api_secret").is_some();
-    let has_redirect_uri = crate::storage::keyring::get_credential(&provider, "redirect_uri").is_some();
+    let has_redirect_uri =
+        crate::storage::keyring::get_credential(&provider, "redirect_uri").is_some();
     let has_app_id = crate::storage::keyring::get_credential(&provider, "app_id").is_some();
     let has_app_secret = crate::storage::keyring::get_credential(&provider, "app_secret").is_some();
     let has_creds = has_client_id
@@ -967,7 +1004,8 @@ fn get_all_provider_statuses() -> Result<serde_json::Value, String> {
         let has_creds = crate::storage::keyring::has_credentials(id);
         let is_default = crate::storage::keyring::is_default_credential(id);
 
-        let has_access_token = crate::storage::keyring::get_credential(id, "access_token").is_some()
+        let has_access_token = crate::storage::keyring::get_credential(id, "access_token")
+            .is_some()
             || crate::web::auth::list_provider_accounts()
                 .ok()
                 .and_then(|accounts| {
@@ -1011,7 +1049,8 @@ async fn connect_spotify_native(
 
 #[instrument]
 #[tauri::command(rename_all = "snake_case")]
-async fn disconnect_spotify_native() -> Result<crate::providers::spotify::SpotifyNativeStatus, String> {
+async fn disconnect_spotify_native(
+) -> Result<crate::providers::spotify::SpotifyNativeStatus, String> {
     tracing::info!("Disconnecting native Spotify player");
     crate::providers::spotify::disconnect_spotify_native().await
 }
@@ -1073,7 +1112,9 @@ fn get_library_stats(app: AppHandle) -> Result<crate::storage::database::Library
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn find_duplicates(app: AppHandle) -> Result<Vec<Vec<crate::storage::database::LibraryTrack>>, String> {
+fn find_duplicates(
+    app: AppHandle,
+) -> Result<Vec<Vec<crate::storage::database::LibraryTrack>>, String> {
     crate::storage::database::find_duplicates(&app)
 }
 
@@ -1166,19 +1207,28 @@ fn save_full_session_command(
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn create_smart_playlist(app: AppHandle, name: String, rules_json: String) -> Result<crate::storage::database::SmartPlaylistSummary, String> {
+fn create_smart_playlist(
+    app: AppHandle,
+    name: String,
+    rules_json: String,
+) -> Result<crate::storage::database::SmartPlaylistSummary, String> {
     crate::storage::database::create_smart_playlist(&app, name, rules_json)
 }
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn list_smart_playlists(app: AppHandle) -> Result<Vec<crate::storage::database::SmartPlaylistSummary>, String> {
+fn list_smart_playlists(
+    app: AppHandle,
+) -> Result<Vec<crate::storage::database::SmartPlaylistSummary>, String> {
     crate::storage::database::list_smart_playlists(&app)
 }
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn get_smart_playlist_tracks(app: AppHandle, playlist_id: i64) -> Result<Vec<crate::storage::database::LibraryTrack>, String> {
+fn get_smart_playlist_tracks(
+    app: AppHandle,
+    playlist_id: i64,
+) -> Result<Vec<crate::storage::database::LibraryTrack>, String> {
     crate::storage::database::get_smart_playlist_tracks(&app, playlist_id)
 }
 
@@ -1192,7 +1242,9 @@ fn delete_smart_playlist(app: AppHandle, playlist_id: i64) -> Result<(), String>
 
 #[instrument(skip(app))]
 #[tauri::command(rename_all = "snake_case")]
-fn get_discovery_dashboard(app: AppHandle) -> Result<crate::storage::database::DiscoveryResult, String> {
+fn get_discovery_dashboard(
+    app: AppHandle,
+) -> Result<crate::storage::database::DiscoveryResult, String> {
     crate::storage::database::get_discovery_dashboard(&app)
 }
 

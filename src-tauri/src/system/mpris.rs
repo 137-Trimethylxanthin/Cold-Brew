@@ -2,11 +2,11 @@ use crate::audio::player::PlaybackStatus;
 
 #[cfg(feature = "mpris")]
 mod linux {
-    use std::sync::{Mutex, OnceLock};
     use mpris_server::{
-        LoopStatus, Metadata, PlaybackRate, PlaybackStatus as MprisPlaybackStatus,
-        PlayerInterface, Property, RootInterface, Server, Time, TrackId, Volume,
+        LoopStatus, Metadata, PlaybackRate, PlaybackStatus as MprisPlaybackStatus, PlayerInterface,
+        Property, RootInterface, Server, Time, TrackId, Volume,
     };
+    use std::sync::{Mutex, OnceLock};
 
     static MPRIS_SERVER: OnceLock<Mutex<Option<Server<ColdBrewPlayer>>>> = OnceLock::new();
 
@@ -19,17 +19,38 @@ mod linux {
     impl RootInterface for ColdBrewPlayer {
         async fn raise(&self) {}
         async fn quit(&self) {}
-        async fn can_quit(&self) -> bool { true }
-        async fn fullscreen(&self) -> bool { false }
+        async fn can_quit(&self) -> bool {
+            true
+        }
+        async fn fullscreen(&self) -> bool {
+            false
+        }
         async fn set_fullscreen(&self, _fullscreen: bool) {}
-        async fn can_set_fullscreen(&self) -> bool { false }
-        async fn can_raise(&self) -> bool { false }
-        async fn has_track_list(&self) -> bool { false }
-        async fn identity(&self) -> String { "Cold-Brew".to_string() }
-        async fn desktop_entry(&self) -> String { "cold-brew".to_string() }
-        async fn supported_uri_schemes(&self) -> Vec<String> { vec!["file".to_string()] }
+        async fn can_set_fullscreen(&self) -> bool {
+            false
+        }
+        async fn can_raise(&self) -> bool {
+            false
+        }
+        async fn has_track_list(&self) -> bool {
+            false
+        }
+        async fn identity(&self) -> String {
+            "Cold-Brew".to_string()
+        }
+        async fn desktop_entry(&self) -> String {
+            "cold-brew".to_string()
+        }
+        async fn supported_uri_schemes(&self) -> Vec<String> {
+            vec!["file".to_string()]
+        }
         async fn supported_mime_types(&self) -> Vec<String> {
-            vec!["audio/mpeg".into(), "audio/flac".into(), "audio/wav".into(), "audio/ogg".into()]
+            vec![
+                "audio/mpeg".into(),
+                "audio/flac".into(),
+                "audio/wav".into(),
+                "audio/ogg".into(),
+            ]
         }
     }
 
@@ -44,7 +65,9 @@ mod linux {
                 super::play_gapless_from_snapshot(&queue);
             }
         }
-        async fn pause(&self) { let _ = crate::audio::player::playback_pause(); }
+        async fn pause(&self) {
+            let _ = crate::audio::player::playback_pause();
+        }
         async fn play_pause(&self) {
             if let Ok(status) = crate::audio::player::get_playback_status() {
                 if status.playing {
@@ -54,8 +77,12 @@ mod linux {
                 }
             }
         }
-        async fn stop(&self) { let _ = crate::audio::player::playback_stop(); }
-        async fn play(&self) { let _ = crate::audio::player::playback_resume(); }
+        async fn stop(&self) {
+            let _ = crate::audio::player::playback_stop();
+        }
+        async fn play(&self) {
+            let _ = crate::audio::player::playback_resume();
+        }
         async fn seek(&self, offset: Time) {
             if let Ok(status) = crate::audio::player::get_playback_status() {
                 let offset_ms = offset.as_millis();
@@ -79,7 +106,9 @@ mod linux {
                 _ => MprisPlaybackStatus::Stopped,
             }
         }
-        async fn loop_status(&self) -> LoopStatus { LoopStatus::None }
+        async fn loop_status(&self) -> LoopStatus {
+            LoopStatus::None
+        }
         async fn set_loop_status(&self, _loop_status: LoopStatus) {}
         async fn rate(&self) -> PlaybackRate {
             crate::audio::player::get_playback_settings()
@@ -89,7 +118,9 @@ mod linux {
         async fn set_rate(&self, rate: PlaybackRate) {
             let _ = crate::audio::player::set_playback_speed(rate as f32);
         }
-        async fn shuffle(&self) -> bool { false }
+        async fn shuffle(&self) -> bool {
+            false
+        }
         async fn set_shuffle(&self, _shuffle: bool) {}
         async fn metadata(&self) -> Metadata {
             crate::audio::player::get_playback_status()
@@ -109,14 +140,30 @@ mod linux {
                 .map(|s| Time::from_millis(s.position_ms as i64))
                 .unwrap_or(Time::from_millis(0))
         }
-        async fn minimum_rate(&self) -> PlaybackRate { PlaybackRate::from(0.5) }
-        async fn maximum_rate(&self) -> PlaybackRate { PlaybackRate::from(2.0) }
-        async fn can_go_next(&self) -> bool { true }
-        async fn can_go_previous(&self) -> bool { true }
-        async fn can_play(&self) -> bool { true }
-        async fn can_pause(&self) -> bool { true }
-        async fn can_seek(&self) -> bool { true }
-        async fn can_control(&self) -> bool { true }
+        async fn minimum_rate(&self) -> PlaybackRate {
+            PlaybackRate::from(0.5)
+        }
+        async fn maximum_rate(&self) -> PlaybackRate {
+            PlaybackRate::from(2.0)
+        }
+        async fn can_go_next(&self) -> bool {
+            true
+        }
+        async fn can_go_previous(&self) -> bool {
+            true
+        }
+        async fn can_play(&self) -> bool {
+            true
+        }
+        async fn can_pause(&self) -> bool {
+            true
+        }
+        async fn can_seek(&self) -> bool {
+            true
+        }
+        async fn can_control(&self) -> bool {
+            true
+        }
     }
 
     pub fn start_mpris_server() {
@@ -124,8 +171,10 @@ mod linux {
             match Server::new("Cold-Brew", ColdBrewPlayer).await {
                 Ok(server) => {
                     tracing::info!("MPRIS server started successfully");
-                    MPRIS_SERVER.get_or_init(|| Mutex::new(None))
-                        .lock().ok()
+                    MPRIS_SERVER
+                        .get_or_init(|| Mutex::new(None))
+                        .lock()
+                        .ok()
                         .map(|mut g| *g = Some(server));
                 }
                 Err(e) => {

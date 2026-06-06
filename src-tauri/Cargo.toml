@@ -19,7 +19,13 @@ tauri-build = { version = "2.6.2", features = [] }
 
 [features]
 default = ["native_spotify"]
-native_spotify = ["librespot-core", "librespot-playback", "librespot-connect", "librespot-protocol", "librespot-oauth"]
+native_spotify = [
+  "librespot-core",
+  "librespot-playback",
+  "librespot-connect",
+  "librespot-protocol",
+  "librespot-oauth",
+]
 mpris = ["dep:mpris-server"]
 
 [dependencies]
@@ -47,10 +53,14 @@ base64 = "0.22.1"
 rand = "0.8.5"
 sha2 = "0.10.9"
 musicbrainz_rs = { version = "0.13", features = ["async"] }
-notify = { version = "7", default-features = false, features = ["macos_kqueue"] }
+notify = { version = "7", default-features = false, features = [
+  "macos_kqueue",
+] }
 chrono = { version = "0.4", features = ["serde"] }
 librespot-core = { version = "0.8", optional = true }
-librespot-playback = { version = "0.8", optional = true, default-features = false, features = ["rodio-backend"] }
+librespot-playback = { version = "0.8", optional = true, default-features = false, features = [
+  "rodio-backend",
+] }
 librespot-connect = { version = "0.8", optional = true }
 librespot-protocol = { version = "0.8", optional = true }
 librespot-oauth = { version = "0.8", optional = true }

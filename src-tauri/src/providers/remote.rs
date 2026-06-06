@@ -1306,15 +1306,14 @@ mod tests {
     use serde_json::json;
 
     use super::{
-        QobuzAlbum, QobuzNamedEntity, QobuzTrack, SpotifyAlbum, SpotifyArtist, SpotifyPlaylist,
-        SpotifyPlaylistTrackCount, SpotifyTrack, TidalAttributes, TidalExternalLink,
-        TidalResourceIdentifier, TidalResourceListResponse, TidalResourceObject,
-        TidalSearchRelationshipResponse, YoutubePlaylistItem, YoutubePlaylistItemSnippet,
-        YoutubeResourceId, YoutubeSearchId, YoutubeSearchItem, YoutubeSnippet,
         normalize_country_code, normalize_spotify_id, normalize_tidal_playlists,
         normalize_tidal_tracks, parse_iso8601_duration_ms, to_qobuz_remote_track,
         to_remote_playlist, to_remote_track, to_youtube_playlist_track, to_youtube_remote_playlist,
-        value_to_string,
+        value_to_string, QobuzAlbum, QobuzNamedEntity, QobuzTrack, SpotifyAlbum, SpotifyArtist,
+        SpotifyPlaylist, SpotifyPlaylistTrackCount, SpotifyTrack, TidalAttributes,
+        TidalExternalLink, TidalResourceIdentifier, TidalResourceListResponse, TidalResourceObject,
+        TidalSearchRelationshipResponse, YoutubePlaylistItem, YoutubePlaylistItemSnippet,
+        YoutubeResourceId, YoutubeSearchId, YoutubeSearchItem, YoutubeSnippet,
     };
 
     #[test]

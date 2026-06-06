@@ -6,7 +6,9 @@ static NOTIFICATION_ENABLED: Mutex<bool> = Mutex::new(true);
 static LAST_NOTIFIED_TRACK: Mutex<Option<String>> = Mutex::new(None);
 
 pub fn is_enabled() -> bool {
-    *NOTIFICATION_ENABLED.lock().unwrap_or_else(|e| e.into_inner())
+    *NOTIFICATION_ENABLED
+        .lock()
+        .unwrap_or_else(|e| e.into_inner())
 }
 
 pub fn set_enabled(enabled: bool) {
@@ -23,7 +25,9 @@ pub fn show_now_playing(app: &AppHandle, title: &str, artist: &str, album: &str)
 
     let dedup_key = format!("{}|{}", title, artist);
     {
-        let mut last = LAST_NOTIFIED_TRACK.lock().unwrap_or_else(|e| e.into_inner());
+        let mut last = LAST_NOTIFIED_TRACK
+            .lock()
+            .unwrap_or_else(|e| e.into_inner());
         if last.as_deref() == Some(&dedup_key) {
             return;
         }

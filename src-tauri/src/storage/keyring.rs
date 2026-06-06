@@ -1,7 +1,7 @@
 use std::env;
 use std::sync::OnceLock;
 
-use keyring_core::{Entry, Error, set_default_store};
+use keyring_core::{set_default_store, Entry, Error};
 
 const SERVICE: &str = "cold-brew-secrets";
 const SPOTIFY_CLIENT_ID_ENV: &str = "SPOTIFY_CLIENT_ID";

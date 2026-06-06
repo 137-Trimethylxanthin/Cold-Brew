@@ -1,10 +1,10 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 
 use crate::providers::remote::RemoteTrack;
 use crate::web::auth;
 
-const YOUTUBE_MUSIC_SEARCH_URL: &str =
-    "https://www.googleapis.com/youtube/v3/search";
+const YOUTUBE_MUSIC_SEARCH_URL: &str = "https://www.googleapis.com/youtube/v3/search";
 const YOUTUBE_MUSIC_BASE_URL: &str = "https://music.youtube.com";
 const YOUTUBE_BASE_URL: &str = "https://www.youtube.com";
 const USER_AGENT: &str = "Cold-Brew/0.1.0";
@@ -139,10 +139,18 @@ pub fn youtube_credentials() -> Result<YoutubeCredentials, String> {
                 .to_string(),
         );
     };
-    if let Some(api_key) = secrets.api_key.map(|v| v.trim().to_string()).filter(|v| !v.is_empty()) {
+    if let Some(api_key) = secrets
+        .api_key
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+    {
         return Ok(YoutubeCredentials::ApiKey(api_key));
     }
-    if let Some(access_token) = secrets.access_token.map(|v| v.trim().to_string()).filter(|v| !v.is_empty()) {
+    if let Some(access_token) = secrets
+        .access_token
+        .map(|v| v.trim().to_string())
+        .filter(|v| !v.is_empty())
+    {
         return Ok(YoutubeCredentials::AccessToken(access_token));
     }
     Err(
@@ -252,26 +260,27 @@ pub async fn search_youtube_music_tracks(
 
             let detail_item = details.iter().find(|d| d.id == video_id);
 
-            let duration_ms = detail_item.and_then(|d| {
-                parse_iso8601_duration_ms(&d.content_details.duration)
-            });
+            let duration_ms =
+                detail_item.and_then(|d| parse_iso8601_duration_ms(&d.content_details.duration));
 
-            let thumbnail_url = detail_item
-                .and_then(|d| {
-                    d.snippet
-                        .thumbnails
-                        .high
-                        .as_ref()
-                        .map(|t| t.url.clone())
-                        .or_else(|| d.snippet.thumbnails.medium.as_ref().map(|t| t.url.clone()))
-                        .or_else(|| d.snippet.thumbnails.default.as_ref().map(|t| t.url.clone()))
-                });
+            let thumbnail_url = detail_item.and_then(|d| {
+                d.snippet
+                    .thumbnails
+                    .high
+                    .as_ref()
+                    .map(|t| t.url.clone())
+                    .or_else(|| d.snippet.thumbnails.medium.as_ref().map(|t| t.url.clone()))
+                    .or_else(|| d.snippet.thumbnails.default.as_ref().map(|t| t.url.clone()))
+            });
 
             let titles = item.snippet.title.splitn(2, " - ").collect::<Vec<_>>();
             let (artist, title) = if titles.len() == 2 {
                 (titles[0].trim().to_string(), titles[1].trim().to_string())
             } else {
-                (item.snippet.channel_title.trim().to_string(), item.snippet.title.trim().to_string())
+                (
+                    item.snippet.channel_title.trim().to_string(),
+                    item.snippet.title.trim().to_string(),
+                )
             };
 
             Some(YoutubeTrack {
@@ -305,10 +314,7 @@ async fn fetch_youtube_video_details(video_ids: Vec<String>) -> Vec<YoutubeVideo
         reqwest::Client::new()
             .get("https://www.googleapis.com/youtube/v3/videos")
             .header("User-Agent", USER_AGENT)
-            .query(&[
-                ("part", "snippet,contentDetails"),
-                ("id", &ids),
-            ]),
+            .query(&[("part", "snippet,contentDetails"), ("id", &ids)]),
         credentials,
     )
     .send()

@@ -29,7 +29,7 @@ pub async fn search_release(artist: &str, title: &str) -> Result<Vec<MusicBrainz
     let releases: Vec<MusicBrainzRelease> = result
         .entities
         .into_iter()
-        .filter_map(|release| {
+        .map(|release| {
             let mbid = release.id.to_string();
             let title = release.title;
             let artist = release
@@ -47,7 +47,7 @@ pub async fn search_release(artist: &str, title: &str) -> Result<Vec<MusicBrainz
                 .and_then(|m| m.format.clone());
             let cover_art_url = Some(format!("https://coverartarchive.org/release/{mbid}"));
 
-            Some(MusicBrainzRelease {
+            MusicBrainzRelease {
                 mbid,
                 title,
                 artist,
@@ -55,7 +55,7 @@ pub async fn search_release(artist: &str, title: &str) -> Result<Vec<MusicBrainz
                 country,
                 format,
                 cover_art_url,
-            })
+            }
         })
         .collect();
 

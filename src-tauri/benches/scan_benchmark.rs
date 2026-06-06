@@ -11,7 +11,9 @@ const AUDIO_EXTENSIONS: &[&str] = &[
 fn create_fake_library(root: &PathBuf, file_count: usize) {
     for i in 0..file_count {
         let ext = AUDIO_EXTENSIONS[i % AUDIO_EXTENSIONS.len()];
-        let dir = root.join(format!("artist_{}", i % 20)).join(format!("album_{}", i % 50));
+        let dir = root
+            .join(format!("artist_{}", i % 20))
+            .join(format!("album_{}", i % 50));
         fs::create_dir_all(&dir).unwrap();
         fs::write(
             dir.join(format!("track_{}.{ext}", i)),
@@ -78,5 +80,10 @@ fn bench_scan_large(c: &mut Criterion) {
     });
 }
 
-criterion_group!(scan_benches, bench_scan_small, bench_scan_medium, bench_scan_large);
+criterion_group!(
+    scan_benches,
+    bench_scan_small,
+    bench_scan_medium,
+    bench_scan_large
+);
 criterion_main!(scan_benches);

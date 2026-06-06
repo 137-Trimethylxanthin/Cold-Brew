@@ -54,8 +54,6 @@
 	--color-chart-5: oklch(70% 0.08 280);
 }
 
-
-
 @layer components {
 	.cover-placeholder {
 		background:
@@ -188,11 +186,8 @@
 		grid-template-columns: 200px minmax(0, 1fr) 320px;
 		gap: 0;
 		min-height: 100dvh;
-		padding:
-			env(safe-area-inset-top, 0px)
-			env(safe-area-inset-right, 0px)
-			calc(96px + env(safe-area-inset-bottom, 0px))
-			env(safe-area-inset-left, 0px);
+		padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px)
+			calc(96px + env(safe-area-inset-bottom, 0px)) env(safe-area-inset-left, 0px);
 		overflow: hidden;
 	}
 
@@ -611,8 +606,12 @@
 }
 
 @layer utilities {
-	.text-danger { color: var(--color-danger); }
-	.text-success { color: var(--color-success); }
+	.text-danger {
+		color: var(--color-danger);
+	}
+	.text-success {
+		color: var(--color-success);
+	}
 
 	/* Accessibility */
 	.sr-only {
@@ -636,7 +635,9 @@
 		background: var(--swatch-color);
 		cursor: pointer;
 		outline: none;
-		transition: border-color 0.15s ease, transform 0.15s ease;
+		transition:
+			border-color 0.15s ease,
+			transform 0.15s ease;
 	}
 
 	.color-swatch:hover,
@@ -662,7 +663,10 @@
 		font-weight: 500;
 		cursor: pointer;
 		outline: none;
-		transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+		transition:
+			background 0.15s ease,
+			color 0.15s ease,
+			border-color 0.15s ease;
 	}
 
 	.density-btn:hover,

@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde::{Deserialize, Serialize};
 
 use crate::web::auth;
@@ -101,9 +102,7 @@ struct SoundCloudFormat {
 
 impl SoundCloudTrack {
     pub fn open_url(&self) -> &str {
-        self.permalink_url
-            .as_deref()
-            .unwrap_or(&self.external_url)
+        self.permalink_url.as_deref().unwrap_or(&self.external_url)
     }
 
     pub fn artwork_url_500(&self) -> Option<String> {
@@ -149,7 +148,7 @@ pub async fn search_soundcloud_tracks(
     let url = format!(
         "{}/search/tracks?q={}&client_id={}&limit={}&offset=0",
         SOUNDCLOUD_API_BASE,
-        urlencoding(&query),
+        urlencoding(query),
         client_id,
         limit
     );
@@ -191,25 +190,19 @@ pub async fn search_soundcloud_tracks(
                 .map(|u| u.username.clone())
                 .unwrap_or_else(|| "SoundCloud Artist".to_string());
 
-            let artist_url = raw
-                .user
-                .as_ref()
-                .and_then(|u| u.permalink_url.clone());
+            let artist_url = raw.user.as_ref().and_then(|u| u.permalink_url.clone());
 
-            let preview_url = raw
-                .media
-                .as_ref()
-                .and_then(|media| {
-                    media
-                        .transcodings
-                        .iter()
-                        .find(|t| {
-                            t.format
-                                .as_ref()
-                                .map_or(false, |f| f.protocol == "progressive")
-                        })
-                        .map(|t| format!("{}?client_id={}", t.url, client_id))
-                });
+            let preview_url = raw.media.as_ref().and_then(|media| {
+                media
+                    .transcodings
+                    .iter()
+                    .find(|t| {
+                        t.format
+                            .as_ref()
+                            .is_some_and(|f| f.protocol == "progressive")
+                    })
+                    .map(|t| format!("{}?client_id={}", t.url, client_id))
+            });
 
             let external_url = raw
                 .permalink_url
@@ -275,7 +268,7 @@ pub async fn get_soundcloud_preview_url(track_id: u64) -> Result<Option<String>,
             .find(|t| {
                 t.format
                     .as_ref()
-                    .map_or(false, |f| f.protocol == "progressive")
+                    .is_some_and(|f| f.protocol == "progressive")
             })
             .map(|t| format!("{}?client_id={}", t.url, client_id))
     });
@@ -315,7 +308,10 @@ pub async fn search_soundcloud_as_remote(
             album: track.album,
             duration_ms: Some(track.duration_ms),
             external_url: Some(track.external_url),
-            quality: track.preview_url.as_ref().map(|_| "30s preview".to_string()),
+            quality: track
+                .preview_url
+                .as_ref()
+                .map(|_| "30s preview".to_string()),
             playable: track.preview_url.is_some(),
         })
         .collect();
@@ -330,10 +326,7 @@ mod tests {
     fn test_urlencoding() {
         assert_eq!(urlencoding("hello world"), "hello%20world");
         assert_eq!(urlencoding("abc123"), "abc123");
-        assert_eq!(
-            urlencoding("test & query"),
-            "test%20%26%20query"
-        );
+        assert_eq!(urlencoding("test & query"), "test%20%26%20query");
     }
 
     #[test]
@@ -345,11 +338,8 @@ mod tests {
             artist_url: None,
             album: None,
             duration_ms: 180000,
-            external_url: "https://soundcloud.com/test-artist/test-track"
-                .to_string(),
-            permalink_url: Some(
-                "https://soundcloud.com/test-artist/test-track".to_string(),
-            ),
+            external_url: "https://soundcloud.com/test-artist/test-track".to_string(),
+            permalink_url: Some("https://soundcloud.com/test-artist/test-track".to_string()),
             preview_url: Some("https://api.soundcloud.com/tracks/12345/stream".to_string()),
             streamable: true,
             artwork_url: None,
@@ -377,9 +367,7 @@ mod tests {
             permalink_url: None,
             preview_url: None,
             streamable: false,
-            artwork_url: Some(
-                "https://i1.sndcdn.com/artworks-0001-large.jpg".to_string(),
-            ),
+            artwork_url: Some("https://i1.sndcdn.com/artworks-0001-large.jpg".to_string()),
             waveform_url: None,
             genre: None,
             play_count: None,

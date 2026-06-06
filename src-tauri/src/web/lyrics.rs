@@ -359,7 +359,7 @@ fn non_empty_string(value: &str) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{LrcLibRecord, duration_ms_to_seconds, looks_synced, lrclib_match_score};
+    use super::{duration_ms_to_seconds, looks_synced, lrclib_match_score, LrcLibRecord};
 
     #[test]
     fn synced_lyrics_detect_timestamp_lines() {

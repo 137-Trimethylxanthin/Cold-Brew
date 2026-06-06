@@ -10,12 +10,13 @@
 	import SideNav from '$lib/components/SideNav.svelte';
 	import QueuePanel from '$lib/components/QueuePanel.svelte';
 	import MiniPlayer from '$lib/components/MiniPlayer.svelte';
+	import KeyboardShortcuts from '$lib/components/KeyboardShortcuts.svelte';
 	import { Library, Play, MousePointer2, Settings } from '@lucide/svelte';
 	import { goto } from '$app/navigation';
 	import { t, initLocale } from '$lib/i18n';
 
-	let oldSongs: Song[] = [];
-	let upcomingSongs: Song[] = [];
+	let oldSongs: Song[] = $state([]);
+	let upcomingSongs: Song[] = $state([]);
 	let nativePlaybackActive = false;
 	let spotifySdkPromise: Promise<void> | null = null;
 	let spotifyPlayer: SpotifyPlayer | null = null;
@@ -24,7 +25,7 @@
 	let spotifyConnecting: Promise<string> | null = null;
 	let spotifyResolveDevice: ((deviceId: string) => void) | null = null;
 	let spotifyRejectDevice: ((error: Error) => void) | null = null;
-	let spotifyPlaybackActive = false;
+	let spotifyPlaybackActive = $state(false);
 	let spotifyPaused = true;
 	let spotifyStoppedByApp = false;
 	let spotifyPositionMs = 0;
@@ -38,6 +39,7 @@
 	});
 
 	let queueSheetOpen = $state(false);
+	let showShortcuts = $state(false);
 
 	const bottomTabs = [
 		{ id: 'library', icon: Library, i18nKey: 'nav.library' as const, path: '/' },
@@ -104,6 +106,10 @@
 			if (event.code === 'ArrowRight') {
 				event.preventDefault();
 				void playNextQueueSong();
+			}
+			if (event.key === '?') {
+				event.preventDefault();
+				showShortcuts = true;
 			}
 		};
 		window.addEventListener('keydown', onKeyDown);
@@ -753,5 +759,7 @@
 	canPrev={oldSongs.length > 0}
 	canNext={upcomingSongs.length > 0}
 />
+
+<KeyboardShortcuts bind:open={showShortcuts} />
 
 <Toaster />

@@ -5,9 +5,10 @@
 	interface Props {
 		bars?: number;
 		height?: number;
+		showLabels?: boolean;
 	}
 
-	let { bars = 28, height: defaultH = 54 }: Props = $props();
+	let { bars = 28, height: defaultH = 54, showLabels = false }: Props = $props();
 
 	const NOISE_FLOOR = 0.012;
 
@@ -117,19 +118,20 @@
 		const h = bufH;
 		const dpr = devicePixelRatio || 1;
 
-		const labelH = Math.round(14 * dpr);
+		const labelH = showLabels ? Math.round(14 * dpr) : 0;
 		const drawH = h - labelH;
 
 		ctx.clearRect(0, 0, w, h);
 
-		// Frequency labels
-		ctx.font = `${Math.round(9 * dpr)}px "JetBrains Mono", monospace`;
-		ctx.textAlign = 'center';
-		ctx.textBaseline = 'top';
-		ctx.fillStyle = 'oklch(68% 0.023 72 / 0.42)';
+		if (showLabels) {
+			ctx.font = `${Math.round(9 * dpr)}px "JetBrains Mono", monospace`;
+			ctx.textAlign = 'center';
+			ctx.textBaseline = 'top';
+			ctx.fillStyle = 'oklch(68% 0.023 72 / 0.42)';
 
-		for (const idx of [0, Math.floor(bars / 4), Math.floor(bars / 2), Math.floor(bars * 3 / 4), bars - 1]) {
-			ctx.fillText(freqRanges[idx], ((idx + 0.5) / bars) * w, drawH + Math.round(2 * dpr));
+			for (const idx of [0, Math.floor(bars / 4), Math.floor(bars / 2), Math.floor(bars * 3 / 4), bars - 1]) {
+				ctx.fillText(freqRanges[idx], ((idx + 0.5) / bars) * w, drawH + Math.round(2 * dpr));
+			}
 		}
 
 		const barW = (w / bars) * 0.70;

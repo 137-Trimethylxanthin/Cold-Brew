@@ -130,7 +130,7 @@
 					{/if}
 				</div>
 				<div class="fullscreen-spectrum">
-					<SpectrumAnalyzer bars={48} />
+					<SpectrumAnalyzer bars={48} showLabels={true} />
 				</div>
 			</div>
 			{#if children}

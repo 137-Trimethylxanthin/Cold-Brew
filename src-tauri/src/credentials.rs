@@ -268,6 +268,13 @@ pub fn clear_provider_auth_failure(provider_id: &str) {
 
 pub fn load_provider_secrets(provider_id: &str) -> Result<Option<ProviderSecrets>, String> {
     let provider_id = normalize_provider_id(provider_id)?;
+
+    if let Some(secrets) = load_provider_secrets_from_secrets_module(&provider_id) {
+        if secrets.client_id.is_some() || secrets.client_secret.is_some() || secrets.api_key.is_some() {
+            return Ok(Some(secrets));
+        }
+    }
+
     let client_id = read_provider_entry(&provider_id, "client_id")?;
     let client_secret = read_provider_entry(&provider_id, "client_secret")?;
     let api_key = read_provider_entry(&provider_id, "api_key")?;
@@ -293,6 +300,28 @@ pub fn load_provider_secrets(provider_id: &str) -> Result<Option<ProviderSecrets
         access_token,
         refresh_token,
     }))
+}
+
+fn load_provider_secrets_from_secrets_module(provider_id: &str) -> Option<ProviderSecrets> {
+    let client_id = crate::secrets::get_credential(provider_id, "client_id");
+    let client_secret = crate::secrets::get_credential(provider_id, "client_secret");
+    let api_key = crate::secrets::get_credential(provider_id, "api_key");
+    let api_secret = crate::secrets::get_credential(provider_id, "api_secret");
+    let access_token = crate::secrets::get_credential(provider_id, "access_token");
+    let refresh_token = crate::secrets::get_credential(provider_id, "refresh_token");
+
+    if client_id.is_none() && client_secret.is_none() && api_key.is_none() && api_secret.is_none() && access_token.is_none() && refresh_token.is_none() {
+        return None;
+    }
+
+    Some(ProviderSecrets {
+        client_id,
+        client_secret,
+        api_key,
+        api_secret,
+        access_token,
+        refresh_token,
+    })
 }
 
 fn load_jellyfin_credentials_from_keyring() -> Result<Option<JellyfinCredentials>, String> {

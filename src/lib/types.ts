@@ -176,6 +176,27 @@ export type ProviderLoginStart = {
 	message: string;
 };
 
+export type ProviderStatus = {
+	id: string;
+	name: string;
+	icon: string;
+	has_creds: boolean;
+	is_default: boolean;
+	is_connected: boolean;
+};
+
+export type ProviderCredentialState = {
+	provider: string;
+	has_creds: boolean;
+	client_id: boolean;
+	client_secret: boolean;
+	api_key: boolean;
+	api_secret: boolean;
+	redirect_uri: boolean;
+	app_id: boolean;
+	app_secret: boolean;
+	is_default: boolean;
+};
 export type LastFmScrobbleStatus = {
 	pending_count: number;
 	submitted_count: number;

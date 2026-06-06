@@ -8,15 +8,19 @@
 		PlaybackStatus,
 		ProviderAccount,
 		ProviderCapability,
+		ProviderCredentialState,
 		ProviderLoginStart,
 		ProviderLoginState,
+		ProviderStatus,
 		ScanSummary
 	} from '$lib/types';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import * as Select from '$lib/components/ui/select';
 	import { Select as SelectPrimitive } from 'bits-ui';
+	import * as Card from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Button } from '$lib/components/ui/button';
+	import { Badge } from '$lib/components/ui/badge';
 	import ProviderLoginPanel from '$lib/components/ProviderLoginPanel.svelte';
 
 	let account: JellyfinAccount | null = null;
@@ -24,6 +28,7 @@
 	let serviceCapabilities: ProviderCapability[] = [];
 	let providerAccounts: ProviderAccount[] = [];
 	let providerLoginStates: ProviderLoginState[] = [];
+	let providerStatuses: ProviderStatus[] = [];
 	let lastFmScrobbleStatus: LastFmScrobbleStatus | null = null;
 	let baseUrl = '';
 	let userName = '';
@@ -60,11 +65,79 @@
 	let message = '';
 	let error = '';
 
+	// Dev tab state
+	let devProviderStates: Record<string, ProviderCredentialState> = {};
+	let devFieldValues: Record<string, Record<string, string>> = {};
+	let devUseDefault: Record<string, boolean> = {};
+
 	onMount(() => {
-		void loadAccount(); void loadAudioOutputs(); void loadPlaybackSettings();
-		void loadServiceCapabilities(); void loadProviderAccounts();
-		void loadProviderLoginStates(); void loadLastFmScrobbleStatus();
+	void loadAccount(); void loadAudioOutputs(); void loadPlaybackSettings();
+	void loadServiceCapabilities(); void loadProviderAccounts();
+	void loadProviderLoginStates(); void loadLastFmScrobbleStatus();
+	void loadProviderStatuses();
+	 void loadAllDevStates();
 	});
+
+	function providerBaseFields(providerId: string): { key: string; label: string }[] {
+		const byId: Record<string, { key: string; label: string }[]> = {
+			spotify: [{ key: 'client_id', label: 'Client ID' }, { key: 'client_secret', label: 'Client Secret' }, { key: 'redirect_uri', label: 'Redirect URI' }],
+			tidal: [{ key: 'client_id', label: 'Client ID' }, { key: 'client_secret', label: 'Client Secret' }],
+			qobuz: [{ key: 'app_id', label: 'App ID' }, { key: 'app_secret', label: 'App Secret' }],
+			youtube: [{ key: 'api_key', label: 'API Key' }],
+			lastfm: [{ key: 'api_key', label: 'API Key' }, { key: 'api_secret', label: 'API Secret' }],
+		};
+		return byId[providerId] ?? [];
+	}
+
+	async function loadDevProviderState(providerId: string) {
+		try {
+			const state = await invoke<ProviderCredentialState>('get_provider_credentials', { provider: providerId });
+			devProviderStates[providerId] = state;
+			devUseDefault[providerId] = state.is_default;
+			if (!devFieldValues[providerId]) devFieldValues[providerId] = {};
+		} catch (err) {
+			console.error('Failed to load dev state for', providerId, err);
+		}
+	}
+
+	async function saveDevCredentials(providerId: string) {
+		error = ''; message = '';
+		const fields = providerBaseFields(providerId);
+		try {
+			for (const f of fields) {
+				const val = devFieldValues[providerId]?.[f.key]?.trim();
+				if (val) {
+					await invoke('set_provider_credentials', { provider: providerId, key: f.key, value: val });
+				}
+			}
+			devUseDefault[providerId] = false;
+			await loadDevProviderState(providerId);
+			await loadProviderStatuses();
+			message = `${providerName(providerId)} custom credentials saved to keyring.`;
+		} catch (err) { error = toErrorMessage(err); }
+	}
+
+	async function resetDevToDefaults(providerId: string) {
+		error = ''; message = '';
+		try {
+			await invoke('reset_provider_credentials', { provider: providerId });
+			devUseDefault[providerId] = true;
+			const fields = providerBaseFields(providerId);
+			for (const f of fields) {
+				if (devFieldValues[providerId]) devFieldValues[providerId][f.key] = '';
+			}
+			await loadDevProviderState(providerId);
+			await loadProviderStatuses();
+			message = `${providerName(providerId)} reset to defaults.`;
+		} catch (err) { error = toErrorMessage(err); }
+	}
+
+	async function loadProviderStatuses() {
+		error = '';
+		try {
+			providerStatuses = await invoke<ProviderStatus[]>('get_all_provider_statuses');
+		} catch (err) { error = toErrorMessage(err); }
+	}
 
 	async function scanLibrary() {
 		if (!libraryPath.trim()) { error = 'Enter a local music folder path.'; return; }
@@ -125,7 +198,7 @@
 	}
 
 	async function refreshProviderCredentialStatus() {
-		await loadProviderAccounts(); await loadProviderLoginStates(); await loadLastFmScrobbleStatus();
+		await loadProviderAccounts(); await loadProviderLoginStates(); await loadLastFmScrobbleStatus(); await loadProviderStatuses();
 	}
 
 	async function loadLastFmScrobbleStatus() {
@@ -180,111 +253,58 @@
 		return serviceCapabilities.filter((p) => !['local', 'jellyfin', 'lrclib'].includes(p.id));
 	}
 
-	function accountForProvider(providerId: string) {
-		return providerAccounts.find((a) => a.provider_id === providerId) ?? null;
-	}
-
-	function providerLoginStateRows() {
-		const ids = new Set(credentialProviderOptions().map((p) => p.id));
-		return providerLoginStates.filter((s) => ids.has(s.provider_id));
-	}
-
 	function providerName(providerId: string) {
 		return serviceCapabilities.find((p) => p.id === providerId)?.name ?? providerId;
 	}
 
-	function savedProviderFlags(account: ProviderAccount) {
-		const flags: string[] = [];
-		if (account.display_name) flags.push('label');
-		if (account.has_client_id) flags.push('client id');
-		if (account.has_client_secret) flags.push('client secret');
-		if (account.has_api_key) flags.push('api key');
-		if (account.has_api_secret) flags.push('api secret');
-		if (account.has_access_token) flags.push('access token');
-		if (account.has_refresh_token) flags.push('refresh token');
-		return flags.join(', ');
-	}
-
-	function lastFmCredentialsReady() {
-		const a = accountForProvider('lastfm');
-		return Boolean(a?.has_api_key && a.has_api_secret && a.has_access_token);
+	function providerStatusCard(providerId: string) {
+		return providerStatuses.find((s) => s.id === providerId) ?? null;
 	}
 
 	function loginStateForProvider(providerId: string) {
 		return providerLoginStates.find((s) => s.provider_id === providerId) ?? null;
 	}
 
-	function selectProviderCredentials(providerId: string) {
-		selectedProviderId = providerId;
-		message = `${providerName(providerId)} selected in Service Credentials.`; error = '';
+	function credentialStatusLabel(status: ProviderStatus | null) {
+		if (!status) return { text: 'Not set', class: 'text-soft' };
+		if (status.is_connected) return { text: 'Connected ✓', class: 'text-primary' };
+		if (status.has_creds && status.is_default) return { text: 'Default ✓', class: 'text-primary' };
+		if (status.has_creds && !status.is_default) return { text: 'Custom ✎', class: 'text-accent' };
+		return { text: 'Not set', class: 'text-soft' };
 	}
 
-	function optionalCredential(value: string) { const t = value.trim(); return t.length > 0 ? t : null; }
-
-	function authorizationCodeFromInput(value: string) {
-		const t = value.trim(); if (!t) return t;
-		return parameterFromAuthorizationInput(t, 'code') ?? t;
+	function cardBorderClass(status: ProviderStatus | null) {
+		if (!status) return 'border-dashed border-outline';
+		if (status.is_connected) return 'border-primary/50';
+		if (status.has_creds) return 'border-outline';
+		return 'border-dashed border-outline';
 	}
 
-	function authorizationStateFromInput(value: string, fallbackState: string) {
-		return parameterFromAuthorizationInput(value.trim(), 'state') ?? optionalCredential(fallbackState);
+	function providerIconName(icon: string) {
+		const map: Record<string, string> = {
+			music: '🎵', radio: '📻', 'disc-3': '💿', youtube: '▶️', 'radio-tower': '📡', 'shopping-bag': '🛍️'
+		};
+		return map[icon] ?? '🔌';
 	}
 
-	function parameterFromAuthorizationInput(value: string, parameterName: string) {
-		if (!value) return null;
-		try {
-			const url = new URL(value);
-			const qv = url.searchParams.get(parameterName); if (qv) return qv;
-			if (url.hash.startsWith('#')) {
-				const hv = new URLSearchParams(url.hash.slice(1)).get(parameterName); if (hv) return hv;
-			}
-		} catch { return null; }
-		return null;
-	}
-
-	function clearProviderFormSecrets() {
-		providerClientId = ''; providerClientSecret = ''; providerApiKey = ''; providerApiSecret = '';
-		providerAccessToken = ''; providerRefreshToken = '';
-	}
-
-	async function saveProviderAccount() {
-		error = ''; message = '';
-		try {
-			await invoke<ProviderAccount>('save_provider_account', {
-				provider_id: selectedProviderId, display_name: optionalCredential(providerDisplayName),
-				client_id: optionalCredential(providerClientId), client_secret: optionalCredential(providerClientSecret),
-				api_key: optionalCredential(providerApiKey), api_secret: optionalCredential(providerApiSecret),
-				access_token: optionalCredential(providerAccessToken), refresh_token: optionalCredential(providerRefreshToken)
-			});
-			await loadProviderAccounts(); await loadProviderLoginStates();
-			providerDisplayName = ''; clearProviderFormSecrets();
-			message = `${providerName(selectedProviderId)} credentials saved.`;
-		} catch (err) { error = toErrorMessage(err); }
-	}
-
-	async function clearProviderAccount() {
-		error = ''; message = '';
-		try {
-			await invoke('clear_provider_account', { provider_id: selectedProviderId });
-			await loadProviderAccounts(); await loadProviderLoginStates();
-			providerDisplayName = ''; clearProviderFormSecrets();
-			message = `${providerName(selectedProviderId)} credentials cleared.`;
-		} catch (err) { error = toErrorMessage(err); }
+	function lastFmCredentialsReady() {
+		const a = providerAccounts.find((a) => a.provider_id === 'lastfm');
+		return Boolean(a?.has_api_key && a.has_api_secret && a.has_access_token);
 	}
 
 	async function startSpotifyLogin() {
 		error = ''; message = '';
 		try {
-			const login = await invoke<ProviderLoginStart>('start_spotify_pkce_login', { redirect_uri: spotifyRedirectUri, scope: optionalCredential(spotifyScope) });
+			const login = await invoke<ProviderLoginStart>('start_spotify_pkce_login', { redirect_uri: spotifyRedirectUri, scope: spotifyScope.trim() || null });
 			spotifyAuthorizationUrl = login.authorization_url; spotifyAuthorizationState = login.state ?? '';
-			message = login.message; await loadProviderLoginStates();
+			message = login.message; await refreshProviderCredentialStatus();
 		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function finishSpotifyLogin() {
 		error = ''; message = '';
 		try {
-			await invoke<ProviderAccount>('finish_spotify_pkce_login', { code: authorizationCodeFromInput(spotifyAuthorizationCode), state: authorizationStateFromInput(spotifyAuthorizationCode, spotifyAuthorizationState) });
+			await invoke<ProviderAccount>('finish_spotify_pkce_login', { code: authCodeFromInput(spotifyAuthorizationCode), state: authStateFromInput(spotifyAuthorizationCode, spotifyAuthorizationState) });
 			spotifyAuthorizationCode = ''; spotifyAuthorizationUrl = '';
 			await refreshProviderCredentialStatus(); message = 'Spotify tokens saved.';
 		} catch (err) { error = toErrorMessage(err); }
@@ -293,7 +313,7 @@
 	async function completeSpotifyLoginInBrowser() {
 		error = ''; message = 'Waiting for Spotify authorization in the browser...';
 		try {
-			await invoke<ProviderAccount>('complete_spotify_pkce_login_in_browser', { redirect_uri: spotifyRedirectUri, scope: optionalCredential(spotifyScope) });
+			await invoke<ProviderAccount>('complete_spotify_pkce_login_in_browser', { redirect_uri: spotifyRedirectUri, scope: spotifyScope.trim() || null });
 			spotifyAuthorizationCode = ''; spotifyAuthorizationUrl = '';
 			await refreshProviderCredentialStatus(); message = 'Spotify login completed.';
 		} catch (err) { error = toErrorMessage(err); message = ''; }
@@ -308,16 +328,16 @@
 	async function startTidalLogin() {
 		error = ''; message = '';
 		try {
-			const login = await invoke<ProviderLoginStart>('start_tidal_pkce_login', { redirect_uri: tidalRedirectUri, scope: optionalCredential(tidalScope) });
+			const login = await invoke<ProviderLoginStart>('start_tidal_pkce_login', { redirect_uri: tidalRedirectUri, scope: tidalScope.trim() || null });
 			tidalAuthorizationUrl = login.authorization_url; tidalAuthorizationState = login.state ?? '';
-			message = login.message; await loadProviderLoginStates();
+			message = login.message; await refreshProviderCredentialStatus();
 		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function finishTidalLogin() {
 		error = ''; message = '';
 		try {
-			await invoke<ProviderAccount>('finish_tidal_pkce_login', { code: authorizationCodeFromInput(tidalAuthorizationCode), state: authorizationStateFromInput(tidalAuthorizationCode, tidalAuthorizationState) });
+			await invoke<ProviderAccount>('finish_tidal_pkce_login', { code: authCodeFromInput(tidalAuthorizationCode), state: authStateFromInput(tidalAuthorizationCode, tidalAuthorizationState) });
 			tidalAuthorizationCode = ''; tidalAuthorizationUrl = '';
 			await refreshProviderCredentialStatus(); message = 'TIDAL tokens saved.';
 		} catch (err) { error = toErrorMessage(err); }
@@ -332,16 +352,16 @@
 	async function startYoutubeLogin() {
 		error = ''; message = '';
 		try {
-			const login = await invoke<ProviderLoginStart>('start_youtube_oauth_login', { redirect_uri: youtubeRedirectUri, scope: optionalCredential(youtubeScope) });
+			const login = await invoke<ProviderLoginStart>('start_youtube_oauth_login', { redirect_uri: youtubeRedirectUri, scope: youtubeScope.trim() || null });
 			youtubeAuthorizationUrl = login.authorization_url; youtubeAuthorizationState = login.state ?? '';
-			message = login.message; await loadProviderLoginStates();
+			message = login.message; await refreshProviderCredentialStatus();
 		} catch (err) { error = toErrorMessage(err); }
 	}
 
 	async function finishYoutubeLogin() {
 		error = ''; message = '';
 		try {
-			await invoke<ProviderAccount>('finish_youtube_oauth_login', { code: authorizationCodeFromInput(youtubeAuthorizationCode), state: authorizationStateFromInput(youtubeAuthorizationCode, youtubeAuthorizationState) });
+			await invoke<ProviderAccount>('finish_youtube_oauth_login', { code: authCodeFromInput(youtubeAuthorizationCode), state: authStateFromInput(youtubeAuthorizationCode, youtubeAuthorizationState) });
 			youtubeAuthorizationCode = ''; youtubeAuthorizationUrl = '';
 			await refreshProviderCredentialStatus(); message = 'YouTube OAuth tokens saved.';
 		} catch (err) { error = toErrorMessage(err); }
@@ -355,7 +375,7 @@
 
 	async function startLastFmLogin() {
 		error = ''; message = '';
-		try { const login = await invoke<ProviderLoginStart>('start_lastfm_login'); lastFmAuthorizationUrl = login.authorization_url; message = login.message; await loadProviderLoginStates(); }
+		try { const login = await invoke<ProviderLoginStart>('start_lastfm_login'); lastFmAuthorizationUrl = login.authorization_url; message = login.message; await refreshProviderCredentialStatus(); }
 		catch (err) { error = toErrorMessage(err); }
 	}
 
@@ -377,11 +397,38 @@
 		catch (err) { error = toErrorMessage(err); }
 	}
 
+	function authCodeFromInput(value: string) { const t = value.trim(); if (!t) return t; return parameterFromAuthInput(t, 'code') ?? t; }
+	function authStateFromInput(value: string, fallbackState: string) { return parameterFromAuthInput(value.trim(), 'state') ?? (fallbackState.trim() || null); }
+	function parameterFromAuthInput(value: string, paramName: string) {
+		if (!value) return null;
+		try {
+			const url = new URL(value);
+			const qv = url.searchParams.get(paramName); if (qv) return qv;
+			if (url.hash.startsWith('#')) {
+				const hv = new URLSearchParams(url.hash.slice(1)).get(paramName); if (hv) return hv;
+			}
+		} catch { return null; }
+		return null;
+	}
+
 	function toErrorMessage(err: unknown) {
 		const message = typeof err === 'string' ? err : err instanceof Error ? err.message : null;
 		if (message?.includes('__TAURI_INTERNALS__')) return '';
 		if (message) return message; return 'Unexpected application error.';
 	}
+
+	// Dev tab helper
+	async function loadAllDevStates() {
+		for (const pid of ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp']) {
+			await loadDevProviderState(pid);
+		}
+	}
+
+	const devProviderNames: Record<string, string> = {
+		spotify: 'Spotify', tidal: 'TIDAL', qobuz: 'Qobuz', youtube: 'YouTube Music', lastfm: 'Last.fm', bandcamp: 'Bandcamp'
+	};
+
+	const ALL_PROVIDER_IDS = ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp'];
 </script>
 
 <section class="settings-page">
@@ -390,24 +437,26 @@
 		<p class="text-soft text-[0.9rem]">Accounts, audio, and library configuration</p>
 	</div>
 
-	{#if error}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-danger/20 text-danger/70">{error}</p>{/if}
-	{#if message}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-success/20 text-success/80">{message}</p>{/if}
+	{#if error}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-red-500/20 text-red-600">{error}</p>{/if}
+	{#if message}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-green-500/20 text-green-600">{message}</p>{/if}
 
 	<Tabs.Root value="general" class="tabs-root">
 		<Tabs.List>
 			<Tabs.Trigger value="general">General</Tabs.Trigger>
 			<Tabs.Trigger value="accounts">Accounts</Tabs.Trigger>
+			<Tabs.Trigger value="providers">Providers</Tabs.Trigger>
+			<Tabs.Trigger value="dev">Dev</Tabs.Trigger>
 			<Tabs.Trigger value="audio">Audio</Tabs.Trigger>
 			<Tabs.Trigger value="library">Library</Tabs.Trigger>
 		</Tabs.List>
 
+		<!-- ===== GENERAL TAB ===== -->
 		<Tabs.Content value="general" class="settings-tab-content">
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Services</h2>
 					<p class="text-soft text-[0.9rem]">Provider capabilities and current implementation state</p>
 				</div>
-
 				<div class="overflow-x-auto">
 					<table class="w-full min-w-[920px] border-collapse">
 						<thead>
@@ -468,6 +517,7 @@
 			</section>
 		</Tabs.Content>
 
+		<!-- ===== ACCOUNTS TAB ===== -->
 		<Tabs.Content value="accounts" class="settings-tab-content">
 			<section class="settings-panel">
 				<div>
@@ -489,66 +539,13 @@
 
 			<section class="settings-panel">
 				<div>
-					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Service Credentials</h2>
-					<p class="text-soft text-[0.9rem]">Secure storage for provider OAuth/API material and user app credentials</p>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">OAuth Connections</h2>
+					<p class="text-soft text-[0.9rem]">Sign in with your streaming service accounts. Credentials are managed in the Dev tab or from .env defaults.</p>
 				</div>
-
-				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
-					<label class="grid gap-[6px] text-soft text-[0.86rem]">Service
-						<Select.Root bind:value={selectedProviderId}>
-							<Select.Trigger class="w-full">
-								<SelectPrimitive.Value placeholder="Select service" />
-							</Select.Trigger>
-							<Select.Content>
-								{#each credentialProviderOptions() as provider}
-									<Select.Item value={provider.id}>{provider.name}</Select.Item>
-								{/each}
-							</Select.Content>
-						</Select.Root>
-					</label>
-					<label class="grid gap-[6px] text-soft text-[0.86rem]">Account label <Input bind:value={providerDisplayName} placeholder="Personal account" autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-soft text-[0.86rem]">Client ID / App ID <Input bind:value={providerClientId} autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-soft text-[0.86rem]">Client secret / App secret <Input bind:value={providerClientSecret} type="password" autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-soft text-[0.86rem]">API key <Input bind:value={providerApiKey} autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-soft text-[0.86rem]">API secret <Input bind:value={providerApiSecret} type="password" autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-soft text-[0.86rem]">Access token / Session key <Input bind:value={providerAccessToken} type="password" autocomplete="off" class="w-full" /></label>
-					<label class="grid gap-[6px] text-soft text-[0.86rem]">Refresh token <Input bind:value={providerRefreshToken} type="password" autocomplete="off" class="w-full" /></label>
-				</div>
-
-				<div class="flex flex-wrap gap-2">
-					<Button onclick={saveProviderAccount}>Save provider credentials</Button>
-					<Button variant="outline" onclick={clearProviderAccount}>Clear selected service</Button>
-					<Button variant="secondary" onclick={refreshProviderCredentialStatus}>Refresh status</Button>
-				</div>
-
-				{#if providerLoginStateRows().length > 0}
-					<table class="w-full border-collapse">
-						<thead>
-							<tr>
-								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Service</th>
-								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Login state</th>
-								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Details</th>
-								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Last failure</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each providerLoginStateRows() as loginState}
-								<tr>
-									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{providerName(loginState.provider_id)}</td>
-									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]"><span class="state-pill {loginState.status}">{stateLabel(loginState.status)}</span></td>
-									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{loginState.message}</td>
-									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem] {loginState.status === 'failed' ? 'text-danger' : ''}">{loginState.last_error ?? 'None'}</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				{/if}
 
 				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
 					<ProviderLoginPanel providerId="spotify" providerName="Spotify" description="OAuth PKCE" loginState={loginStateForProvider('spotify')}>
-						<label class="grid gap-[6px] text-soft text-[0.86rem]">Redirect URI <Input bind:value={spotifyRedirectUri} autocomplete="off" class="w-full" /></label>
-						<label class="grid gap-[6px] text-soft text-[0.86rem]">Scope <Input bind:value={spotifyScope} autocomplete="off" class="w-full" /></label>
-						<div class="flex flex-wrap gap-2"><Button onclick={completeSpotifyLoginInBrowser}>Login in browser</Button><Button variant="secondary" onclick={startSpotifyLogin}>Manual login URL</Button><Button variant="secondary" onclick={refreshSpotifyToken}>Refresh Spotify token</Button></div>
+						<div class="flex flex-wrap gap-2"><Button onclick={completeSpotifyLoginInBrowser}>Login in browser</Button><Button variant="secondary" onclick={startSpotifyLogin}>Manual login URL</Button><Button variant="secondary" onclick={refreshSpotifyToken}>Refresh token</Button></div>
 						{#if spotifyAuthorizationUrl}
 							<a class="text-brand text-[0.86rem]" href={spotifyAuthorizationUrl} target="_blank" rel="noreferrer">Open Spotify authorization</a>
 							<label class="grid gap-[6px] text-soft text-[0.86rem]">Returned URL or code <Input bind:value={spotifyAuthorizationCode} autocomplete="off" class="w-full" /></label>
@@ -558,9 +555,7 @@
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="tidal" providerName="TIDAL" description="OAuth PKCE" loginState={loginStateForProvider('tidal')}>
-						<label class="grid gap-[6px] text-soft text-[0.86rem]">Redirect URI <Input bind:value={tidalRedirectUri} autocomplete="off" class="w-full" /></label>
-						<label class="grid gap-[6px] text-soft text-[0.86rem]">Scope <Input bind:value={tidalScope} autocomplete="off" class="w-full" /></label>
-						<div class="flex flex-wrap gap-2"><Button onclick={startTidalLogin}>Start TIDAL login</Button><Button variant="secondary" onclick={refreshTidalToken}>Refresh TIDAL token</Button></div>
+						<div class="flex flex-wrap gap-2"><Button onclick={startTidalLogin}>Start TIDAL login</Button><Button variant="secondary" onclick={refreshTidalToken}>Refresh token</Button></div>
 						{#if tidalAuthorizationUrl}
 							<a class="text-brand text-[0.86rem]" href={tidalAuthorizationUrl} target="_blank" rel="noreferrer">Open TIDAL authorization</a>
 							<label class="grid gap-[6px] text-soft text-[0.86rem]">Returned URL or code <Input bind:value={tidalAuthorizationCode} autocomplete="off" class="w-full" /></label>
@@ -570,9 +565,7 @@
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="youtube" providerName="YouTube" description="Google OAuth" loginState={loginStateForProvider('youtube')}>
-						<label class="grid gap-[6px] text-soft text-[0.86rem]">Redirect URI <Input bind:value={youtubeRedirectUri} autocomplete="off" class="w-full" /></label>
-						<label class="grid gap-[6px] text-soft text-[0.86rem]">Scope <Input bind:value={youtubeScope} autocomplete="off" class="w-full" /></label>
-						<div class="flex flex-wrap gap-2"><Button onclick={startYoutubeLogin}>Start YouTube login</Button><Button variant="secondary" onclick={refreshYoutubeToken}>Refresh YouTube token</Button></div>
+						<div class="flex flex-wrap gap-2"><Button onclick={startYoutubeLogin}>Start YouTube login</Button><Button variant="secondary" onclick={refreshYoutubeToken}>Refresh token</Button></div>
 						{#if youtubeAuthorizationUrl}
 							<a class="text-brand text-[0.86rem]" href={youtubeAuthorizationUrl} target="_blank" rel="noreferrer">Open Google authorization</a>
 							<label class="grid gap-[6px] text-soft text-[0.86rem]">Returned URL or code <Input bind:value={youtubeAuthorizationCode} autocomplete="off" class="w-full" /></label>
@@ -591,49 +584,155 @@
 
 					<ProviderLoginPanel providerId="qobuz" providerName="Qobuz" description="App credentials" loginState={loginStateForProvider('qobuz')}>
 						<p>{loginStateForProvider('qobuz')?.message ?? 'No Qobuz credentials saved'}</p>
-						<div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={() => selectProviderCredentials('qobuz')}>Edit Qobuz credentials</Button></div>
 					</ProviderLoginPanel>
 
 					<ProviderLoginPanel providerId="bandcamp" providerName="Bandcamp" description="Link-out" loginState={loginStateForProvider('bandcamp')}>
 						<p>{loginStateForProvider('bandcamp')?.message ?? 'No Bandcamp login state available'}</p>
-						<div class="flex flex-wrap gap-2"><Button variant="secondary" onclick={() => selectProviderCredentials('bandcamp')}>Edit Bandcamp note</Button></div>
 						<a class="text-brand text-[0.86rem]" href="https://bandcamp.com/developer" target="_blank" rel="noreferrer">Open Bandcamp developer docs</a>
 					</ProviderLoginPanel>
 				</div>
-
-				{#if providerAccounts.length > 0}
-					<table class="w-full border-collapse">
-						<thead>
-							<tr><th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Service</th>
-								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Saved fields</th>
-								<th class="border-b border-outline px-[0.6rem] py-[0.55rem] text-left align-top text-soft font-mono text-[0.76rem] uppercase">Source</th></tr>
-						</thead>
-						<tbody>
-							{#each providerAccounts as pa}
-								<tr><td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{providerName(pa.provider_id)}</td>
-									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{savedProviderFlags(pa)}</td>
-									<td class="border-b border-outline px-[0.6rem] py-[0.55rem] align-top text-[0.82rem]">{pa.source}</td></tr>
-							{/each}
-						</tbody>
-					</table>
-				{/if}
 			</section>
 
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Last.fm Scrobbling</h2>
-					<p class="text-soft text-[0.9rem]">{lastFmCredentialsReady() ? 'Last.fm scrobbling credentials are ready' : 'Save a Last.fm API key, API secret, and session key in Service Credentials'}</p>
+					<p class="text-soft text-[0.9rem]">{lastFmCredentialsReady() ? 'Last.fm scrobbling credentials are ready' : 'Save a Last.fm API key, API secret, and session key'}</p>
 				</div>
 				<div class="grid grid-cols-3 gap-2.5 max-md:grid-cols-1">
 					<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Pending</span><strong class="text-xl">{lastFmScrobbleStatus?.pending_count ?? 0}</strong></div>
 					<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Submitted</span><strong class="text-xl">{lastFmScrobbleStatus?.submitted_count ?? 0}</strong></div>
 					<div class="grid gap-1 border border-outline rounded-[20px] p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-[0.78rem] uppercase">Failed</span><strong class="text-xl">{lastFmScrobbleStatus?.failed_count ?? 0}</strong></div>
 				</div>
-				{#if lastFmScrobbleStatus?.last_error}<p class="text-danger">{lastFmScrobbleStatus.last_error}</p>{/if}
+				{#if lastFmScrobbleStatus?.last_error}<p class="text-red-600">{lastFmScrobbleStatus.last_error}</p>{/if}
 				<div class="flex flex-wrap gap-2"><Button onclick={retryLastFmScrobbles} disabled={!lastFmCredentialsReady()}>Retry pending scrobbles</Button><Button variant="secondary" onclick={loadLastFmScrobbleStatus}>Refresh status</Button></div>
 			</section>
 		</Tabs.Content>
 
+		<!-- ===== PROVIDERS TAB ===== -->
+		<Tabs.Content value="providers" class="settings-tab-content">
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Provider Status</h2>
+					<p class="text-soft text-[0.9rem]">Credential and connection status for each streaming service</p>
+				</div>
+				<div class="grid grid-cols-2 gap-3 max-lg:grid-cols-1">
+					{#each ALL_PROVIDER_IDS as pid}
+						{@const status = providerStatusCard(pid)}
+						<Card.Root class={cardBorderClass(status) + ' transition-colors'}>
+							<Card.Header>
+								<Card.Title class="flex items-center gap-2.5 text-[0.95rem]">
+									<span class="text-lg">{providerIconName(status?.icon ?? '')}</span>
+									{status?.name ?? providerName(pid)}
+								</Card.Title>
+								<Card.Description>
+									<div class="flex flex-col gap-1 mt-1">
+										<span class={credentialStatusLabel(status).class}>
+											Credentials: {credentialStatusLabel(status).text}
+										</span>
+										{#if status}
+											<span class="text-soft">
+												{status.is_connected ? 'Status: Connected ✓' : status.has_creds ? 'Status: Ready for OAuth' : 'Status: Not configured'}
+											</span>
+										{:else}
+											<span class="text-soft">Configure in Dev tab</span>
+										{/if}
+									</div>
+								</Card.Description>
+							</Card.Header>
+							<Card.Footer>
+								{#if status?.is_connected}
+									<Badge variant="outline" class="border-green-600/40 text-green-600">Connected</Badge>
+								{:else if status?.has_creds}
+									{#if pid === 'spotify'}
+										<Button size="sm" variant="outline" onclick={completeSpotifyLoginInBrowser}>Connect</Button>
+									{:else if pid === 'tidal'}
+										<Button size="sm" variant="outline" onclick={startTidalLogin}>Connect</Button>
+									{:else if pid === 'youtube'}
+										<Button size="sm" variant="outline" onclick={startYoutubeLogin}>Connect</Button>
+									{:else if pid === 'lastfm'}
+										<Button size="sm" variant="outline" onclick={startLastFmLogin}>Connect</Button>
+									{:else}
+										<span class="text-soft text-[0.82rem]">No OAuth flow</span>
+									{/if}
+								{:else}
+									<span class="text-soft text-[0.82rem]">Not configured</span>
+								{/if}
+							</Card.Footer>
+						</Card.Root>
+					{/each}
+				</div>
+				<div class="flex flex-wrap gap-2 mt-3">
+					<Button variant="secondary" onclick={loadProviderStatuses}>Refresh status</Button>
+				</div>
+			</section>
+		</Tabs.Content>
+
+		<!-- ===== DEV TAB ===== -->
+		<Tabs.Content value="dev" class="settings-tab-content">
+			<div class="mb-4 px-3.5 py-3 border border-amber-500/40 rounded-[16px] bg-amber-500/10">
+				<p class="m-0 text-amber-600 dark:text-amber-400 text-[0.86rem]">
+					⚠️ <strong>Developer Settings</strong> — changing credentials may break playback. Use the Providers tab for normal setup.
+				</p>
+			</div>
+
+			{#each ALL_PROVIDER_IDS as pid}
+				{@const state = devProviderStates[pid]}
+				<section class="settings-panel">
+					<div>
+						<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(20px,2vw,26px)] leading-[1.04]">{devProviderNames[pid] ?? providerName(pid)}</h2>
+						<p class="text-soft text-[0.86rem]">
+							{#if state}
+								{#if state.is_default}
+									<span class="text-green-600">Using defaults (from .env / keyring)</span>
+								{:else if state.has_creds}
+									<span class="text-accent">Custom credentials active</span>
+								{:else}
+									<span class="text-soft">No credentials configured</span>
+								{/if}
+							{:else}
+								<span class="text-soft">Loading...</span>
+							{/if}
+						</p>
+					</div>
+
+					{#each providerBaseFields(pid) as field}
+						{@const fieldKey = field.key}
+						<label class="grid gap-[6px] text-soft text-[0.86rem]">
+							{field.label}
+							<div class="flex gap-2">
+								<Input
+									type={fieldKey.includes('secret') || fieldKey.includes('key') ? 'password' : 'text'}
+									value={devFieldValues[pid]?.[fieldKey] ?? ''}
+									oninput={(e) => {
+										if (!devFieldValues[pid]) devFieldValues[pid] = {};
+										devFieldValues[pid][fieldKey] = (e.target as HTMLInputElement).value;
+									}}
+									placeholder={state?.is_default ? '•••••••• (using defaults)' : `Enter ${field.label}`}
+									disabled={devUseDefault[pid] ?? true}
+									class="flex-1"
+									autocomplete="off"
+								/>
+							</div>
+						</label>
+					{/each}
+
+					<div class="flex flex-wrap gap-2 items-center mt-3">
+						<label class="flex items-center gap-2 text-[0.86rem] cursor-pointer">
+							<input type="checkbox" bind:checked={devUseDefault[pid]} class="w-4 h-4 rounded border-outline" />
+							<span class="text-soft">Use Default</span>
+						</label>
+					</div>
+
+					<div class="flex flex-wrap gap-2 mt-2">
+						<Button size="sm" onclick={() => saveDevCredentials(pid)} disabled={devUseDefault[pid] ?? true}>Save</Button>
+						<Button size="sm" variant="outline" onclick={() => resetDevToDefaults(pid)}>Reset to Defaults</Button>
+						<Button size="sm" variant="secondary" onclick={() => loadDevProviderState(pid)}>Reload</Button>
+					</div>
+				</section>
+			{/each}
+		</Tabs.Content>
+
+		<!-- ===== AUDIO TAB ===== -->
 		<Tabs.Content value="audio" class="settings-tab-content">
 			<section class="settings-panel">
 				<div>
@@ -656,6 +755,7 @@
 			</section>
 		</Tabs.Content>
 
+		<!-- ===== LIBRARY TAB ===== -->
 		<Tabs.Content value="library" class="settings-tab-content">
 			<section class="settings-panel">
 				<div>
@@ -675,5 +775,3 @@
 		</Tabs.Content>
 	</Tabs.Root>
 </section>
-
-

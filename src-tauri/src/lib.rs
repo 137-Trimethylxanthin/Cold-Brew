@@ -2,6 +2,7 @@ mod audio_player;
 mod auth_flows;
 mod credentials;
 pub mod error;
+pub mod secrets;
 mod jellyfin;
 mod library;
 mod listening_history;
@@ -28,6 +29,7 @@ use crate::jellyfin::Api;
 pub fn run() {
     tauri::Builder::default()
         .setup(|_app| {
+            secrets::init_default_credentials();
             tauri::async_runtime::spawn(async move {
                 music_player::run().await;
             });
@@ -102,7 +104,11 @@ pub fn run() {
             search_metadata_suggestions,
             list_listening_history,
             list_listening_history_summary,
-            list_service_capabilities
+            list_service_capabilities,
+            get_provider_credentials,
+            set_provider_credentials,
+            reset_provider_credentials,
+            get_all_provider_statuses
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -802,4 +808,84 @@ fn import_m3u_playlist(
 #[tauri::command(rename_all = "snake_case")]
 fn export_m3u_playlist(app: AppHandle, playlist_id: i64, path: String) -> Result<(), String> {
     playlists::export_m3u_playlist(&app, playlist_id, path)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn get_provider_credentials(provider: String) -> Result<serde_json::Value, String> {
+    let has_client_id = secrets::get_credential(&provider, "client_id").is_some();
+    let has_client_secret = secrets::get_credential(&provider, "client_secret").is_some();
+    let has_api_key = secrets::get_credential(&provider, "api_key").is_some();
+    let has_api_secret = secrets::get_credential(&provider, "api_secret").is_some();
+    let has_redirect_uri = secrets::get_credential(&provider, "redirect_uri").is_some();
+    let has_app_id = secrets::get_credential(&provider, "app_id").is_some();
+    let has_app_secret = secrets::get_credential(&provider, "app_secret").is_some();
+    let has_creds = has_client_id || has_client_secret || has_api_key || has_api_secret || has_app_id || has_app_secret || has_redirect_uri;
+    let is_default = secrets::is_default_credential(&provider);
+
+    Ok(serde_json::json!({
+        "provider": provider,
+        "has_creds": has_creds,
+        "client_id": has_client_id,
+        "client_secret": has_client_secret,
+        "api_key": has_api_key,
+        "api_secret": has_api_secret,
+        "redirect_uri": has_redirect_uri,
+        "app_id": has_app_id,
+        "app_secret": has_app_secret,
+        "is_default": is_default
+    }))
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn set_provider_credentials(provider: String, key: String, value: String) -> Result<(), String> {
+    secrets::set_credential(&provider, &key, &value)?;
+    secrets::mark_custom(&provider)?;
+    Ok(())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn reset_provider_credentials(provider: String) -> Result<(), String> {
+    secrets::reset_to_default(&provider)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn get_all_provider_statuses() -> Result<serde_json::Value, String> {
+    let providers = [
+        ("spotify", "Spotify", "music"),
+        ("tidal", "TIDAL", "radio"),
+        ("qobuz", "Qobuz", "disc-3"),
+        ("youtube", "YouTube Music", "youtube"),
+        ("lastfm", "Last.fm", "radio-tower"),
+        ("bandcamp", "Bandcamp", "shopping-bag"),
+    ];
+
+    let mut results = Vec::new();
+    for (id, name, icon) in &providers {
+        let has_creds = secrets::has_credentials(id);
+        let is_default = secrets::is_default_credential(id);
+
+        let has_access_token = secrets::get_credential(id, "access_token").is_some()
+            || crate::credentials::list_provider_accounts()
+                .ok()
+                .and_then(|accounts| {
+                    accounts
+                        .into_iter()
+                        .find(|a| a.provider_id == *id)
+                        .map(|a| a.has_access_token)
+                })
+                .unwrap_or(false);
+
+        let is_connected = has_access_token;
+
+        results.push(serde_json::json!({
+            "id": id,
+            "name": name,
+            "icon": icon,
+            "has_creds": has_creds,
+            "is_default": is_default,
+            "is_connected": is_connected
+        }));
+    }
+
+    Ok(serde_json::Value::Array(results))
 }

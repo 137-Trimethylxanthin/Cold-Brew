@@ -3,6 +3,7 @@
 	import type { PlaybackStatus, Song } from '$lib/types';
 	import { Maximize, X } from '@lucide/svelte';
 	import { t } from '$lib/i18n';
+	import SpectrumAnalyzer from '$lib/components/SpectrumAnalyzer.svelte';
 
 	let { song, status, children }: { song: Song; status: PlaybackStatus | null; children?: import('svelte').Snippet } = $props();
 
@@ -91,6 +92,7 @@
 			<span class="text-soft text-sm">{song.album}</span>
 		{/if}
 	</div>
+	<SpectrumAnalyzer />
 </div>
 
 <!-- M20: Fullscreen Now-Playing Overlay -->
@@ -127,6 +129,9 @@
 					{#if song.album}
 						<p class="fullscreen-np-album">{song.album}</p>
 					{/if}
+				</div>
+				<div class="fullscreen-spectrum">
+					<SpectrumAnalyzer />
 				</div>
 			</div>
 			{#if children}
@@ -261,5 +266,13 @@
 		align-items: center;
 		gap: 1rem;
 		transition: opacity 0.4s ease;
+	}
+
+	.fullscreen-spectrum {
+		width: 100%;
+	}
+
+	.fullscreen-spectrum :global(.spectrum-canvas) {
+		height: 180px;
 	}
 </style>

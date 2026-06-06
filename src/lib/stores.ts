@@ -3,11 +3,13 @@ import type {
 	AbRepeatState,
 	CrossfeedState,
 	EqState,
+	LevelData,
 	PlaybackSettings,
 	PlaybackStatus,
 	QueueSnapshot,
 	SleepTimerState,
-	Song
+	Song,
+	SpectrumData
 } from '$lib/types';
 import { emptySong } from '$lib/playback';
 
@@ -37,4 +39,11 @@ export const abRepeatState = writable<AbRepeatState>({
 	active: false,
 	loop_start_secs: null,
 	loop_end_secs: null
+});
+export const spectrumData = writable<SpectrumData>(new Array(64).fill(0));
+export const levelData = writable<LevelData>({
+	left_peak: 0,
+	right_peak: 0,
+	left_rms: 0,
+	right_rms: 0
 });

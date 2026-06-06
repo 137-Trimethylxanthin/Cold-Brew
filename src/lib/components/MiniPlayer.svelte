@@ -7,6 +7,7 @@
 	import { Slider } from '$lib/components/ui/slider';
 	import { t } from '$lib/i18n';
 	import { invoke } from '@tauri-apps/api/core';
+	import VuMeter from '$lib/components/VuMeter.svelte';
 
 	let {
 		onPlayPrevious = () => {},
@@ -243,9 +244,12 @@
 		</div>
 
 		<label class="grid gap-2 text-soft text-sm">
-			<span>{t('transport.volume')} {$volume}</span>
-			<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={(v: number[]) => volume.set(v[0] / 100)} />
+		<span>{t('transport.volume')} {$volume}</span>
+		<Slider value={[$volume * 100]} min={0} max={100} step={1} onValueChange={(v: number[]) => volume.set(v[0] / 100)} />
 		</label>
+	<div class="vu-meter-wrap">
+		<VuMeter />
+	</div>
 		<Button size="icon" variant="ghost" onclick={toggleCompact} aria-label={t('transport.compact')} title={t('transport.compact')} class="self-end">
 			<Minimize2 class="size-4" />
 		</Button>
@@ -293,5 +297,11 @@
 		background: var(--color-surface, #fff);
 		position: relative;
 		overflow: hidden;
+	}
+
+	.vu-meter-wrap {
+		display: flex;
+		align-items: flex-end;
+		padding: 0 0.25rem;
 	}
 </style>

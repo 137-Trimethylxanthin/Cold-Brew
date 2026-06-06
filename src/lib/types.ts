@@ -344,3 +344,12 @@ export type AbRepeatState = {
 	loop_start_secs: number | null;
 	loop_end_secs: number | null;
 };
+
+export type SpectrumData = number[];
+
+export type LevelData = {
+	left_peak: number;
+	right_peak: number;
+	left_rms: number;
+	right_rms: number;
+};

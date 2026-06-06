@@ -29,6 +29,8 @@ pub fn run() {
             });
             crate::system::hotkeys::register_media_hotkeys(_app.handle());
             crate::system::mpris::init_mpris();
+            crate::audio::spectrum::start_spectrum_analyzer(_app.handle());
+            crate::audio::levels::start_level_analyzer(_app.handle());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -152,7 +154,9 @@ pub fn run() {
             get_smart_playlist_tracks,
             delete_smart_playlist,
             get_discovery_dashboard,
-            start_genre_radio
+            start_genre_radio,
+            crate::audio::spectrum::get_spectrum_state,
+            crate::audio::levels::get_level_state
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

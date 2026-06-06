@@ -5,6 +5,7 @@
 	import { playbackStatus, currentSong, queueSnapshot, volume } from '$lib/stores';
 	import { formatSource, formatSampleRate, emptySong } from '$lib/playback';
 	import NowPlaying from '$lib/components/NowPlaying.svelte';
+	import SpectrumAnalyzer from '$lib/components/SpectrumAnalyzer.svelte';
 	import { SkipBack, Play, Pause, Square, SkipForward } from '@lucide/svelte';
 	import { t } from '$lib/i18n';
 	import { Button } from '$lib/components/ui/button';
@@ -149,11 +150,7 @@
 				<span class="state-pill">{$playbackStatus?.state ?? 'Idle'}</span>
 			</div>
 
-			<div class="grid grid-cols-[repeat(28,minmax(2px,1fr))] items-end gap-1 h-[54px]" aria-hidden="true">
-				{#each Array.from({ length: 28 }, () => Math.floor(Math.random() * 70) + 28) as height}
-					<span class="spectrum-bar" style="--bar-height: {height}%"></span>
-				{/each}
-			</div>
+			<SpectrumAnalyzer />
 
 			<div class="grid gap-2">
 				<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>

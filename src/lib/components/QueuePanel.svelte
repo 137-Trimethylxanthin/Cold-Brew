@@ -4,6 +4,7 @@
 	import type { Song } from '$lib/types';
 	import { invoke } from '@tauri-apps/api/core';
 	import { Button } from '$lib/components/ui/button';
+	import SpectrumAnalyzer from '$lib/components/SpectrumAnalyzer.svelte';
 	import { t } from '$lib/i18n';
 
 	let {
@@ -21,10 +22,6 @@
 	let draggedUpcomingIndex: number | null = $state(null);
 	let dragOverUpcomingIndex: number | null = $state(null);
 
-	const spectrumBars = [
-		64, 36, 86, 48, 74, 42, 92, 58, 30, 80, 54, 70, 44, 96, 62, 34, 76, 50, 88, 46,
-		68, 38, 82, 56, 72, 40, 90, 52
-	] as const;
 
 	function durationLabel(duration: number) {
 		if (!duration) return '0:00';
@@ -146,10 +143,8 @@
 				</span>
 			{/if}
 		</div>
-		<div class="grid grid-cols-[repeat(28,minmax(2px,1fr))] items-end gap-1 h-[54px]" aria-hidden="true">
-			{#each spectrumBars as height}
-				<span class="spectrum-bar" style="--bar-height: {height}%"></span>
-			{/each}
+		<div aria-hidden="true">
+			<SpectrumAnalyzer />
 		</div>
 		<div class="grid gap-2">
 			<div class="duration-bar" style="--progress: {playbackProgress()}%" aria-hidden="true"></div>

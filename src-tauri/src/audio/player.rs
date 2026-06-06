@@ -1866,7 +1866,6 @@ fn get_queue(queue_manager: &mut MutexGuard<QueueManager>) -> String {
 //WS end :)
 pub async fn run() {
     //start a new async thread that does not block the main thread
-    tracing_subscriber::fmt::init();
     let (server, _) = Server::create(|_server| MusicServer {});
     ezsockets::tungstenite::run(server, "127.0.0.1:6969")
         .await

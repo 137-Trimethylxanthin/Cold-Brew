@@ -172,6 +172,7 @@ pub fn start_level_analyzer(app: &AppHandle) {
     });
 }
 
+#[allow(dead_code)]
 pub fn stop_level_analyzer() {
     if let Ok(mut state) = LEVEL_STATE.lock() {
         state.running = false;

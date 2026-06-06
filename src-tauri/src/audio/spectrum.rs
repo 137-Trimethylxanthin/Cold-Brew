@@ -160,6 +160,7 @@ pub fn start_spectrum_analyzer(app: &AppHandle) {
     });
 }
 
+#[allow(dead_code)]
 pub fn stop_spectrum_analyzer() {
     if let Ok(mut state) = SPECTRUM_STATE.lock() {
         state.running = false;

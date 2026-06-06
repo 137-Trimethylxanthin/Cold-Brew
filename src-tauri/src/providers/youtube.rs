@@ -235,11 +235,7 @@ pub async fn search_youtube_music_tracks(
         .iter()
         .filter_map(|item| {
             let id = item.id.video_id.trim().to_string();
-            if id.is_empty() {
-                None
-            } else {
-                Some(id)
-            }
+            if id.is_empty() { None } else { Some(id) }
         })
         .collect();
 
@@ -386,7 +382,7 @@ pub async fn search_youtube_music_as_remote(
 
 #[cfg(test)]
 mod tests {
-    use super::{parse_iso8601_duration_ms, YoutubeTrack};
+    use super::{YoutubeTrack, parse_iso8601_duration_ms};
 
     #[test]
     fn test_parse_iso8601_duration() {

@@ -2,8 +2,8 @@ use std::process::Command;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
-use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -916,11 +916,13 @@ mod tests {
     fn random_tokens_are_urlsafe_without_padding() {
         let token = random_urlsafe_token(32);
         assert!(!token.contains('='));
-        assert!(token
-            .chars()
-            .all(|character| character.is_ascii_alphanumeric()
-                || character == '-'
-                || character == '_'));
+        assert!(
+            token
+                .chars()
+                .all(|character| character.is_ascii_alphanumeric()
+                    || character == '-'
+                    || character == '_')
+        );
     }
 
     #[test]
@@ -946,19 +948,21 @@ mod tests {
 
         assert_eq!(callback.code, "abc123");
         assert_eq!(callback.state.as_deref(), Some("state123"));
-        assert!(parse_oauth_callback_request(
-            "GET /callback?code=abc123&state=bad HTTP/1.1\r\nhost: 127.0.0.1\r\n\r\n",
-            "/callback",
-            "state123",
-        )
-        .is_err());
+        assert!(
+            parse_oauth_callback_request(
+                "GET /callback?code=abc123&state=bad HTTP/1.1\r\nhost: 127.0.0.1\r\n\r\n",
+                "/callback",
+                "state123",
+            )
+            .is_err()
+        );
     }
 }
 
 use std::collections::HashMap;
 use std::env;
 
-use keyring_core::{set_default_store, Entry, Error};
+use keyring_core::{Entry, Error, set_default_store};
 
 const SERVICE: &str = "cold-brew";
 const JELLYFIN_BASE_URL: &str = "jellyfin.base_url";
@@ -1653,8 +1657,8 @@ fn normalize_provider_id(provider_id: &str) -> Result<String, String> {
 #[cfg(test)]
 mod credentials_tests {
     use super::{
-        non_empty_option, normalize_provider_id, provider_entry_name,
-        provider_login_state_from_account, ProviderAccount,
+        ProviderAccount, non_empty_option, normalize_provider_id, provider_entry_name,
+        provider_login_state_from_account,
     };
 
     #[test]

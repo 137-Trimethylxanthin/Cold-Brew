@@ -1053,8 +1053,8 @@ async fn connect_spotify_native(
 
 #[instrument]
 #[tauri::command(rename_all = "snake_case")]
-async fn disconnect_spotify_native(
-) -> Result<crate::providers::spotify::SpotifyNativeStatus, String> {
+async fn disconnect_spotify_native()
+-> Result<crate::providers::spotify::SpotifyNativeStatus, String> {
     tracing::info!("Disconnecting native Spotify player");
     crate::providers::spotify::disconnect_spotify_native().await
 }

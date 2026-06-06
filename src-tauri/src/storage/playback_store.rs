@@ -1,7 +1,7 @@
 use std::convert::TryFrom;
 use std::fs;
 
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::Serialize;
 use tauri::{AppHandle, Manager};
 

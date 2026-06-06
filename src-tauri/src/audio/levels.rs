@@ -61,7 +61,12 @@ impl LevelPayload {
     }
 }
 
-fn generate_levels(playing: bool, volume: f32, position_ms: u64, elapsed: f32) -> (f32, f32, f32, f32) {
+fn generate_levels(
+    playing: bool,
+    volume: f32,
+    position_ms: u64,
+    elapsed: f32,
+) -> (f32, f32, f32, f32) {
     if !playing {
         return (0.0, 0.0, 0.0, 0.0);
     }
@@ -122,11 +127,10 @@ pub fn start_level_analyzer(app: &AppHandle) {
 
             tokio::time::sleep(std::time::Duration::from_millis(5)).await;
 
-            let (playing, volume, position_ms) =
-                match crate::audio::player::get_playback_status() {
-                    Ok(status) => (status.state == "playing", status.volume, status.position_ms),
-                    Err(_) => (false, 0.0, 0),
-                };
+            let (playing, volume, position_ms) = match crate::audio::player::get_playback_status() {
+                Ok(status) => (status.state == "playing", status.volume, status.position_ms),
+                Err(_) => (false, 0.0, 0),
+            };
 
             let elapsed_secs = start_time.elapsed().as_secs_f32();
 

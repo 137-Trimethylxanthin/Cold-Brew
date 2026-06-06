@@ -3,8 +3,8 @@ use std::num::NonZero;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use rodio::source::SeekError;
 use rodio::Source;
+use rodio::source::SeekError;
 
 const RING_BUFFER_CAPACITY: usize = 16384;
 const TAP_BATCH_SIZE: usize = 256;

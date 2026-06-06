@@ -3,11 +3,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
-use base64::engine::general_purpose::STANDARD as BASE64;
 use base64::Engine;
+use base64::engine::general_purpose::STANDARD as BASE64;
 use lofty::file::{AudioFile, TaggedFileExt};
 use lofty::prelude::Accessor;
-use rusqlite::{params, Connection};
+use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager};
 use tracing::instrument;
@@ -1082,11 +1082,7 @@ fn listened_duration_ms(event: &str, position_ms: u64, duration_ms: Option<u64>)
         .map(|duration_ms| position_ms.min(duration_ms))
         .unwrap_or(position_ms);
 
-    if position_ms < 5_000 {
-        0
-    } else {
-        position_ms
-    }
+    if position_ms < 5_000 { 0 } else { position_ms }
 }
 
 fn listening_database_error(error: rusqlite::Error) -> String {

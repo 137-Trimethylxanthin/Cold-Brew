@@ -156,11 +156,7 @@ fn lucene_escape(value: &str) -> String {
 
 fn non_empty_string(value: &str) -> Option<&str> {
     let value = value.trim();
-    if value.is_empty() {
-        None
-    } else {
-        Some(value)
-    }
+    if value.is_empty() { None } else { Some(value) }
 }
 
 #[cfg(test)]

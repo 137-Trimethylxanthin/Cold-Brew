@@ -120,7 +120,7 @@
 	}
 </script>
 
-<aside class="grid content-start gap-3.5 min-w-0 border border-outline rounded-3xl p-[18px] overflow-auto bg-surface/92">
+<aside class="grid content-start gap-3.5 min-w-0 border border-outline rounded-3xl p-[18px] overflow-auto bg-surface/92" data-od-id="queue-panel">
 	<section class="grid gap-3.5 border border-outline rounded-3xl p-4 bg-surface-2/[0.42]">
 		<div class="relative overflow-hidden aspect-square border border-outline/70 rounded-3xl shadow-lg" aria-hidden="true">
 			{#if $currentSong.cover_art}

@@ -9,8 +9,9 @@ use serde::Serialize;
 use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
-use crate::audio_player::PlaybackStatus;
-use crate::{credentials, library};
+use crate::audio::player::PlaybackStatus;
+use crate::storage::database;
+use crate::web::auth;
 
 const LASTFM_ENDPOINT: &str = "https://ws.audioscrobbler.com/2.0/";
 const LASTFM_BATCH_LIMIT: u32 = 50;
@@ -105,7 +106,7 @@ pub fn get_lastfm_scrobble_status(app: &AppHandle) -> Result<LastFmScrobbleStatu
 }
 
 pub async fn retry_lastfm_scrobbles(app: &AppHandle) -> Result<LastFmScrobbleStatus, String> {
-    let secrets = credentials::load_provider_secrets("lastfm")?
+    let secrets = auth::load_provider_secrets("lastfm")?
         .ok_or_else(|| "Save Last.fm API key, API secret, and session key first.".to_string())?;
     let api_key = secrets
         .api_key
@@ -147,7 +148,7 @@ fn lastfm_track_from_status(
     let Some(path) = status.current_path.as_deref() else {
         return Ok(None);
     };
-    let Some(track) = library::get_library_track_by_path(app, path)? else {
+    let Some(track) = database::get_library_track_by_path(app, path)? else {
         return Ok(None);
     };
     let Some(artist) = track.artist.as_deref().and_then(non_empty_string) else {
@@ -173,7 +174,7 @@ fn lastfm_track_from_status(
 }
 
 fn optional_lastfm_auth() -> Result<Option<LastFmAuth>, String> {
-    let Some(secrets) = credentials::load_provider_secrets("lastfm")? else {
+    let Some(secrets) = auth::load_provider_secrets("lastfm")? else {
         return Ok(None);
     };
     let Some(api_key) = secrets.api_key.and_then(non_empty_owned) else {

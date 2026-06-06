@@ -111,8 +111,8 @@
 	}
 </script>
 
-<section class="player-route">
-	<section class="player-hero">
+<section class="player-route" data-od-id="player-route">
+	<section class="player-hero" data-od-id="player-hero">
 		<NowPlaying song={$currentSong} status={$playbackStatus} />
 
 		<div class="player-copy">

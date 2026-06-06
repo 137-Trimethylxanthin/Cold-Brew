@@ -70,7 +70,7 @@
 	}
 </script>
 
-<div class="miniplayer">
+<div class="miniplayer" data-od-id="mini-player">
 	<div class="flex items-center gap-3 min-w-0">
 		<div class="w-12 h-12 relative overflow-hidden border border-outline rounded-[14px]" aria-hidden="true">
 			{#if $currentSong.cover_art}

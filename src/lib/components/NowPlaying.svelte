@@ -13,7 +13,7 @@
 	}
 </script>
 
-<div class="grid gap-[18px]">
+<div class="grid gap-[18px]" data-od-id="now-playing">
 	<div class="w-full max-w-[380px] aspect-square relative overflow-hidden border border-outline/70 rounded-3xl shadow-xl" aria-hidden="true">
 		{#if song.cover_art}
 			<img class="object-cover w-full h-full rounded-3xl" src={song.cover_art} alt={`${song.title} album art`} />

@@ -546,7 +546,7 @@
 </script>
 
 <section class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-[clamp(22px,5vw,52px)]"
-	style="min-height: 210px">
+	style="min-height: 210px" data-od-id="library-hero">
 	<div class="relative z-[1]">
 		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]">Library</h1>
 		<p class="text-soft text-sm">{localTracks.length} local tracks indexed — scan new paths in Settings</p>
@@ -560,7 +560,7 @@
 {#if error}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-danger/20 text-danger/70">{error}</p>{/if}
 {#if message}<p class="mt-3 px-3.5 py-2.5 border border-outline rounded-[20px] bg-success/20 text-success/80">{message}</p>{/if}
 
-<section class="mt-6 border border-outline rounded-3xl p-[18px] bg-surface/90">
+<section class="mt-6 border border-outline rounded-3xl p-[18px] bg-surface/90" data-od-id="local-files">
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Local Files</h2>
 		<div class="flex justify-center items-center gap-1.5 mb-3">

@@ -10,6 +10,8 @@
 	import SideNav from '$lib/components/SideNav.svelte';
 	import QueuePanel from '$lib/components/QueuePanel.svelte';
 	import MiniPlayer from '$lib/components/MiniPlayer.svelte';
+	import { Library, Play, MousePointer2, Settings } from '@lucide/svelte';
+	import { goto } from '$app/navigation';
 
 	let oldSongs: Song[] = [];
 	let upcomingSongs: Song[] = [];
@@ -28,6 +30,25 @@
 	let spotifyDurationMs: number | null = null;
 	let spotifyStateUpdatedAt = 0;
 	let spotifyLastQueueSyncId: string | null = null;
+
+	$effect(() => {
+		$page.url.pathname;
+		// re-routed – bottom tab highlights automatically via $page
+	});
+
+	let queueSheetOpen = $state(false);
+
+	const bottomTabs = [
+		{ id: 'library', icon: Library, label: 'Library', path: '/' },
+		{ id: 'player', icon: Play, label: 'Player', path: '/player' },
+		{ id: 'explore', icon: MousePointer2, label: 'Explore', path: '/explore' },
+		{ id: 'settings', icon: Settings, label: 'Settings', path: '/settings' }
+	];
+
+	function isTabActive(path: string) {
+		if (path === '/') return $page.url.pathname === '/';
+		return $page.url.pathname.startsWith(path);
+	}
 
 	onMount(() => {
 		void refreshQueue();
@@ -68,9 +89,7 @@
 	async function refreshPlaybackStatus() {
 		try {
 			syncPlaybackStatus(await invoke<PlaybackStatus>('get_playback_status'));
-		} catch {
-			// Tauri commands are unavailable during browser-only development.
-		}
+		} catch {}
 	}
 
 	async function refreshSpotifyState() {
@@ -86,9 +105,7 @@
 	async function refreshQueue() {
 		try {
 			syncQueueSnapshot(await invoke<QueueSnapshot>('get_queue_snapshot'));
-		} catch {
-			// Tauri commands are unavailable during browser-only development.
-		}
+		} catch {}
 	}
 
 	function syncQueueSnapshot(queue: QueueSnapshot) {
@@ -537,18 +554,51 @@
 	}
 </script>
 
-<div class="app-shell">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="app-shell" data-od-id="app-shell" role="application">
 	<SideNav />
-	<main class="content">
+	<div class="sidebar-icon-rail">
+		<button onclick={() => goto('/')} aria-label="Library">
+			<Library class="size-5" />
+		</button>
+		<button onclick={() => goto('/player')} aria-label="Player">
+			<Play class="size-5" />
+		</button>
+		<button onclick={() => goto('/explore')} aria-label="Explore">
+			<MousePointer2 class="size-5" />
+		</button>
+		<button onclick={() => goto('/settings')} aria-label="Settings">
+			<Settings class="size-5" />
+		</button>
+	</div>
+	<main class="content" data-od-id="content" id="main-content">
 		<slot />
 	</main>
-	<QueuePanel
-		{upcomingSongs}
-		{oldSongs}
-		onRemove={removeQueuedSong}
-		onMove={moveQueuedSong}
-	/>
+	<div class="queue-panel-desktop" data-od-id="queue-panel-desktop">
+		<QueuePanel
+			{upcomingSongs}
+			{oldSongs}
+			onRemove={removeQueuedSong}
+			onMove={moveQueuedSong}
+		/>
+	</div>
 </div>
+
+<!-- Mobile bottom tab bar -->
+<nav class="bottom-tab-bar" data-od-id="bottom-tab-bar" aria-label="Bottom navigation">
+	{#each bottomTabs as tab}
+		<button
+			class="bottom-tab-button"
+			class:text-brand={isTabActive(tab.path)}
+			onclick={() => goto(tab.path)}
+			aria-label={tab.label}
+			aria-current={isTabActive(tab.path) ? 'page' : undefined}
+		>
+			<tab.icon class="size-5" />
+			<span>{tab.label}</span>
+		</button>
+	{/each}
+</nav>
 
 <MiniPlayer
 	onPlayPrevious={playPreviousQueueSong}
@@ -566,4 +616,3 @@
 />
 
 <Toaster />
-

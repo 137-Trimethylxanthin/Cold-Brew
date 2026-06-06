@@ -4,7 +4,7 @@ use reqwest::{StatusCode, Url};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::credentials;
+use crate::web::auth;
 
 const USER_AGENT: &str = "Cold-Brew/0.1.0";
 const SPOTIFY_SEARCH_ENDPOINT: &str = "https://api.spotify.com/v1/search";
@@ -741,11 +741,11 @@ pub async fn search_lastfm_tracks(
             .and_then(Value::as_str)
             .unwrap_or("Last.fm API error");
         let error = format!("Last.fm search failed with error {error_code}: {message}");
-        credentials::record_provider_auth_failure("lastfm", error.clone());
+        auth::record_provider_auth_failure("lastfm", error.clone());
         return Err(error);
     }
 
-    credentials::clear_provider_auth_failure("lastfm");
+    auth::clear_provider_auth_failure("lastfm");
 
     serde_json::from_value::<LastFmSearchResponse>(value)
         .map(|search_response| {
@@ -770,12 +770,12 @@ async fn ensure_provider_success(
     let status = response.status();
     if status == StatusCode::UNAUTHORIZED {
         let message = format!("{label} credentials are invalid or expired.");
-        credentials::record_provider_auth_failure(provider_id, message.clone());
+        auth::record_provider_auth_failure(provider_id, message.clone());
         return Err(message);
     }
     if status == StatusCode::FORBIDDEN {
         let message = format!("{label} is not allowed for the saved credentials.");
-        credentials::record_provider_auth_failure(provider_id, message.clone());
+        auth::record_provider_auth_failure(provider_id, message.clone());
         return Err(message);
     }
     if status == StatusCode::TOO_MANY_REQUESTS {
@@ -784,7 +784,7 @@ async fn ensure_provider_success(
     if !status.is_success() {
         return Err(format!("{label} failed with HTTP {status}."));
     }
-    credentials::clear_provider_auth_failure(provider_id);
+    auth::clear_provider_auth_failure(provider_id);
     Ok(response)
 }
 
@@ -1154,7 +1154,7 @@ fn qobuz_quality_label(
 }
 
 fn spotify_access_token() -> Result<String, String> {
-    credentials::load_provider_secrets("spotify")?
+    auth::load_provider_secrets("spotify")?
         .and_then(|secrets| secrets.access_token)
         .map(|token| token.trim().to_string())
         .filter(|token| !token.is_empty())
@@ -1167,7 +1167,7 @@ fn tidal_access_token() -> Result<String, String> {
 }
 
 fn youtube_credentials() -> Result<YoutubeCredentials, String> {
-    let Some(secrets) = credentials::load_provider_secrets("youtube")? else {
+    let Some(secrets) = auth::load_provider_secrets("youtube")? else {
         return Err(
             "Save a YouTube Data API key or complete YouTube OAuth in Service Credentials first."
                 .to_string(),
@@ -1197,9 +1197,9 @@ fn apply_youtube_credentials(
 
 fn required_provider_value<F>(provider_id: &str, select: F) -> Result<Option<String>, String>
 where
-    F: FnOnce(credentials::ProviderSecrets) -> Option<String>,
+    F: FnOnce(auth::ProviderSecrets) -> Option<String>,
 {
-    Ok(credentials::load_provider_secrets(provider_id)?
+    Ok(auth::load_provider_secrets(provider_id)?
         .and_then(select)
         .map(|value| value.trim().to_string())
         .filter(|value| !value.is_empty()))

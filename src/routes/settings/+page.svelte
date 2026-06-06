@@ -431,7 +431,7 @@
 	const ALL_PROVIDER_IDS = ['spotify', 'tidal', 'qobuz', 'youtube', 'lastfm', 'bandcamp'];
 </script>
 
-<section class="settings-page">
+<section class="settings-page" data-od-id="settings-page">
 	<div class="heading-bg relative overflow-hidden border border-outline rounded-3xl shadow-2xl p-[clamp(22px,5vw,52px)]" style="min-height: 180px">
 		<h1 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(42px,6vw,76px)] leading-[0.94]">Settings</h1>
 		<p class="text-soft text-[0.9rem]">Accounts, audio, and library configuration</p>

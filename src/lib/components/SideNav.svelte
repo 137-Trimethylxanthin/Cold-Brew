@@ -6,7 +6,8 @@
 </script>
 
 <nav
-	class="grid grid-rows-[auto_auto_1fr_auto] content-start gap-5 min-w-0 border border-outline rounded-3xl p-[18px] bg-surface/92"
+	class="sidebar-full grid-rows-[auto_auto_1fr_auto] content-start gap-5 min-w-0 border border-outline rounded-3xl p-[18px] bg-surface/92"
+	data-od-id="sidebar"
 	aria-label="Primary"
 >
 	<div class="inline-flex items-center gap-2.5 font-[family-name:var(--font-family-display)] text-xl font-bold">

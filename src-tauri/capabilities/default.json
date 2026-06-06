@@ -12,6 +12,8 @@
 		"core:resources:default",
 		"core:image:default",
 		"core:menu:default",
-		"core:tray:default"
+		"core:tray:default",
+		"global-shortcut:default",
+		"notification:default"
 	]
 }

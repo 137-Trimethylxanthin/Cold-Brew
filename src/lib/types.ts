@@ -257,3 +257,35 @@ export type QueueHistoryEntry = {
 	song: Song;
 	played_at: string;
 };
+
+export type MusicBrainzRelease = {
+	mbid: string;
+	title: string;
+	artist: string;
+	date: string | null;
+	country: string | null;
+	format: string | null;
+	cover_art_url: string | null;
+};
+
+export type LibraryStats = {
+	total_tracks: number;
+	total_albums: number;
+	total_artists: number;
+	total_duration_secs: number;
+	format_breakdown: Record<string, number>;
+	top_artists: ArtistStat[];
+	top_albums: AlbumStat[];
+	forgotten_count: number;
+};
+
+export type ArtistStat = {
+	name: string;
+	play_count: number;
+};
+
+export type AlbumStat = {
+	name: string;
+	artist: string;
+	play_count: number;
+};

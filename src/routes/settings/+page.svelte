@@ -43,6 +43,7 @@
 	let preampGainDb = 0;
 	let playbackSpeed = 1.0;
 	let playbackSpeedValue = '1.0';
+	let notificationsEnabled = true;
 	let selectedProviderId = 'spotify';
 	let providerDisplayName = '';
 	let providerClientId = '';
@@ -73,6 +74,10 @@
 	let message = '';
 	let error = '';
 
+	// Watch folders
+	let watchFolders = $state(false);
+	let watchingLabel = $state('');
+
 	// Dev tab state
 	let devProviderStates: Record<string, ProviderCredentialState> = {};
 	let devFieldValues: Record<string, Record<string, string>> = {};
@@ -80,6 +85,7 @@
 
 	onMount(() => {
 	void loadAccount(); void loadAudioOutputs(); void loadPlaybackSettings();
+	void loadNotificationSetting();
 	void loadServiceCapabilities(); void loadProviderAccounts();
 	void loadProviderLoginStates(); void loadLastFmScrobbleStatus();
 	void loadProviderStatuses();
@@ -156,6 +162,22 @@
 		} catch (err) { error = toErrorMessage(err); } finally { loadingLibrary = false; }
 	}
 
+	async function toggleWatchFolders() {
+		error = ''; message = '';
+		try {
+			if (watchFolders) {
+				if (!libraryPath.trim()) { error = 'Set a library path first.'; watchFolders = false; return; }
+				await invoke('start_folder_watcher', { path: libraryPath });
+				watchingLabel = 'Watching...';
+				message = 'Folder watcher started.';
+			} else {
+				await invoke('stop_folder_watcher');
+				watchingLabel = '';
+				message = 'Folder watcher stopped.';
+			}
+		} catch (err) { error = toErrorMessage(err); watchFolders = !watchFolders; }
+	}
+
 	async function loadAccount() {
 		error = '';
 		try {
@@ -195,6 +217,24 @@
 			playbackSpeedValue = settings.playback_speed.toString();
 		}
 		catch (err) { error = toErrorMessage(err); }
+	}
+
+	async function loadNotificationSetting() {
+		try {
+			notificationsEnabled = await invoke<boolean>('get_notification_setting');
+		} catch (err) {
+			notificationsEnabled = true;
+		}
+	}
+
+	async function toggleNotifications() {
+		notificationsEnabled = !notificationsEnabled;
+		try {
+			await invoke('set_notification_setting', { enabled: notificationsEnabled });
+		} catch (err) {
+			notificationsEnabled = !notificationsEnabled;
+			error = toErrorMessage(err);
+		}
 	}
 
 	async function loadServiceCapabilities() {
@@ -501,6 +541,17 @@
 
 		<!-- ===== GENERAL TAB ===== -->
 		<Tabs.Content value="general" class="settings-tab-content">
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Notifications</h2>
+					<p class="text-soft text-sm">Show "Now Playing" notification when tracks change</p>
+				</div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input type="checkbox" checked={notificationsEnabled} onchange={toggleNotifications} class="w-4 h-4 rounded border-outline" />
+					<span class="text-soft text-sm">Enable now-playing notifications</span>
+				</label>
+			</section>
+
 			<section class="settings-panel">
 				<div>
 					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Services</h2>
@@ -897,6 +948,20 @@
 						<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Root</span><strong class="font-mono text-xs break-words">{scanSummary.root}</strong></div>
 					</div>
 				{/if}
+			</section>
+
+			<section class="settings-panel">
+				<div>
+					<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Watch Folders</h2>
+					<p class="text-soft text-sm">Automatically scan for new audio files in the library root</p>
+				</div>
+				<label class="flex items-center gap-3 cursor-pointer">
+					<input type="checkbox" bind:checked={watchFolders} onchange={toggleWatchFolders} class="w-4 h-4 rounded border-outline" />
+					<span class="text-soft text-sm">Watch folders for new files</span>
+					{#if watchingLabel}
+						<span class="text-xs font-mono text-soft ml-2">{watchingLabel}</span>
+					{/if}
+				</label>
 			</section>
 		</Tabs.Content>
 	</Tabs.Root>

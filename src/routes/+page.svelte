@@ -9,10 +9,12 @@
 	import { Play, ListPlus, Plus, Info, Radio } from '@lucide/svelte';
 	import type {
 		LibraryTrack,
+		LibraryStats,
 		ListeningHistoryEntry,
 		ListeningHistorySummary,
 		LyricsResult,
 		MetadataSuggestion,
+		MusicBrainzRelease,
 		PlaybackStatus,
 		PlaylistDetail,
 		PlaylistSummary,
@@ -80,6 +82,15 @@
 	let error = $state('');
 	let nativeSpotifyStatus: SpotifyNativeStatus | null = $state(null);
 	let connectingSpotify = $state(false);
+
+	// M18 Smart Library
+	let libraryStats: LibraryStats | null = $state(null);
+	let loadingStats = $state(false);
+	let musicbrainzReleases: MusicBrainzRelease[] = $state([]);
+	let loadingMusicBrainz = $state(false);
+	let duplicateGroups: LibraryTrack[][] = $state([]);
+	let loadingDuplicates = $state(false);
+	let showDuplicates = $state(false);
 
 	onMount(() => {
 		void loadLocalLibrary();
@@ -484,6 +495,49 @@
 		}
 	}
 
+	// M18: Library Stats
+	async function loadLibraryStats() {
+		loadingStats = true; error = '';
+		try {
+			libraryStats = await invoke<LibraryStats>('get_library_stats');
+		} catch (err) { error = toErrorMessage(err); }
+		finally { loadingStats = false; }
+	}
+
+	// M18: MusicBrainz lookup
+	async function lookupMusicBrainz(track: LibraryTrack) {
+		loadingMusicBrainz = true; error = '';
+		try {
+			musicbrainzReleases = await invoke<MusicBrainzRelease[]>('search_musicbrainz_releases', {
+				artist: track.artist ?? '', title: track.title
+			});
+		} catch (err) { error = toErrorMessage(err); musicbrainzReleases = []; }
+		finally { loadingMusicBrainz = false; }
+	}
+
+	async function fetchMusicBrainzCover(mbid: string) {
+		try {
+			return await invoke<string | null>('fetch_cover_art', { mbid });
+		} catch { return null; }
+	}
+
+	// M18: Duplicates
+	async function findDuplicates() {
+		loadingDuplicates = true; error = '';
+		try {
+			duplicateGroups = await invoke<LibraryTrack[][]>('find_duplicates');
+			showDuplicates = true;
+		} catch (err) { error = toErrorMessage(err); }
+		finally { loadingDuplicates = false; }
+	}
+
+	function formatDurationSecs(secs: number) {
+		const h = Math.floor(secs / 3600);
+		const m = Math.floor((secs % 3600) / 60);
+		if (h > 0) return `${h}h ${m}m`;
+		return `${m}m`;
+	}
+
 	async function ensureSpotifyNativeConnected(): Promise<boolean> {
 		if (nativeSpotifyStatus?.connected) return true;
 
@@ -557,18 +611,72 @@
 	<div class="hero-blob absolute right-[clamp(18px,5vw,64px)] bottom-[clamp(18px,5vw,54px)] w-[min(28vw,250px)] aspect-square rounded-3xl opacity-[0.22] pointer-events-none"></div>
 </section>
 
+<!-- M18: Library Stats Dashboard -->
+<section data-od-id="library-stats" class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
+	<div class="flex items-center justify-between gap-3 flex-wrap">
+		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Library Stats</h2>
+		<Button variant="secondary" size="sm" onclick={loadLibraryStats} disabled={loadingStats}>Refresh</Button>
+	</div>
+	{#if libraryStats}
+		<div class="grid grid-cols-4 gap-2.5 mt-2.5 max-xl:grid-cols-2">
+			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Tracks</span><strong class="text-xl">{libraryStats.total_tracks}</strong></div>
+			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Albums</span><strong class="text-xl">{libraryStats.total_albums}</strong></div>
+			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Artists</span><strong class="text-xl">{libraryStats.total_artists}</strong></div>
+			<div class="grid gap-1 border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]"><span class="text-soft font-mono text-xs uppercase">Duration</span><strong class="text-xl">{formatDurationSecs(libraryStats.total_duration_secs)}</strong></div>
+		</div>
+		<div class="grid gap-2.5 mt-2.5" style="grid-template-columns: 1fr 1fr 1fr;">
+			<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+				<span class="text-soft font-mono text-xs uppercase block mb-1.5">Formats</span>
+				{#each Object.entries(libraryStats.format_breakdown) as [fmt, count]}
+					<div class="flex justify-between text-sm py-0.5"><span class="font-mono">{fmt}</span><span>{count}</span></div>
+				{/each}
+			</div>
+			<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+				<span class="text-soft font-mono text-xs uppercase block mb-1.5">Top Artists</span>
+				{#if libraryStats.top_artists.length > 0}
+					{#each libraryStats.top_artists as a}
+						<div class="flex justify-between text-sm py-0.5"><span class="truncate">{a.name}</span><span class="text-soft ml-2">{a.play_count}</span></div>
+					{/each}
+				{:else}
+					<p class="text-sm text-soft">No play data yet</p>
+				{/if}
+			</div>
+			<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42]">
+				<span class="text-soft font-mono text-xs uppercase block mb-1.5">Top Albums</span>
+				{#if libraryStats.top_albums.length > 0}
+					{#each libraryStats.top_albums as a}
+						<div class="flex justify-between text-sm py-0.5"><span class="truncate">{a.name}</span><span class="text-soft ml-2">{a.play_count}</span></div>
+					{/each}
+				{:else}
+					<p class="text-sm text-soft">No play data yet</p>
+				{/if}
+			</div>
+		</div>
+		{#if libraryStats.forgotten_count > 0}
+			<div class="mt-2.5 px-3 py-2 border border-warning/40 rounded-2xl bg-warning/10">
+				<p class="m-0 text-warning text-sm">{libraryStats.forgotten_count} tracks haven't been played in 30+ days</p>
+			</div>
+		{/if}
+	{:else if !loadingStats}
+		<p class="text-soft text-sm mt-2.5">Click Refresh to load library statistics</p>
+	{/if}
+</section>
+
 {#if error}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-danger/20 text-danger">{error}</p>{/if}
 {#if message}<p class="mt-3 px-3 py-2 border border-outline rounded-2xl bg-success/20 text-success">{message}</p>{/if}
 
 <section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90" data-od-id="local-files">
 	<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
 		<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Local Files</h2>
-		<div class="flex justify-center items-center gap-1.5 mb-3">
+		<div class="flex items-center gap-2 flex-wrap">
+		<Button variant="outline" size="sm" onclick={findDuplicates} disabled={loadingDuplicates}>Find Duplicates</Button>
+		<div class="flex justify-center items-center gap-1.5">
 			{#each localColumnOptions as column}
 				<Button variant={visibleColumns[column.id] ? 'default' : 'outline'} size="sm" onclick={() => toggleColumn(column.id)}>
 					{column.label}
 				</Button>
 			{/each}
+		</div>
 		</div>
 	</div>
 	<div class="overflow-auto rounded-2xl border border-outline">
@@ -640,6 +748,50 @@
 
 </section>
 
+<!-- M18: Duplicate Results -->
+{#if showDuplicates}
+	<section class="mt-6 border border-outline rounded-3xl p-4 bg-surface/90">
+		<div class="flex items-center justify-between gap-3 flex-wrap mb-2">
+			<h2 class="m-0 font-[family-name:var(--font-family-display)] text-[clamp(22px,2vw,30px)] leading-[1.04]">Duplicate Tracks</h2>
+			<Button variant="outline" size="sm" onclick={() => showDuplicates = false}>Close</Button>
+		</div>
+		{#if duplicateGroups.length === 0}
+			<p class="text-soft text-sm">No duplicate tracks found</p>
+		{:else}
+			<p class="text-soft text-sm mb-2">{duplicateGroups.length} groups of potential duplicates found</p>
+			{#each duplicateGroups as group, gIdx}
+				<div class="border border-outline rounded-2xl p-2.5 bg-surface-2/[0.42] mb-2.5">
+					<span class="text-soft font-mono text-xs uppercase block mb-1.5">
+						Group {gIdx + 1}: {group[0].artist ?? 'Unknown'} — {group[0].album ?? 'Unknown Album'} — {group[0].title} ({group.length} files)
+					</span>
+					<div class="overflow-auto rounded-xl border border-outline">
+					<Table.Root class="w-full table-fixed">
+						<Table.Header>
+							<Table.Row>
+								<Table.Head class="h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase">Path</Table.Head>
+								<Table.Head class="w-[80px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase">Quality</Table.Head>
+								<Table.Head class="w-[80px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase">Size</Table.Head>
+								<Table.Head class="w-[70px] h-8 px-2 text-left align-middle text-soft font-mono text-xs uppercase">Time</Table.Head>
+							</Table.Row>
+						</Table.Header>
+						<Table.Body>
+							{#each group as dup}
+								<Table.Row class="border-b border-outline/60 hover:bg-surface/50 transition-colors">
+									<Table.Cell class="px-2 py-1.5 align-middle"><span class="text-xs truncate block max-w-[420px]">{dup.path}</span></Table.Cell>
+									<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono">{formatQuality(dup)}</Table.Cell>
+									<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono">{formatFileSize(dup.file_size)}</Table.Cell>
+									<Table.Cell class="px-2 py-1.5 align-middle text-xs text-soft font-mono">{formatDuration(dup.duration_ms)}</Table.Cell>
+								</Table.Row>
+							{/each}
+						</Table.Body>
+					</Table.Root>
+					</div>
+				</div>
+			{/each}
+		{/if}
+	</section>
+{/if}
+
 <Sheet.Sheet bind:open={trackInspectorOpen}>
 	<Sheet.SheetContent side="right" class="w-[480px] sm:max-w-[480px]">
 		<Sheet.SheetHeader>
@@ -656,6 +808,7 @@
 					<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={queueSelectedTrack}>Queue</Button>
 					<Button variant="secondary" size="sm" class="h-7 px-2.5 text-xs" onclick={addSelectedTrackToPlaylist}>Add</Button>
 					<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={lookupSelectedTrackMetadata} disabled={loadingMetadata}>Metadata</Button>
+					<Button variant="outline" size="sm" class="h-7 px-2.5 text-xs" onclick={() => selectedTrack && lookupMusicBrainz(selectedTrack)} disabled={loadingMusicBrainz}>Lookup MB</Button>
 				</div>
 
 				<dl class="track-inspector-dl">
@@ -713,6 +866,28 @@
 						</Table.Root>
 					{:else}
 						<p>No suggestions loaded</p>
+					{/if}
+				</div>
+
+				<!-- M18: MusicBrainz Lookup Results -->
+				<div class="grid gap-2 mt-3.5 pt-3 border-t border-outline">
+					<h3 class="text-sm">MusicBrainz Releases</h3>
+					{#if loadingMusicBrainz}
+						<p>Searching MusicBrainz...</p>
+					{:else if musicbrainzReleases.length > 0}
+						<div class="flex flex-wrap gap-1.5">
+							{#each musicbrainzReleases as release}
+								<div class="border border-outline rounded-xl p-2 text-xs">
+									<strong>{release.title}</strong>
+									<span class="text-soft block">{release.artist}</span>
+									{#if release.date}<span class="text-soft">{release.date}</span>{/if}
+									{#if release.format}<span class="ml-1 text-soft font-mono">{release.format}</span>{/if}
+									<span class="text-soft text-[10px] block mt-0.5 font-mono">{release.mbid}</span>
+								</div>
+							{/each}
+						</div>
+					{:else}
+						<p class="text-soft text-sm">Click "Lookup MB" to search MusicBrainz</p>
 					{/if}
 				</div>
 			</div>

@@ -4,6 +4,7 @@ pub mod error;
 mod models;
 mod providers;
 mod storage;
+mod system;
 mod web;
 
 use std::path::Path;
@@ -19,11 +20,15 @@ use crate::web::auth::{JellyfinAccount, ProviderAccount, ProviderLoginState};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .setup(|_app| {
             crate::storage::keyring::init_default_credentials();
             tauri::async_runtime::spawn(async move {
                 crate::audio::player::run().await;
             });
+            crate::system::hotkeys::register_media_hotkeys(&_app.handle());
+            crate::system::mpris::init_mpris();
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -115,7 +120,16 @@ pub fn run() {
             start_spotify_native_playback,
             spotify_native_pause,
             spotify_native_resume,
-            spotify_native_stop
+            spotify_native_stop,
+            search_musicbrainz_releases,
+            fetch_cover_art,
+            get_library_stats,
+            find_duplicates,
+            start_folder_watcher,
+            stop_folder_watcher,
+            is_folder_watcher_running,
+            crate::system::notifications::get_notification_setting,
+            crate::system::notifications::set_notification_setting
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
@@ -719,6 +733,12 @@ fn play_local_tracks_with_restore(
     }
     save_status_position(app, &status)?;
     record_playback_event(app, &status, "started")?;
+
+    if let Some(ref title) = status.current_title {
+        crate::system::notifications::show_now_playing(app, title, "", "");
+    }
+    crate::system::mpris::update_metadata(&status);
+
     Ok(status)
 }
 
@@ -997,4 +1017,55 @@ fn spotify_native_resume() -> Result<crate::providers::spotify::SpotifyNativeSta
 #[tauri::command(rename_all = "snake_case")]
 fn spotify_native_stop() -> Result<crate::providers::spotify::SpotifyNativeStatus, String> {
     crate::providers::spotify::spotify_native_stop()
+}
+
+// ── MusicBrainz Commands ──
+
+#[instrument]
+#[tauri::command(rename_all = "snake_case")]
+async fn search_musicbrainz_releases(
+    artist: String,
+    title: String,
+) -> Result<Vec<crate::providers::musicbrainz::MusicBrainzRelease>, String> {
+    crate::providers::musicbrainz::search_release(&artist, &title).await
+}
+
+#[instrument]
+#[tauri::command(rename_all = "snake_case")]
+async fn fetch_cover_art(mbid: String) -> Result<Option<String>, String> {
+    crate::providers::musicbrainz::get_cover_art(&mbid).await
+}
+
+// ── Library Stats Command ──
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn get_library_stats(app: AppHandle) -> Result<crate::storage::database::LibraryStats, String> {
+    crate::storage::database::get_library_stats(&app)
+}
+
+// ── Duplicate Finder Command ──
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn find_duplicates(app: AppHandle) -> Result<Vec<Vec<crate::storage::database::LibraryTrack>>, String> {
+    crate::storage::database::find_duplicates(&app)
+}
+
+// ── Folder Watcher Commands ──
+
+#[instrument(skip(app))]
+#[tauri::command(rename_all = "snake_case")]
+fn start_folder_watcher(app: AppHandle, path: String) -> Result<(), String> {
+    crate::storage::database::start_watcher(app, path)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn stop_folder_watcher() {
+    crate::storage::database::stop_watcher();
+}
+
+#[tauri::command(rename_all = "snake_case")]
+fn is_folder_watcher_running() -> bool {
+    crate::storage::database::is_watcher_running()
 }

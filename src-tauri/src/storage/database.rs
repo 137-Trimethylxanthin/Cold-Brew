@@ -1052,3 +1052,346 @@ mod listening_history_tests {
         );
     }
 }
+
+// ── Library Stats ──
+
+use std::collections::HashMap;
+
+#[derive(Clone, Debug, Serialize)]
+pub struct LibraryStats {
+    pub total_tracks: usize,
+    pub total_albums: usize,
+    pub total_artists: usize,
+    pub total_duration_secs: u64,
+    pub format_breakdown: HashMap<String, usize>,
+    pub top_artists: Vec<ArtistStat>,
+    pub top_albums: Vec<AlbumStat>,
+    pub forgotten_count: usize,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct ArtistStat {
+    pub name: String,
+    pub play_count: u64,
+}
+
+#[derive(Clone, Debug, Serialize)]
+pub struct AlbumStat {
+    pub name: String,
+    pub artist: String,
+    pub play_count: u64,
+}
+
+#[instrument(skip(app))]
+pub fn get_library_stats(app: &AppHandle) -> Result<LibraryStats, String> {
+    let tracks = list_library_tracks(app)?;
+
+    let total_tracks = tracks.len();
+    let total_duration_secs: u64 = tracks
+        .iter()
+        .filter_map(|t| t.duration_ms)
+        .sum::<u64>()
+        / 1000;
+
+    let mut albums_set: HashMap<String, String> = HashMap::new();
+    let mut artists_set: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let mut format_counts: HashMap<String, usize> = HashMap::new();
+
+    for track in &tracks {
+        let album_key = track
+            .album
+            .as_deref()
+            .unwrap_or("Unknown Album")
+            .to_string();
+        albums_set.entry(album_key.clone()).or_insert(
+            track
+                .artist
+                .as_deref()
+                .unwrap_or("Unknown Artist")
+                .to_string(),
+        );
+
+        if let Some(artist) = &track.artist {
+            artists_set.insert(artist.to_lowercase());
+        }
+
+        *format_counts
+            .entry(track.extension.to_uppercase())
+            .or_insert(0) += 1;
+    }
+
+    let total_albums = albums_set.len();
+    let total_artists = artists_set.len();
+
+    // Top artists by play count from listening history
+    let mut top_artists = Vec::new();
+    if let Ok(history_connection) = listening_open_database(app) {
+        let _ = listening_initialize_database(&history_connection);
+        let mut stmt = history_connection
+            .prepare(
+                "SELECT t.artist, COUNT(*) as cnt
+                 FROM listening_history lh
+                 JOIN tracks t ON lh.path = t.path
+                 WHERE lh.event = 'started' AND t.artist IS NOT NULL
+                 GROUP BY t.artist
+                 ORDER BY cnt DESC
+                 LIMIT 5",
+            )
+            .map_err(database_error)?;
+        let rows = stmt
+            .query_map([], |row| {
+                let count: i64 = row.get(1)?;
+                Ok(ArtistStat {
+                    name: row.get(0)?,
+                    play_count: u64::try_from(count).unwrap_or_default(),
+                })
+            })
+            .map_err(database_error)?;
+        for row in rows {
+            top_artists.push(row.map_err(database_error)?);
+        }
+
+        // Top albums by play count
+        let mut top_albums = Vec::new();
+        let mut album_stmt = history_connection
+            .prepare(
+                "SELECT t.album, t.artist, COUNT(*) as cnt
+                 FROM listening_history lh
+                 JOIN tracks t ON lh.path = t.path
+                 WHERE lh.event = 'started' AND t.album IS NOT NULL
+                 GROUP BY t.album, t.artist
+                 ORDER BY cnt DESC
+                 LIMIT 5",
+            )
+            .map_err(database_error)?;
+        let album_rows = album_stmt
+            .query_map([], |row| {
+                let count: i64 = row.get(2)?;
+                Ok(AlbumStat {
+                    name: row.get(0)?,
+                    artist: row.get::<_, Option<String>>(1)?.unwrap_or_default(),
+                    play_count: u64::try_from(count).unwrap_or_default(),
+                })
+            })
+            .map_err(database_error)?;
+        for row in album_rows {
+            top_albums.push(row.map_err(database_error)?);
+        }
+
+        // Forgotten tracks: tracks in library that have never been played or not played in 30 days
+        let forgotten: i64 = history_connection
+            .query_row(
+                "SELECT COUNT(*)
+                 FROM (
+                     SELECT t.path
+                     FROM tracks t
+                     LEFT JOIN (
+                         SELECT path, MAX(created_at) AS last_played
+                         FROM listening_history
+                         WHERE event = 'started'
+                         GROUP BY path
+                     ) lh ON t.path = lh.path
+                     WHERE lh.last_played IS NULL
+                        OR lh.last_played < datetime('now', '-30 days')
+                 )",
+                [],
+                |row| row.get(0),
+            )
+            .unwrap_or(0);
+
+        Ok(LibraryStats {
+            total_tracks,
+            total_albums,
+            total_artists,
+            total_duration_secs,
+            format_breakdown: format_counts,
+            top_artists,
+            top_albums,
+            forgotten_count: usize::try_from(forgotten).unwrap_or_default(),
+        })
+    } else {
+        Ok(LibraryStats {
+            total_tracks,
+            total_albums,
+            total_artists,
+            total_duration_secs,
+            format_breakdown: format_counts,
+            top_artists: Vec::new(),
+            top_albums: Vec::new(),
+            forgotten_count: 0,
+        })
+    }
+}
+
+// ── Duplicate Finder ──
+
+#[instrument(skip(app))]
+pub fn find_duplicates(app: &AppHandle) -> Result<Vec<Vec<LibraryTrack>>, String> {
+    let connection = open_database(app)?;
+    initialize_database(&connection)?;
+
+    let mut stmt = connection
+        .prepare(
+            "SELECT artist, album, title
+             FROM tracks
+             GROUP BY artist, album, title
+             HAVING COUNT(*) > 1",
+        )
+        .map_err(database_error)?;
+
+    let duplicate_keys: Vec<(Option<String>, Option<String>, String)> = stmt
+        .query_map([], |row| {
+            Ok((row.get(0)?, row.get(1)?, row.get(2)?))
+        })
+        .map_err(database_error)?
+        .filter_map(|r| r.ok())
+        .collect();
+
+    let mut groups = Vec::new();
+    for (artist, album, title) in duplicate_keys {
+        let mut detail_stmt = connection
+            .prepare(
+                "SELECT path, title, artist, album, genre, track_number, duration_ms,
+                        sample_rate, bit_depth, bitrate, file_size, modified_secs, extension, has_artwork
+                 FROM tracks
+                 WHERE artist IS ?1 AND album IS ?2 AND LOWER(title) = LOWER(?3)
+                 ORDER BY path",
+            )
+            .map_err(database_error)?;
+
+        let rows = detail_stmt
+            .query_map(
+                rusqlite::params![artist.as_deref(), album.as_deref(), title],
+                |row| {
+                    let duration_ms: Option<i64> = row.get(6)?;
+                    let file_size: i64 = row.get(10)?;
+                    let has_artwork: i64 = row.get(13)?;
+                    Ok(LibraryTrack {
+                        path: row.get(0)?,
+                        title: row.get(1)?,
+                        artist: row.get(2)?,
+                        album: row.get(3)?,
+                        genre: row.get(4)?,
+                        track_number: row.get(5)?,
+                        duration_ms: duration_ms.and_then(|v| u64::try_from(v).ok()),
+                        sample_rate: row.get(7)?,
+                        bit_depth: row.get(8)?,
+                        bitrate: row.get(9)?,
+                        file_size: u64::try_from(file_size).unwrap_or_default(),
+                        modified_secs: row.get(11)?,
+                        extension: row.get(12)?,
+                        has_artwork: has_artwork != 0,
+                    })
+                },
+            )
+            .map_err(database_error)?;
+
+        let group: Vec<LibraryTrack> = rows.filter_map(|r| r.ok()).collect();
+        if group.len() > 1 {
+            groups.push(group);
+        }
+    }
+
+    Ok(groups)
+}
+
+// ── Watch Folders ──
+
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
+
+static WATCHER_RUNNING: AtomicBool = AtomicBool::new(false);
+
+pub fn start_watcher(app: AppHandle, root: String) -> Result<(), String> {
+    if WATCHER_RUNNING.swap(true, Ordering::SeqCst) {
+        return Ok(());
+    }
+
+    let root_path = PathBuf::from(root.trim());
+    if !root_path.is_dir() {
+        WATCHER_RUNNING.store(false, Ordering::SeqCst);
+        return Err(format!(
+            "Watch path is not a directory: {}",
+            root_path.display()
+        ));
+    }
+
+    let root_clone = root_path.clone();
+    tauri::async_runtime::spawn(async move {
+        use notify::RecursiveMode;
+        use notify::Watcher;
+
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+
+        let mut watcher = match notify::recommended_watcher(move |event| {
+            let _ = tx.send(event);
+        }) {
+            Ok(w) => w,
+            Err(e) => {
+                tracing::error!("Failed to create file watcher: {e}");
+                WATCHER_RUNNING.store(false, Ordering::SeqCst);
+                return;
+            }
+        };
+
+        if let Err(e) = watcher.watch(&root_clone, RecursiveMode::Recursive) {
+            tracing::error!("Failed to watch directory: {e}");
+            WATCHER_RUNNING.store(false, Ordering::SeqCst);
+            return;
+        }
+
+        tracing::info!("File watcher started for: {}", root_clone.display());
+
+        let mut debounce_timer: Option<tokio::time::Instant> = None;
+
+        loop {
+            match tokio::time::timeout(Duration::from_secs(1), rx.recv()).await {
+                Ok(Some(_event)) => {
+                    if let Ok(event) =
+                        _event.map_err(|e| tracing::warn!("Watcher event error: {e}"))
+                    {
+                        if event.kind.is_create() || event.kind.is_modify() {
+                            for path in &event.paths {
+                                if path.is_file() && is_audio_path(path) {
+                                    debounce_timer = Some(tokio::time::Instant::now());
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                Ok(None) => break,
+                Err(_) => {
+                    // Timeout: check if we need to debounce-scan
+                }
+            }
+
+            if let Some(timer) = debounce_timer {
+                if timer.elapsed() >= Duration::from_secs(2) {
+                    tracing::info!(
+                        "Watcher: new/modified audio files detected, rescanning library"
+                    );
+                    if let Err(e) = scan_library_path(
+                        &app,
+                        root_clone.to_string_lossy().to_string(),
+                    ) {
+                        tracing::error!("Watcher library scan failed: {e}");
+                    }
+                    debounce_timer = None;
+                }
+            }
+        }
+
+        WATCHER_RUNNING.store(false, Ordering::SeqCst);
+    });
+
+    Ok(())
+}
+
+pub fn is_watcher_running() -> bool {
+    WATCHER_RUNNING.load(Ordering::SeqCst)
+}
+
+pub fn stop_watcher() {
+    WATCHER_RUNNING.store(false, Ordering::SeqCst);
+}

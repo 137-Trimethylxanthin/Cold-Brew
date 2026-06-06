@@ -92,7 +92,6 @@
 			<span class="text-soft text-sm">{song.album}</span>
 		{/if}
 	</div>
-	<SpectrumAnalyzer />
 </div>
 
 <!-- M20: Fullscreen Now-Playing Overlay -->
@@ -131,7 +130,7 @@
 					{/if}
 				</div>
 				<div class="fullscreen-spectrum">
-					<SpectrumAnalyzer />
+					<SpectrumAnalyzer bars={48} />
 				</div>
 			</div>
 			{#if children}
@@ -270,9 +269,6 @@
 
 	.fullscreen-spectrum {
 		width: 100%;
-	}
-
-	.fullscreen-spectrum :global(.spectrum-canvas) {
-		height: 180px;
+		height: 240px;
 	}
 </style>
